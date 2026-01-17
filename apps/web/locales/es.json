@@ -1,0 +1,352 @@
+{
+  "common": {
+    "loading": "Cargando...",
+    "error": "Error",
+    "retry": "Reintentar",
+    "cancel": "Cancelar",
+    "confirm": "Confirmar",
+    "save": "Guardar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "back": "Volver",
+    "next": "Siguiente",
+    "previous": "Anterior",
+    "search": "Buscar",
+    "noResults": "Sin resultados",
+    "required": "Requerido",
+    "optional": "Opcional",
+    "yes": "Sí",
+    "no": "No",
+    "close": "Cerrar",
+    "or": "o"
+  },
+  "landing": {
+    "nav": {
+      "features": "Características",
+      "pricing": "Precios",
+      "testimonials": "Testimonios",
+      "login": "Iniciar Sesión",
+      "getStarted": "Empezar Gratis"
+    },
+    "hero": {
+      "badge": "+500 negocios ya confían en TurnoLink",
+      "title": "Transforma tu agenda en una",
+      "titleHighlight": "máquina de reservas",
+      "subtitle": "El sistema de turnos online más moderno para barberías, spas, consultorios y negocios de servicios. Tus clientes reservan 24/7 mientras tú te enfocas en lo que mejor sabes hacer.",
+      "cta": "Comenzar gratis",
+      "demo": "Ver demo en vivo",
+      "trust": {
+        "noCard": "Sin tarjeta de crédito",
+        "setup": "Configuración en 2 minutos",
+        "support": "Soporte en tu idioma"
+      }
+    },
+    "demo": {
+      "month": "Enero 2026",
+      "service": "Corte Clásico",
+      "duration": "30 min • $3,500"
+    },
+    "logos": {
+      "title": "Empresas que confían en TurnoLink"
+    },
+    "features": {
+      "badge": "Características",
+      "title": "Todo lo que necesitas para",
+      "titleHighlight": "crecer tu negocio",
+      "subtitle": "Herramientas profesionales diseñadas para que te olvides del papel y las llamadas, y te enfoques en atender a tus clientes.",
+      "calendar": {
+        "title": "Calendario inteligente",
+        "description": "Visualiza y gestiona todos tus turnos en un calendario moderno con vista diaria, semanal y mensual."
+      },
+      "booking": {
+        "title": "Reservas 24/7",
+        "description": "Tu negocio siempre abierto. Los clientes reservan cuando quieran, incluso a las 3 AM."
+      },
+      "notifications": {
+        "title": "Notificaciones automáticas",
+        "description": "WhatsApp y email automáticos para confirmar turnos y enviar recordatorios. Reduce ausencias un 80%."
+      },
+      "customers": {
+        "title": "Base de clientes",
+        "description": "Historial completo de cada cliente, preferencias, notas y estadísticas de visitas."
+      },
+      "responsive": {
+        "title": "100% responsive",
+        "description": "Diseño optimizado para cualquier dispositivo. Perfecto en celulares, tablets y computadoras."
+      },
+      "reports": {
+        "title": "Reportes y métricas",
+        "description": "Dashboard con estadísticas de turnos, ingresos, clientes frecuentes y horarios más demandados."
+      }
+    },
+    "howItWorks": {
+      "title": "Activo en",
+      "titleHighlight": "3 simples pasos",
+      "subtitle": "No necesitas conocimientos técnicos. En menos de 5 minutos tu negocio estará recibiendo reservas online.",
+      "step1": {
+        "title": "Crea tu cuenta",
+        "description": "Registrate gratis con tu email. Sin tarjeta de crédito."
+      },
+      "step2": {
+        "title": "Configura tu negocio",
+        "description": "Agrega tus servicios, precios y horarios de atención."
+      },
+      "step3": {
+        "title": "Comparte tu link",
+        "description": "Envía tu link único a clientes por WhatsApp o redes sociales."
+      }
+    },
+    "testimonials": {
+      "title": "Lo que dicen",
+      "titleHighlight": "nuestros clientes",
+      "testimonial1": {
+        "quote": "TurnoLink cambió mi barbería por completo. Antes perdía horas atendiendo el teléfono, ahora todo es automático.",
+        "author": "Carlos Méndez",
+        "role": "Barbería Los Capos"
+      },
+      "testimonial2": {
+        "quote": "Mis clientas aman poder reservar desde el celular a cualquier hora. Las cancelaciones bajaron un montón.",
+        "author": "Lucía Fernández",
+        "role": "Spa Zen Beauty"
+      },
+      "testimonial3": {
+        "quote": "Como médico, valoro la puntualidad. TurnoLink me ayuda a mantener mi agenda ordenada y sin superposiciones.",
+        "author": "Dr. Roberto García",
+        "role": "Consultorio Médico"
+      }
+    },
+    "pricing": {
+      "badge": "Precios simples",
+      "title": "Un plan,",
+      "titleHighlight": "todo incluido",
+      "subtitle": "Sin costos ocultos. Sin comisiones por reserva. Todo lo que necesitas en un solo plan.",
+      "planName": "Plan Profesional",
+      "price": "$4,990",
+      "period": "/mes",
+      "billing": "Facturación mensual",
+      "features": {
+        "unlimited": "Reservas ilimitadas",
+        "customers": "Clientes ilimitados",
+        "notifications": "Notificaciones WhatsApp + Email",
+        "calendar": "Calendario y dashboard",
+        "customPage": "Página pública personalizada",
+        "schedule": "Gestión de horarios y feriados",
+        "reports": "Reportes y estadísticas",
+        "support": "Soporte prioritario"
+      },
+      "cta": "Comenzar prueba gratis",
+      "trial": "14 días gratis • Sin tarjeta de crédito"
+    },
+    "cta": {
+      "title": "¿Listo para automatizar tu agenda?",
+      "subtitle": "Únete a más de 500 negocios que ya usan TurnoLink para gestionar sus reservas de forma profesional.",
+      "button": "Empezar gratis ahora",
+      "demo": "Ver demo"
+    },
+    "footer": {
+      "description": "El sistema de turnos online más moderno para tu negocio.",
+      "product": "Producto",
+      "company": "Empresa",
+      "legal": "Legal",
+      "about": "Sobre nosotros",
+      "contact": "Contacto",
+      "privacy": "Privacidad",
+      "terms": "Términos",
+      "copyright": "© {year} TurnoLink. Todos los derechos reservados."
+    }
+  },
+  "booking": {
+    "title": "Reservar turno",
+    "subtitle": "Selecciona el servicio que deseas reservar",
+    "steps": {
+      "service": "Servicio",
+      "datetime": "Fecha y Hora",
+      "confirm": "Confirmar"
+    },
+    "selectService": {
+      "title": "Elegí tu servicio",
+      "subtitle": "Selecciona el servicio que deseas reservar",
+      "duration": "min",
+      "book": "Reservar"
+    },
+    "selectDate": {
+      "title": "Elegí una fecha",
+      "selectTime": "Elegí un horario",
+      "noSlots": "No hay horarios disponibles",
+      "tryAnother": "Probá con otra fecha",
+      "allBooked": "Sin disponibilidad",
+      "allBookedDesc": "Todos los horarios están ocupados",
+      "available": "Disponible",
+      "occupied": "Ocupado",
+      "slotsAvailable": "horario disponible",
+      "slotsAvailablePlural": "horarios disponibles",
+      "selectDateFirst": "Selecciona una fecha para ver los horarios disponibles",
+      "loadingSlots": "Cargando horarios...",
+      "changeService": "Cambiar servicio",
+      "selectedService": "Servicio seleccionado"
+    },
+    "form": {
+      "title": "Completá tus datos",
+      "summary": "Resumen de tu reserva",
+      "service": "Servicio",
+      "date": "Fecha",
+      "time": "Hora",
+      "duration": "Duración",
+      "minutes": "minutos",
+      "total": "Total a pagar",
+      "name": "Nombre completo",
+      "namePlaceholder": "Tu nombre",
+      "phone": "WhatsApp / Teléfono",
+      "phonePlaceholder": "+54 11 1234-5678",
+      "email": "Email",
+      "emailPlaceholder": "tu@email.com",
+      "notes": "Notas adicionales",
+      "notesPlaceholder": "Alguna indicación especial...",
+      "submit": "Confirmar Reserva",
+      "submitting": "Reservando...",
+      "terms": "Al confirmar, aceptas los términos y condiciones del negocio",
+      "changeTime": "Cambiar horario"
+    },
+    "confirmation": {
+      "title": "¡Reserva Confirmada!",
+      "subtitle": "Tu turno ha sido registrado exitosamente.",
+      "whatsappNotice": "Recibirás una confirmación por WhatsApp.",
+      "bookingAt": "Reserva en",
+      "newBooking": "Reservar otro turno",
+      "contactWhatsapp": "Contactar por WhatsApp"
+    },
+    "badge": "Reserva online 24/7",
+    "rating": "Rating",
+    "clients": "Clientes"
+  },
+  "auth": {
+    "login": {
+      "title": "Iniciar Sesión",
+      "subtitle": "Ingresa a tu cuenta",
+      "email": "Email",
+      "password": "Contraseña",
+      "forgotPassword": "¿Olvidaste tu contraseña?",
+      "submit": "Iniciar Sesión",
+      "noAccount": "¿No tienes cuenta?",
+      "signUp": "Registrarse"
+    },
+    "register": {
+      "title": "Crear Cuenta",
+      "subtitle": "Registra tu negocio",
+      "name": "Tu nombre",
+      "email": "Email",
+      "password": "Contraseña",
+      "confirmPassword": "Confirmar contraseña",
+      "businessName": "Nombre del negocio",
+      "businessSlug": "URL de tu página",
+      "submit": "Crear cuenta",
+      "hasAccount": "¿Ya tienes cuenta?",
+      "signIn": "Iniciar sesión",
+      "terms": "Al registrarte, aceptas nuestros términos y condiciones"
+    },
+    "errors": {
+      "invalidCredentials": "Email o contraseña incorrectos",
+      "emailRequired": "El email es requerido",
+      "passwordRequired": "La contraseña es requerida",
+      "sessionExpired": "Tu sesión ha expirado. Por favor, inicia sesión nuevamente."
+    }
+  },
+  "dashboard": {
+    "nav": {
+      "dashboard": "Dashboard",
+      "bookings": "Turnos",
+      "services": "Servicios",
+      "customers": "Clientes",
+      "schedule": "Horarios",
+      "settings": "Configuración"
+    },
+    "home": {
+      "welcome": "Bienvenido",
+      "todayBookings": "Turnos hoy",
+      "weekBookings": "Esta semana",
+      "monthBookings": "Este mes",
+      "totalCustomers": "Total clientes",
+      "upcomingBookings": "Próximos turnos",
+      "recentCustomers": "Clientes recientes",
+      "noUpcoming": "No hay turnos próximos",
+      "viewAll": "Ver todos"
+    },
+    "bookings": {
+      "title": "Gestión de Turnos",
+      "today": "Hoy",
+      "upcoming": "Próximos",
+      "past": "Pasados",
+      "all": "Todos",
+      "status": {
+        "pending": "Pendiente",
+        "confirmed": "Confirmado",
+        "completed": "Completado",
+        "cancelled": "Cancelado",
+        "noShow": "No se presentó"
+      },
+      "actions": {
+        "confirm": "Confirmar",
+        "complete": "Completar",
+        "cancel": "Cancelar",
+        "noShow": "No show"
+      },
+      "empty": "No hay turnos para mostrar"
+    },
+    "services": {
+      "title": "Servicios",
+      "add": "Agregar servicio",
+      "name": "Nombre",
+      "description": "Descripción",
+      "price": "Precio",
+      "duration": "Duración",
+      "active": "Activo",
+      "inactive": "Inactivo",
+      "empty": "No hay servicios configurados"
+    },
+    "customers": {
+      "title": "Clientes",
+      "search": "Buscar clientes...",
+      "name": "Nombre",
+      "phone": "Teléfono",
+      "email": "Email",
+      "bookings": "Reservas",
+      "lastVisit": "Última visita",
+      "empty": "No hay clientes registrados"
+    },
+    "schedule": {
+      "title": "Horarios de Atención",
+      "days": {
+        "0": "Domingo",
+        "1": "Lunes",
+        "2": "Martes",
+        "3": "Miércoles",
+        "4": "Jueves",
+        "5": "Viernes",
+        "6": "Sábado"
+      },
+      "start": "Apertura",
+      "end": "Cierre",
+      "closed": "Cerrado",
+      "blockedDates": "Fechas bloqueadas",
+      "blockDate": "Bloquear fecha",
+      "reason": "Motivo"
+    },
+    "settings": {
+      "title": "Configuración",
+      "business": "Datos del negocio",
+      "profile": "Mi perfil",
+      "notifications": "Notificaciones",
+      "booking": "Reservas",
+      "appearance": "Apariencia"
+    }
+  },
+  "validation": {
+    "required": "Este campo es requerido",
+    "email": "Ingrese un email válido",
+    "phone": "Ingrese un teléfono válido",
+    "minLength": "Mínimo {min} caracteres",
+    "maxLength": "Máximo {max} caracteres",
+    "passwordMismatch": "Las contraseñas no coinciden",
+    "invalidSlug": "Solo letras minúsculas, números y guiones"
+  }
+}

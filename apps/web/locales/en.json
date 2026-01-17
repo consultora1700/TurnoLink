@@ -1,0 +1,352 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "retry": "Retry",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "search": "Search",
+    "noResults": "No results",
+    "required": "Required",
+    "optional": "Optional",
+    "yes": "Yes",
+    "no": "No",
+    "close": "Close",
+    "or": "or"
+  },
+  "landing": {
+    "nav": {
+      "features": "Features",
+      "pricing": "Pricing",
+      "testimonials": "Testimonials",
+      "login": "Sign In",
+      "getStarted": "Get Started Free"
+    },
+    "hero": {
+      "badge": "+500 businesses already trust TurnoLink",
+      "title": "Transform your calendar into a",
+      "titleHighlight": "booking machine",
+      "subtitle": "The most modern online booking system for barbershops, spas, clinics, and service businesses. Your clients book 24/7 while you focus on what you do best.",
+      "cta": "Start for free",
+      "demo": "See live demo",
+      "trust": {
+        "noCard": "No credit card required",
+        "setup": "Setup in 2 minutes",
+        "support": "Support in your language"
+      }
+    },
+    "demo": {
+      "month": "January 2026",
+      "service": "Classic Haircut",
+      "duration": "30 min • $35"
+    },
+    "logos": {
+      "title": "Companies that trust TurnoLink"
+    },
+    "features": {
+      "badge": "Features",
+      "title": "Everything you need to",
+      "titleHighlight": "grow your business",
+      "subtitle": "Professional tools designed so you can forget about paper and phone calls, and focus on serving your clients.",
+      "calendar": {
+        "title": "Smart calendar",
+        "description": "View and manage all your appointments in a modern calendar with daily, weekly, and monthly views."
+      },
+      "booking": {
+        "title": "24/7 Bookings",
+        "description": "Your business always open. Clients book whenever they want, even at 3 AM."
+      },
+      "notifications": {
+        "title": "Automatic notifications",
+        "description": "WhatsApp and email automated for booking confirmations and reminders. Reduce no-shows by 80%."
+      },
+      "customers": {
+        "title": "Customer database",
+        "description": "Complete history of each client, preferences, notes, and visit statistics."
+      },
+      "responsive": {
+        "title": "100% responsive",
+        "description": "Design optimized for any device. Perfect on phones, tablets, and computers."
+      },
+      "reports": {
+        "title": "Reports & metrics",
+        "description": "Dashboard with appointment statistics, revenue, frequent clients, and busiest times."
+      }
+    },
+    "howItWorks": {
+      "title": "Live in",
+      "titleHighlight": "3 simple steps",
+      "subtitle": "No technical knowledge needed. In less than 5 minutes your business will be receiving online bookings.",
+      "step1": {
+        "title": "Create your account",
+        "description": "Sign up free with your email. No credit card required."
+      },
+      "step2": {
+        "title": "Set up your business",
+        "description": "Add your services, prices, and business hours."
+      },
+      "step3": {
+        "title": "Share your link",
+        "description": "Send your unique link to clients via WhatsApp or social media."
+      }
+    },
+    "testimonials": {
+      "title": "What",
+      "titleHighlight": "our clients say",
+      "testimonial1": {
+        "quote": "TurnoLink completely changed my barbershop. I used to spend hours answering the phone, now everything is automatic.",
+        "author": "Carlos Mendez",
+        "role": "Los Capos Barbershop"
+      },
+      "testimonial2": {
+        "quote": "My clients love being able to book from their phone at any time. Cancellations dropped significantly.",
+        "author": "Lucia Fernandez",
+        "role": "Zen Beauty Spa"
+      },
+      "testimonial3": {
+        "quote": "As a doctor, I value punctuality. TurnoLink helps me keep my schedule organized and without overlaps.",
+        "author": "Dr. Roberto Garcia",
+        "role": "Medical Office"
+      }
+    },
+    "pricing": {
+      "badge": "Simple pricing",
+      "title": "One plan,",
+      "titleHighlight": "all included",
+      "subtitle": "No hidden costs. No booking fees. Everything you need in one plan.",
+      "planName": "Professional Plan",
+      "price": "$49",
+      "period": "/month",
+      "billing": "Monthly billing",
+      "features": {
+        "unlimited": "Unlimited bookings",
+        "customers": "Unlimited customers",
+        "notifications": "WhatsApp + Email notifications",
+        "calendar": "Calendar and dashboard",
+        "customPage": "Custom public page",
+        "schedule": "Schedule and holiday management",
+        "reports": "Reports and statistics",
+        "support": "Priority support"
+      },
+      "cta": "Start free trial",
+      "trial": "14 days free • No credit card"
+    },
+    "cta": {
+      "title": "Ready to automate your calendar?",
+      "subtitle": "Join over 500 businesses that already use TurnoLink to manage their bookings professionally.",
+      "button": "Start free now",
+      "demo": "See demo"
+    },
+    "footer": {
+      "description": "The most modern online booking system for your business.",
+      "product": "Product",
+      "company": "Company",
+      "legal": "Legal",
+      "about": "About us",
+      "contact": "Contact",
+      "privacy": "Privacy",
+      "terms": "Terms",
+      "copyright": "© {year} TurnoLink. All rights reserved."
+    }
+  },
+  "booking": {
+    "title": "Book appointment",
+    "subtitle": "Select the service you want to book",
+    "steps": {
+      "service": "Service",
+      "datetime": "Date & Time",
+      "confirm": "Confirm"
+    },
+    "selectService": {
+      "title": "Choose your service",
+      "subtitle": "Select the service you want to book",
+      "duration": "min",
+      "book": "Book"
+    },
+    "selectDate": {
+      "title": "Choose a date",
+      "selectTime": "Choose a time",
+      "noSlots": "No available times",
+      "tryAnother": "Try another date",
+      "allBooked": "Fully booked",
+      "allBookedDesc": "All time slots are taken",
+      "available": "Available",
+      "occupied": "Occupied",
+      "slotsAvailable": "slot available",
+      "slotsAvailablePlural": "slots available",
+      "selectDateFirst": "Select a date to see available times",
+      "loadingSlots": "Loading times...",
+      "changeService": "Change service",
+      "selectedService": "Selected service"
+    },
+    "form": {
+      "title": "Complete your details",
+      "summary": "Booking summary",
+      "service": "Service",
+      "date": "Date",
+      "time": "Time",
+      "duration": "Duration",
+      "minutes": "minutes",
+      "total": "Total",
+      "name": "Full name",
+      "namePlaceholder": "Your name",
+      "phone": "WhatsApp / Phone",
+      "phonePlaceholder": "+1 555 123-4567",
+      "email": "Email",
+      "emailPlaceholder": "you@email.com",
+      "notes": "Additional notes",
+      "notesPlaceholder": "Any special requests...",
+      "submit": "Confirm Booking",
+      "submitting": "Booking...",
+      "terms": "By confirming, you accept the business terms and conditions",
+      "changeTime": "Change time"
+    },
+    "confirmation": {
+      "title": "Booking Confirmed!",
+      "subtitle": "Your appointment has been successfully registered.",
+      "whatsappNotice": "You'll receive a confirmation via WhatsApp.",
+      "bookingAt": "Booking at",
+      "newBooking": "Book another appointment",
+      "contactWhatsapp": "Contact via WhatsApp"
+    },
+    "badge": "Online booking 24/7",
+    "rating": "Rating",
+    "clients": "Clients"
+  },
+  "auth": {
+    "login": {
+      "title": "Sign In",
+      "subtitle": "Access your account",
+      "email": "Email",
+      "password": "Password",
+      "forgotPassword": "Forgot password?",
+      "submit": "Sign In",
+      "noAccount": "Don't have an account?",
+      "signUp": "Sign up"
+    },
+    "register": {
+      "title": "Create Account",
+      "subtitle": "Register your business",
+      "name": "Your name",
+      "email": "Email",
+      "password": "Password",
+      "confirmPassword": "Confirm password",
+      "businessName": "Business name",
+      "businessSlug": "Your page URL",
+      "submit": "Create account",
+      "hasAccount": "Already have an account?",
+      "signIn": "Sign in",
+      "terms": "By signing up, you accept our terms and conditions"
+    },
+    "errors": {
+      "invalidCredentials": "Invalid email or password",
+      "emailRequired": "Email is required",
+      "passwordRequired": "Password is required",
+      "sessionExpired": "Your session has expired. Please sign in again."
+    }
+  },
+  "dashboard": {
+    "nav": {
+      "dashboard": "Dashboard",
+      "bookings": "Appointments",
+      "services": "Services",
+      "customers": "Customers",
+      "schedule": "Schedule",
+      "settings": "Settings"
+    },
+    "home": {
+      "welcome": "Welcome",
+      "todayBookings": "Today's appointments",
+      "weekBookings": "This week",
+      "monthBookings": "This month",
+      "totalCustomers": "Total customers",
+      "upcomingBookings": "Upcoming appointments",
+      "recentCustomers": "Recent customers",
+      "noUpcoming": "No upcoming appointments",
+      "viewAll": "View all"
+    },
+    "bookings": {
+      "title": "Appointment Management",
+      "today": "Today",
+      "upcoming": "Upcoming",
+      "past": "Past",
+      "all": "All",
+      "status": {
+        "pending": "Pending",
+        "confirmed": "Confirmed",
+        "completed": "Completed",
+        "cancelled": "Cancelled",
+        "noShow": "No show"
+      },
+      "actions": {
+        "confirm": "Confirm",
+        "complete": "Complete",
+        "cancel": "Cancel",
+        "noShow": "No show"
+      },
+      "empty": "No appointments to show"
+    },
+    "services": {
+      "title": "Services",
+      "add": "Add service",
+      "name": "Name",
+      "description": "Description",
+      "price": "Price",
+      "duration": "Duration",
+      "active": "Active",
+      "inactive": "Inactive",
+      "empty": "No services configured"
+    },
+    "customers": {
+      "title": "Customers",
+      "search": "Search customers...",
+      "name": "Name",
+      "phone": "Phone",
+      "email": "Email",
+      "bookings": "Bookings",
+      "lastVisit": "Last visit",
+      "empty": "No registered customers"
+    },
+    "schedule": {
+      "title": "Business Hours",
+      "days": {
+        "0": "Sunday",
+        "1": "Monday",
+        "2": "Tuesday",
+        "3": "Wednesday",
+        "4": "Thursday",
+        "5": "Friday",
+        "6": "Saturday"
+      },
+      "start": "Open",
+      "end": "Close",
+      "closed": "Closed",
+      "blockedDates": "Blocked dates",
+      "blockDate": "Block date",
+      "reason": "Reason"
+    },
+    "settings": {
+      "title": "Settings",
+      "business": "Business info",
+      "profile": "My profile",
+      "notifications": "Notifications",
+      "booking": "Bookings",
+      "appearance": "Appearance"
+    }
+  },
+  "validation": {
+    "required": "This field is required",
+    "email": "Enter a valid email",
+    "phone": "Enter a valid phone number",
+    "minLength": "Minimum {min} characters",
+    "maxLength": "Maximum {max} characters",
+    "passwordMismatch": "Passwords don't match",
+    "invalidSlug": "Only lowercase letters, numbers and hyphens"
+  }
+}

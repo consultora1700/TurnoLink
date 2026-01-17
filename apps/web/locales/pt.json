@@ -1,0 +1,352 @@
+{
+  "common": {
+    "loading": "Carregando...",
+    "error": "Erro",
+    "retry": "Tentar novamente",
+    "cancel": "Cancelar",
+    "confirm": "Confirmar",
+    "save": "Salvar",
+    "delete": "Excluir",
+    "edit": "Editar",
+    "back": "Voltar",
+    "next": "Próximo",
+    "previous": "Anterior",
+    "search": "Buscar",
+    "noResults": "Sem resultados",
+    "required": "Obrigatório",
+    "optional": "Opcional",
+    "yes": "Sim",
+    "no": "Não",
+    "close": "Fechar",
+    "or": "ou"
+  },
+  "landing": {
+    "nav": {
+      "features": "Recursos",
+      "pricing": "Preços",
+      "testimonials": "Depoimentos",
+      "login": "Entrar",
+      "getStarted": "Começar Grátis"
+    },
+    "hero": {
+      "badge": "+500 negócios já confiam no TurnoLink",
+      "title": "Transforme sua agenda em uma",
+      "titleHighlight": "máquina de reservas",
+      "subtitle": "O sistema de agendamentos online mais moderno para barbearias, spas, consultórios e negócios de serviços. Seus clientes agendam 24/7 enquanto você foca no que faz de melhor.",
+      "cta": "Começar grátis",
+      "demo": "Ver demonstração ao vivo",
+      "trust": {
+        "noCard": "Sem cartão de crédito",
+        "setup": "Configuração em 2 minutos",
+        "support": "Suporte no seu idioma"
+      }
+    },
+    "demo": {
+      "month": "Janeiro 2026",
+      "service": "Corte Clássico",
+      "duration": "30 min • R$70"
+    },
+    "logos": {
+      "title": "Empresas que confiam no TurnoLink"
+    },
+    "features": {
+      "badge": "Recursos",
+      "title": "Tudo que você precisa para",
+      "titleHighlight": "crescer seu negócio",
+      "subtitle": "Ferramentas profissionais projetadas para você esquecer do papel e das ligações, e focar em atender seus clientes.",
+      "calendar": {
+        "title": "Calendário inteligente",
+        "description": "Visualize e gerencie todos os seus agendamentos em um calendário moderno com visualização diária, semanal e mensal."
+      },
+      "booking": {
+        "title": "Agendamentos 24/7",
+        "description": "Seu negócio sempre aberto. Clientes agendam quando quiserem, até às 3 da manhã."
+      },
+      "notifications": {
+        "title": "Notificações automáticas",
+        "description": "WhatsApp e email automáticos para confirmar agendamentos e enviar lembretes. Reduza faltas em 80%."
+      },
+      "customers": {
+        "title": "Base de clientes",
+        "description": "Histórico completo de cada cliente, preferências, anotações e estatísticas de visitas."
+      },
+      "responsive": {
+        "title": "100% responsivo",
+        "description": "Design otimizado para qualquer dispositivo. Perfeito em celulares, tablets e computadores."
+      },
+      "reports": {
+        "title": "Relatórios e métricas",
+        "description": "Dashboard com estatísticas de agendamentos, receita, clientes frequentes e horários mais procurados."
+      }
+    },
+    "howItWorks": {
+      "title": "Ativo em",
+      "titleHighlight": "3 passos simples",
+      "subtitle": "Não precisa de conhecimentos técnicos. Em menos de 5 minutos seu negócio estará recebendo agendamentos online.",
+      "step1": {
+        "title": "Crie sua conta",
+        "description": "Cadastre-se grátis com seu email. Sem cartão de crédito."
+      },
+      "step2": {
+        "title": "Configure seu negócio",
+        "description": "Adicione seus serviços, preços e horários de funcionamento."
+      },
+      "step3": {
+        "title": "Compartilhe seu link",
+        "description": "Envie seu link único para clientes pelo WhatsApp ou redes sociais."
+      }
+    },
+    "testimonials": {
+      "title": "O que dizem",
+      "titleHighlight": "nossos clientes",
+      "testimonial1": {
+        "quote": "TurnoLink mudou minha barbearia completamente. Antes perdia horas atendendo telefone, agora tudo é automático.",
+        "author": "Carlos Mendes",
+        "role": "Barbearia Los Capos"
+      },
+      "testimonial2": {
+        "quote": "Minhas clientes amam poder agendar pelo celular a qualquer hora. Os cancelamentos diminuíram muito.",
+        "author": "Lúcia Fernandes",
+        "role": "Spa Zen Beauty"
+      },
+      "testimonial3": {
+        "quote": "Como médico, valorizo a pontualidade. TurnoLink me ajuda a manter minha agenda organizada e sem sobreposições.",
+        "author": "Dr. Roberto Garcia",
+        "role": "Consultório Médico"
+      }
+    },
+    "pricing": {
+      "badge": "Preços simples",
+      "title": "Um plano,",
+      "titleHighlight": "tudo incluído",
+      "subtitle": "Sem custos ocultos. Sem taxas por agendamento. Tudo que você precisa em um só plano.",
+      "planName": "Plano Profissional",
+      "price": "R$99",
+      "period": "/mês",
+      "billing": "Cobrança mensal",
+      "features": {
+        "unlimited": "Agendamentos ilimitados",
+        "customers": "Clientes ilimitados",
+        "notifications": "Notificações WhatsApp + Email",
+        "calendar": "Calendário e dashboard",
+        "customPage": "Página pública personalizada",
+        "schedule": "Gestão de horários e feriados",
+        "reports": "Relatórios e estatísticas",
+        "support": "Suporte prioritário"
+      },
+      "cta": "Começar teste grátis",
+      "trial": "14 dias grátis • Sem cartão de crédito"
+    },
+    "cta": {
+      "title": "Pronto para automatizar sua agenda?",
+      "subtitle": "Junte-se a mais de 500 negócios que já usam TurnoLink para gerenciar seus agendamentos de forma profissional.",
+      "button": "Começar grátis agora",
+      "demo": "Ver demonstração"
+    },
+    "footer": {
+      "description": "O sistema de agendamentos online mais moderno para seu negócio.",
+      "product": "Produto",
+      "company": "Empresa",
+      "legal": "Legal",
+      "about": "Sobre nós",
+      "contact": "Contato",
+      "privacy": "Privacidade",
+      "terms": "Termos",
+      "copyright": "© {year} TurnoLink. Todos os direitos reservados."
+    }
+  },
+  "booking": {
+    "title": "Agendar horário",
+    "subtitle": "Selecione o serviço que deseja agendar",
+    "steps": {
+      "service": "Serviço",
+      "datetime": "Data e Hora",
+      "confirm": "Confirmar"
+    },
+    "selectService": {
+      "title": "Escolha seu serviço",
+      "subtitle": "Selecione o serviço que deseja agendar",
+      "duration": "min",
+      "book": "Agendar"
+    },
+    "selectDate": {
+      "title": "Escolha uma data",
+      "selectTime": "Escolha um horário",
+      "noSlots": "Sem horários disponíveis",
+      "tryAnother": "Tente outra data",
+      "allBooked": "Sem disponibilidade",
+      "allBookedDesc": "Todos os horários estão ocupados",
+      "available": "Disponível",
+      "occupied": "Ocupado",
+      "slotsAvailable": "horário disponível",
+      "slotsAvailablePlural": "horários disponíveis",
+      "selectDateFirst": "Selecione uma data para ver os horários disponíveis",
+      "loadingSlots": "Carregando horários...",
+      "changeService": "Trocar serviço",
+      "selectedService": "Serviço selecionado"
+    },
+    "form": {
+      "title": "Complete seus dados",
+      "summary": "Resumo do agendamento",
+      "service": "Serviço",
+      "date": "Data",
+      "time": "Hora",
+      "duration": "Duração",
+      "minutes": "minutos",
+      "total": "Total a pagar",
+      "name": "Nome completo",
+      "namePlaceholder": "Seu nome",
+      "phone": "WhatsApp / Telefone",
+      "phonePlaceholder": "+55 11 91234-5678",
+      "email": "Email",
+      "emailPlaceholder": "seu@email.com",
+      "notes": "Observações",
+      "notesPlaceholder": "Alguma indicação especial...",
+      "submit": "Confirmar Agendamento",
+      "submitting": "Agendando...",
+      "terms": "Ao confirmar, você aceita os termos e condições do estabelecimento",
+      "changeTime": "Trocar horário"
+    },
+    "confirmation": {
+      "title": "Agendamento Confirmado!",
+      "subtitle": "Seu horário foi registrado com sucesso.",
+      "whatsappNotice": "Você receberá uma confirmação pelo WhatsApp.",
+      "bookingAt": "Agendamento em",
+      "newBooking": "Agendar outro horário",
+      "contactWhatsapp": "Contatar pelo WhatsApp"
+    },
+    "badge": "Agendamento online 24/7",
+    "rating": "Avaliação",
+    "clients": "Clientes"
+  },
+  "auth": {
+    "login": {
+      "title": "Entrar",
+      "subtitle": "Acesse sua conta",
+      "email": "Email",
+      "password": "Senha",
+      "forgotPassword": "Esqueceu a senha?",
+      "submit": "Entrar",
+      "noAccount": "Não tem uma conta?",
+      "signUp": "Cadastre-se"
+    },
+    "register": {
+      "title": "Criar Conta",
+      "subtitle": "Cadastre seu negócio",
+      "name": "Seu nome",
+      "email": "Email",
+      "password": "Senha",
+      "confirmPassword": "Confirmar senha",
+      "businessName": "Nome do negócio",
+      "businessSlug": "URL da sua página",
+      "submit": "Criar conta",
+      "hasAccount": "Já tem uma conta?",
+      "signIn": "Entrar",
+      "terms": "Ao se cadastrar, você aceita nossos termos e condições"
+    },
+    "errors": {
+      "invalidCredentials": "Email ou senha incorretos",
+      "emailRequired": "O email é obrigatório",
+      "passwordRequired": "A senha é obrigatória",
+      "sessionExpired": "Sua sessão expirou. Por favor, entre novamente."
+    }
+  },
+  "dashboard": {
+    "nav": {
+      "dashboard": "Painel",
+      "bookings": "Agendamentos",
+      "services": "Serviços",
+      "customers": "Clientes",
+      "schedule": "Horários",
+      "settings": "Configurações"
+    },
+    "home": {
+      "welcome": "Bem-vindo",
+      "todayBookings": "Agendamentos hoje",
+      "weekBookings": "Esta semana",
+      "monthBookings": "Este mês",
+      "totalCustomers": "Total de clientes",
+      "upcomingBookings": "Próximos agendamentos",
+      "recentCustomers": "Clientes recentes",
+      "noUpcoming": "Sem agendamentos próximos",
+      "viewAll": "Ver todos"
+    },
+    "bookings": {
+      "title": "Gestão de Agendamentos",
+      "today": "Hoje",
+      "upcoming": "Próximos",
+      "past": "Passados",
+      "all": "Todos",
+      "status": {
+        "pending": "Pendente",
+        "confirmed": "Confirmado",
+        "completed": "Concluído",
+        "cancelled": "Cancelado",
+        "noShow": "Não compareceu"
+      },
+      "actions": {
+        "confirm": "Confirmar",
+        "complete": "Concluir",
+        "cancel": "Cancelar",
+        "noShow": "Não compareceu"
+      },
+      "empty": "Sem agendamentos para mostrar"
+    },
+    "services": {
+      "title": "Serviços",
+      "add": "Adicionar serviço",
+      "name": "Nome",
+      "description": "Descrição",
+      "price": "Preço",
+      "duration": "Duração",
+      "active": "Ativo",
+      "inactive": "Inativo",
+      "empty": "Nenhum serviço configurado"
+    },
+    "customers": {
+      "title": "Clientes",
+      "search": "Buscar clientes...",
+      "name": "Nome",
+      "phone": "Telefone",
+      "email": "Email",
+      "bookings": "Agendamentos",
+      "lastVisit": "Última visita",
+      "empty": "Nenhum cliente cadastrado"
+    },
+    "schedule": {
+      "title": "Horários de Funcionamento",
+      "days": {
+        "0": "Domingo",
+        "1": "Segunda-feira",
+        "2": "Terça-feira",
+        "3": "Quarta-feira",
+        "4": "Quinta-feira",
+        "5": "Sexta-feira",
+        "6": "Sábado"
+      },
+      "start": "Abertura",
+      "end": "Fechamento",
+      "closed": "Fechado",
+      "blockedDates": "Datas bloqueadas",
+      "blockDate": "Bloquear data",
+      "reason": "Motivo"
+    },
+    "settings": {
+      "title": "Configurações",
+      "business": "Dados do negócio",
+      "profile": "Meu perfil",
+      "notifications": "Notificações",
+      "booking": "Agendamentos",
+      "appearance": "Aparência"
+    }
+  },
+  "validation": {
+    "required": "Este campo é obrigatório",
+    "email": "Digite um email válido",
+    "phone": "Digite um telefone válido",
+    "minLength": "Mínimo {min} caracteres",
+    "maxLength": "Máximo {max} caracteres",
+    "passwordMismatch": "As senhas não coincidem",
+    "invalidSlug": "Apenas letras minúsculas, números e hífens"
+  }
+}
