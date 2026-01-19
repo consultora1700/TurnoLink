@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
@@ -116,6 +116,49 @@ export function PublicBookingPage({ tenant: tenantData, slug }: Props) {
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeePublic | null>(null);
   const [loadingEmployees, setLoadingEmployees] = useState(true);
 
+  // Refs for auto-scroll functionality
+  const stepContentRef = useRef<HTMLDivElement>(null);
+  const progressBarRef = useRef<HTMLDivElement>(null);
+  const timeSlotsRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to current step content
+  const scrollToCurrentStep = useCallback(() => {
+    // Small delay to ensure DOM is updated
+    setTimeout(() => {
+      if (progressBarRef.current) {
+        const progressBarRect = progressBarRef.current.getBoundingClientRect();
+        const offset = progressBarRect.bottom + window.scrollY - 20; // 20px below progress bar
+
+        window.scrollTo({
+          top: offset,
+          behavior: 'smooth'
+        });
+      } else if (stepContentRef.current) {
+        stepContentRef.current.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start'
+        });
+      }
+    }, 100);
+  }, []);
+
+  // Scroll to time slots when date is selected
+  const scrollToTimeSlots = useCallback(() => {
+    setTimeout(() => {
+      if (timeSlotsRef.current) {
+        timeSlotsRef.current.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center'
+        });
+      }
+    }, 150);
+  }, []);
+
+  // Auto-scroll when step changes
+  useEffect(() => {
+    scrollToCurrentStep();
+  }, [step, scrollToCurrentStep]);
+
   const {
     slots: availableSlots,
     isLoading: loadingSlots,
@@ -191,7 +234,9 @@ export function PublicBookingPage({ tenant: tenantData, slug }: Props) {
     setSelectedTime(null);
     const dateStr = format(date, 'yyyy-MM-dd');
     await fetchAvailability(dateStr, selectedService?.id);
-  }, [fetchAvailability, selectedService?.id]);
+    // Scroll to time slots after loading
+    scrollToTimeSlots();
+  }, [fetchAvailability, selectedService?.id, scrollToTimeSlots]);
 
   const handleTimeSelect = useCallback((time: string) => {
     setSelectedTime(time);
@@ -493,7 +538,10 @@ export function PublicBookingPage({ tenant: tenantData, slug }: Props) {
       </header>
 
       {/* Progress Steps */}
-      <div className="sticky top-0 z-40 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-lg border-b border-slate-200 dark:border-neutral-700 shadow-sm transition-colors">
+      <div
+        ref={progressBarRef}
+        className="sticky top-0 z-40 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-lg border-b border-slate-200 dark:border-neutral-700 shadow-sm transition-colors"
+      >
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-center gap-2">
             <StepIndicator
@@ -521,7 +569,10 @@ export function PublicBookingPage({ tenant: tenantData, slug }: Props) {
       </div>
 
       {/* Content */}
-      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12 relative z-10">
+      <main
+        ref={stepContentRef}
+        className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12 relative z-10"
+      >
         {/* Step 1: Select Service */}
         {step === 'services' && (
           <div className="max-w-4xl mx-auto animate-fade-in">
@@ -651,6 +702,7 @@ export function PublicBookingPage({ tenant: tenantData, slug }: Props) {
               </Card>
 
               {/* Time Slots */}
+              <div ref={timeSlotsRef}>
               <Card className="border border-slate-200 dark:border-neutral-700 shadow-sm bg-white dark:bg-neutral-800">
                 <CardContent className="p-6">
                   <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-slate-900 dark:text-white">
@@ -690,6 +742,7 @@ export function PublicBookingPage({ tenant: tenantData, slug }: Props) {
                   )}
                 </CardContent>
               </Card>
+              </div>
             </div>
           </div>
         )}
