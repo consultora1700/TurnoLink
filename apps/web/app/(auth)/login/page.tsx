@@ -53,7 +53,7 @@ function LoginForm() {
   };
 
   return (
-    <Card className="w-full max-w-md border-0 shadow-2xl bg-white/80 backdrop-blur-sm">
+    <Card className="w-full max-w-md border-0 shadow-2xl bg-white/80 dark:bg-neutral-800/90 backdrop-blur-sm">
       <CardHeader className="text-center pb-2">
         <Link href="/" className="inline-flex items-center justify-center gap-2 mb-4">
           <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary to-pink-600 flex items-center justify-center">
@@ -68,9 +68,9 @@ function LoginForm() {
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 text-sm p-3 rounded-lg flex items-center gap-2">
-              <div className="h-5 w-5 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
-                <span className="text-red-500 text-xs">!</span>
+            <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-sm p-3 rounded-lg flex items-center gap-2">
+              <div className="h-5 w-5 rounded-full bg-red-100 dark:bg-red-900/50 flex items-center justify-center flex-shrink-0">
+                <span className="text-red-500 dark:text-red-400 text-xs">!</span>
               </div>
               {error}
             </div>
@@ -85,7 +85,7 @@ function LoginForm() {
               onChange={(e) => setEmail(e.target.value)}
               required
               disabled={loading}
-              className="h-11 bg-white"
+              className="h-11 bg-white dark:bg-neutral-700"
             />
           </div>
           <div className="space-y-2">
@@ -103,7 +103,7 @@ function LoginForm() {
               onChange={(e) => setPassword(e.target.value)}
               required
               disabled={loading}
-              className="h-11 bg-white"
+              className="h-11 bg-white dark:bg-neutral-700"
             />
           </div>
         </CardContent>
@@ -210,9 +210,9 @@ export default function LoginPage() {
       </div>
 
       {/* Right side - Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-pink-50/30 px-4 py-8">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-pink-500/5 rounded-full blur-3xl" />
+      <div className="w-full lg:w-1/2 flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-pink-50/30 dark:from-neutral-900 dark:via-neutral-900 dark:to-neutral-800 px-4 py-8 relative">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 dark:bg-primary/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-pink-500/5 dark:bg-pink-500/10 rounded-full blur-3xl" />
 
         <Suspense fallback={<LoginFallback />}>
           <LoginForm />

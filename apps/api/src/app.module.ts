@@ -13,6 +13,7 @@ import { MediaModule } from './modules/media/media.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { HealthModule } from './modules/health/health.module';
 import { TotpModule } from './modules/totp/totp.module';
+import { EmployeesModule } from './modules/employees/employees.module';
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { TotpModule } from './modules/totp/totp.module';
     BookingsModule,
     CustomersModule,
     SchedulesModule,
+    EmployeesModule,
     MediaModule,
     NotificationsModule,
     HealthModule,

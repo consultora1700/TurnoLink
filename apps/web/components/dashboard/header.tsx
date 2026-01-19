@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { User, LogOut, Settings } from 'lucide-react';
 import Link from 'next/link';
+import { DashboardThemeToggle } from './dashboard-theme-wrapper';
 
 interface Props {
   user: {
@@ -22,7 +23,7 @@ interface Props {
 
 export function DashboardHeader({ user }: Props) {
   return (
-    <header className="sticky top-0 z-40 bg-background border-b">
+    <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-md border-b border-border/50">
       <div className="flex h-16 items-center justify-between px-4 lg:px-6">
         <div className="lg:hidden flex items-center gap-2">
           <span className="text-lg font-bold">Turnero</span>
@@ -30,7 +31,10 @@ export function DashboardHeader({ user }: Props) {
 
         <div className="flex-1" />
 
-        <DropdownMenu>
+        <div className="flex items-center gap-2">
+          <DashboardThemeToggle />
+
+          <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-10 w-10 rounded-full">
               <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
@@ -63,7 +67,8 @@ export function DashboardHeader({ user }: Props) {
               <span>Cerrar sesión</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
-        </DropdownMenu>
+          </DropdownMenu>
+        </div>
       </div>
     </header>
   );

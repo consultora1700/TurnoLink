@@ -56,6 +56,7 @@ model Tenant {
 
   // Turnero Relations
   users         User[]
+  employees     Employee[]
   services      Service[]
   categories    ServiceCategory[]
   schedules     Schedule[]
@@ -77,6 +78,31 @@ model Tenant {
   @@index([slug])
   @@index([status])
   @@map("tenants")
+}
+
+// ============ EMPLOYEES ============
+
+model Employee {
+  id        String   @id @default(uuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name      String
+  email     String?
+  phone     String?
+  image     String?
+  specialty String?  // Ej: "Colorista", "Masajista", etc.
+  bio       String?  // Breve descripción
+  isActive  Boolean  @default(true)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  bookings  Booking[]
+
+  @@index([tenantId])
+  @@index([isActive])
+  @@map("employees")
 }
 
 // ============ SERVICE CATEGORIES ============
@@ -190,17 +216,19 @@ model Customer {
 // ============ BOOKINGS ============
 
 model Booking {
-  id         String   @id @default(uuid())
+  id         String    @id @default(uuid())
   tenantId   String
-  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   serviceId  String
-  service    Service  @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  service    Service   @relation(fields: [serviceId], references: [id], onDelete: Restrict)
   customerId String
-  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  customer   Customer  @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  employeeId String?
+  employee   Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
   date       DateTime
   startTime  String
   endTime    String
-  status     String   @default("PENDING")
+  status     String    @default("PENDING")
   notes      String?
   // Deposit/Seña fields
   depositAmount    Float?
@@ -216,6 +244,7 @@ model Booking {
   @@index([tenantId])
   @@index([serviceId])
   @@index([customerId])
+  @@index([employeeId])
   @@index([date])
   @@index([status])
   @@index([tenantId, date])
@@ -307,6 +336,9 @@ model TenantBranding {
   enableWishlist     Boolean  @default(true)
   enableReviews      Boolean  @default(false)
   storeEnabled       Boolean  @default(false)
+
+  // Public Page Customization
+  backgroundStyle    String   @default("modern") // minimal, modern, elegant, fresh, vibrant
 
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt

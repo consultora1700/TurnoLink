@@ -30,12 +30,12 @@ interface Customer {
 }
 
 const colorVariants = [
-  { gradient: 'from-violet-500 to-purple-500', bg: 'bg-violet-100', text: 'text-violet-600' },
-  { gradient: 'from-blue-500 to-indigo-500', bg: 'bg-blue-100', text: 'text-blue-600' },
-  { gradient: 'from-emerald-500 to-teal-500', bg: 'bg-emerald-100', text: 'text-emerald-600' },
-  { gradient: 'from-amber-500 to-orange-500', bg: 'bg-amber-100', text: 'text-amber-600' },
-  { gradient: 'from-pink-500 to-rose-500', bg: 'bg-pink-100', text: 'text-pink-600' },
-  { gradient: 'from-cyan-500 to-sky-500', bg: 'bg-cyan-100', text: 'text-cyan-600' },
+  { gradient: 'from-violet-500 to-purple-500', bg: 'bg-violet-100 dark:bg-violet-900/40', text: 'text-violet-600 dark:text-violet-400' },
+  { gradient: 'from-blue-500 to-indigo-500', bg: 'bg-blue-100 dark:bg-blue-900/40', text: 'text-blue-600 dark:text-blue-400' },
+  { gradient: 'from-emerald-500 to-teal-500', bg: 'bg-emerald-100 dark:bg-emerald-900/40', text: 'text-emerald-600 dark:text-emerald-400' },
+  { gradient: 'from-amber-500 to-orange-500', bg: 'bg-amber-100 dark:bg-amber-900/40', text: 'text-amber-600 dark:text-amber-400' },
+  { gradient: 'from-pink-500 to-rose-500', bg: 'bg-pink-100 dark:bg-pink-900/40', text: 'text-pink-600 dark:text-pink-400' },
+  { gradient: 'from-cyan-500 to-sky-500', bg: 'bg-cyan-100 dark:bg-cyan-900/40', text: 'text-cyan-600 dark:text-cyan-400' },
 ];
 
 export default function ClientesPage() {
@@ -132,16 +132,16 @@ export default function ClientesPage() {
       {loading ? (
         <div className="flex flex-col items-center justify-center py-16 gap-4">
           <div className="relative">
-            <div className="h-16 w-16 rounded-full border-4 border-pink-100" />
-            <div className="absolute inset-0 h-16 w-16 rounded-full border-4 border-transparent border-t-pink-600 animate-spin" />
+            <div className="h-16 w-16 rounded-full border-4 border-pink-100 dark:border-pink-900" />
+            <div className="absolute inset-0 h-16 w-16 rounded-full border-4 border-transparent border-t-pink-600 dark:border-t-pink-400 animate-spin" />
           </div>
           <p className="text-muted-foreground">Cargando clientes...</p>
         </div>
       ) : customers.length === 0 ? (
         <Card className="border-0 shadow-soft">
           <CardContent className="py-16 text-center">
-            <div className="h-16 w-16 rounded-full bg-pink-100 flex items-center justify-center mx-auto mb-4">
-              <Users className="h-8 w-8 text-pink-600" />
+            <div className="h-16 w-16 rounded-full bg-pink-100 dark:bg-pink-900/40 flex items-center justify-center mx-auto mb-4">
+              <Users className="h-8 w-8 text-pink-600 dark:text-pink-400" />
             </div>
             <h3 className="font-semibold text-lg mb-2">
               {search ? 'No se encontraron clientes' : 'No tienes clientes aún'}
@@ -189,26 +189,26 @@ export default function ClientesPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer">
-                    <div className="h-8 w-8 rounded-lg bg-green-100 flex items-center justify-center">
-                      <Phone className="h-4 w-4 text-green-600" />
+                  <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-neutral-800 hover:bg-slate-100 dark:hover:bg-neutral-700 transition-colors cursor-pointer">
+                    <div className="h-8 w-8 rounded-lg bg-green-100 dark:bg-green-900/40 flex items-center justify-center">
+                      <Phone className="h-4 w-4 text-green-600 dark:text-green-400" />
                     </div>
                     <span className="text-sm font-medium">{customer.phone}</span>
                   </div>
 
                   {customer.email && (
-                    <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer">
-                      <div className="h-8 w-8 rounded-lg bg-blue-100 flex items-center justify-center">
-                        <Mail className="h-4 w-4 text-blue-600" />
+                    <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-neutral-800 hover:bg-slate-100 dark:hover:bg-neutral-700 transition-colors cursor-pointer">
+                      <div className="h-8 w-8 rounded-lg bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center">
+                        <Mail className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                       </div>
                       <span className="text-sm truncate">{customer.email}</span>
                     </div>
                   )}
 
                   {customer.lastBookingAt && (
-                    <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50">
-                      <div className="h-8 w-8 rounded-lg bg-violet-100 flex items-center justify-center">
-                        <Calendar className="h-4 w-4 text-violet-600" />
+                    <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-neutral-800">
+                      <div className="h-8 w-8 rounded-lg bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center">
+                        <Calendar className="h-4 w-4 text-violet-600 dark:text-violet-400" />
                       </div>
                       <div className="flex-1">
                         <p className="text-xs text-muted-foreground">Último turno</p>

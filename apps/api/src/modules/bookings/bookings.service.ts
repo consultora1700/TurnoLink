@@ -79,6 +79,7 @@ export class BookingsService {
         tenantId,
         serviceId: createBookingDto.serviceId,
         customerId: customer.id,
+        employeeId: createBookingDto.employeeId || null,
         date: new Date(createBookingDto.date),
         startTime: createBookingDto.startTime,
         endTime,
@@ -90,6 +91,7 @@ export class BookingsService {
       include: {
         service: true,
         customer: true,
+        employee: true,
       },
     });
 
@@ -167,6 +169,7 @@ export class BookingsService {
       include: {
         service: true,
         customer: true,
+        employee: true,
       },
     });
 
@@ -186,6 +189,7 @@ export class BookingsService {
       include: {
         service: true,
         customer: true,
+        employee: true,
       },
     });
   }
@@ -208,6 +212,7 @@ export class BookingsService {
       include: {
         service: true,
         customer: true,
+        employee: true,
       },
     });
   }
@@ -219,6 +224,7 @@ export class BookingsService {
       include: {
         service: true,
         customer: true,
+        employee: true,
       },
     });
 
@@ -397,6 +403,7 @@ export class BookingsService {
       include: {
         service: true,
         customer: true,
+        employee: true,
       },
       orderBy: { startTime: 'asc' },
     });

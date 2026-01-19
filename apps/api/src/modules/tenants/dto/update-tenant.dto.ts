@@ -2,7 +2,6 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsOptional,
   IsString,
-  IsObject,
   MaxLength,
   IsUrl,
 } from 'class-validator';
@@ -51,6 +50,27 @@ class TenantSettingsDto {
   @IsOptional()
   @IsString()
   secondaryColor?: string;
+
+  @IsOptional()
+  @IsString()
+  accentColor?: string;
+
+  @IsOptional()
+  enableDarkMode?: boolean;
+
+  @IsOptional()
+  @IsString()
+  backgroundStyle?: string;
+
+  @IsOptional()
+  requireDeposit?: boolean;
+
+  @IsOptional()
+  depositPercentage?: number;
+
+  @IsOptional()
+  @IsString()
+  depositMode?: string;
 }
 
 export class UpdateTenantDto {
@@ -103,6 +123,16 @@ export class UpdateTenantDto {
 
   @ApiPropertyOptional()
   @IsOptional()
-  @IsObject()
-  settings?: TenantSettingsDto;
+  @IsString()
+  logo?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  coverImage?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  settings?: string;
 }

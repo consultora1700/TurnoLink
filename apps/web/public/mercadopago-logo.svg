@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <!-- Fondo circular celeste Mercado Pago -->
+  <circle cx="100" cy="100" r="100" fill="#00bcff"/>
+
+  <!-- Mano izquierda (blanca) - palma hacia arriba -->
+  <g fill="#ffffff">
+    <!-- Brazo y palma izquierda -->
+    <path d="M45 75 C35 75, 28 82, 28 92 L28 145 C28 150, 32 154, 37 154 L58 154 C63 154, 67 150, 67 145 L67 115 C67 110, 71 106, 76 106 L82 106 C100 106, 115 118, 120 135 C121 139, 125 142, 129 142 L145 142 C150 142, 153 138, 151 133 C143 105, 118 85, 88 85 C83 85, 79 81, 79 76 L79 72 C70 72, 55 73, 45 75 Z"/>
+    <!-- Pulgar izquierdo -->
+    <ellipse cx="52" cy="88" rx="10" ry="12" />
+  </g>
+
+  <!-- Mano derecha (amarilla) - palma hacia abajo -->
+  <g fill="#ffe600">
+    <!-- Brazo y palma derecha -->
+    <path d="M155 75 C165 75, 172 82, 172 92 L172 145 C172 150, 168 154, 163 154 L142 154 C137 154, 133 150, 133 145 L133 115 C133 110, 129 106, 124 106 L118 106 C100 106, 85 118, 80 135 C79 139, 75 142, 71 142 L55 142 C50 142, 47 138, 49 133 C57 105, 82 85, 112 85 C117 85, 121 81, 121 76 L121 72 C130 72, 145 73, 155 75 Z"/>
+    <!-- Pulgar derecho -->
+    <ellipse cx="148" cy="88" rx="10" ry="12" />
+  </g>
+</svg>

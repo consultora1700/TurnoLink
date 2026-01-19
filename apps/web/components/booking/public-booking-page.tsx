@@ -41,6 +41,9 @@ import { useAvailability, useBooking } from '@/hooks';
 import { createBookingSchema, validateForm, getFieldError } from '@/lib/validations';
 import { toast } from '@/hooks/use-toast';
 import Link from 'next/link';
+import { publicApi, EmployeePublic } from '@/lib/api';
+import { PublicThemeWrapper, PublicThemeToggleFloating } from './public-theme-wrapper';
+import { BackgroundStyles, BackgroundStyle } from '@/components/ui/background-styles';
 
 interface Service {
   id: string;
@@ -68,9 +71,12 @@ interface Tenant {
     requireEmail: boolean;
     primaryColor: string;
     secondaryColor: string;
+    accentColor?: string;
+    enableDarkMode?: boolean;
     requireDeposit?: boolean;
     depositPercentage?: number;
     depositMode?: string;
+    backgroundStyle?: BackgroundStyle;
   };
 }
 
@@ -106,6 +112,9 @@ export function PublicBookingPage({ tenant: tenantData, slug }: Props) {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [pendingBooking, setPendingBooking] = useState<BookingResponse | null>(null);
   const [processingPayment, setProcessingPayment] = useState(false);
+  const [employees, setEmployees] = useState<EmployeePublic[]>([]);
+  const [selectedEmployee, setSelectedEmployee] = useState<EmployeePublic | null>(null);
+  const [loadingEmployees, setLoadingEmployees] = useState(true);
 
   const {
     slots: availableSlots,
@@ -123,6 +132,21 @@ export function PublicBookingPage({ tenant: tenantData, slug }: Props) {
     submit: submitBooking,
     reset: resetBooking,
   } = useBooking(slug);
+
+  // Load employees on mount
+  useEffect(() => {
+    const loadEmployees = async () => {
+      try {
+        const data = await publicApi.getEmployees(slug);
+        setEmployees(data);
+      } catch {
+        setEmployees([]);
+      } finally {
+        setLoadingEmployees(false);
+      }
+    };
+    loadEmployees();
+  }, [slug]);
 
   useEffect(() => {
     if (isSuccess && bookingResult) {
@@ -181,6 +205,7 @@ export function PublicBookingPage({ tenant: tenantData, slug }: Props) {
 
     const bookingData = {
       serviceId: selectedService.id,
+      employeeId: selectedEmployee?.id,
       date: format(selectedDate, 'yyyy-MM-dd'),
       startTime: selectedTime,
       customerName: customerData.name.trim(),
@@ -197,7 +222,7 @@ export function PublicBookingPage({ tenant: tenantData, slug }: Props) {
 
     setFormErrors({});
     await submitBooking(bookingData);
-  }, [selectedService, selectedDate, selectedTime, customerData, submitBooking]);
+  }, [selectedService, selectedDate, selectedTime, selectedEmployee, customerData, submitBooking]);
 
   const handleSimulatePayment = useCallback(async () => {
     if (!pendingBooking) return;
@@ -238,6 +263,7 @@ export function PublicBookingPage({ tenant: tenantData, slug }: Props) {
     setSelectedService(null);
     setSelectedDate(null);
     setSelectedTime(null);
+    setSelectedEmployee(null);
     setCustomerData({ name: '', phone: '', email: '', notes: '' });
     setFormErrors({});
     setPendingBooking(null);
@@ -247,10 +273,32 @@ export function PublicBookingPage({ tenant: tenantData, slug }: Props) {
 
   const loading = loadingSlots || isSubmitting;
 
+  const themeColors = {
+    primaryColor: tenant.settings.primaryColor,
+    secondaryColor: tenant.settings.secondaryColor,
+    accentColor: tenant.settings.accentColor,
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-100 via-white to-slate-50">
-      {/* Hero Header */}
-      <header className="relative overflow-hidden">
+    <PublicThemeWrapper
+      tenantSlug={slug}
+      colors={themeColors}
+      enableDarkMode={tenant.settings.enableDarkMode !== false}
+    >
+      <div className="min-h-screen transition-colors duration-300 relative">
+        {/* Background Style - fixed behind all content */}
+        <BackgroundStyles style={tenant.settings.backgroundStyle || 'modern'} className="z-0" />
+
+        {/* Theme Toggle - Top Right */}
+        {tenant.settings.enableDarkMode !== false && (
+          <PublicThemeToggleFloating
+            tenantSlug={slug}
+            className="fixed top-4 right-4 bottom-auto h-10 w-10"
+          />
+        )}
+
+        {/* Hero Header */}
+        <header className="relative overflow-hidden z-10">
         {/* Cover Image or Gradient Background */}
         {tenant.coverImage ? (
           <>
@@ -445,7 +493,7 @@ export function PublicBookingPage({ tenant: tenantData, slug }: Props) {
       </header>
 
       {/* Progress Steps */}
-      <div className="sticky top-0 z-40 bg-white/90 backdrop-blur-lg border-b shadow-sm">
+      <div className="sticky top-0 z-40 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-lg border-b border-slate-200 dark:border-neutral-700 shadow-sm transition-colors">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-center gap-2">
             <StepIndicator
@@ -454,14 +502,14 @@ export function PublicBookingPage({ tenant: tenantData, slug }: Props) {
               active={step === 'services'}
               completed={!!selectedService}
             />
-            <div className={`w-12 h-1 rounded-full transition-all ${selectedService ? 'bg-slate-800' : 'bg-slate-200'}`} />
+            <div className={`w-12 h-1 rounded-full transition-all ${selectedService ? 'bg-slate-800 dark:bg-neutral-200' : 'bg-slate-200 dark:bg-neutral-700'}`} />
             <StepIndicator
               number={2}
               label="Fecha y Hora"
               active={step === 'datetime'}
               completed={!!selectedTime}
             />
-            <div className={`w-12 h-1 rounded-full transition-all ${selectedTime ? 'bg-slate-800' : 'bg-slate-200'}`} />
+            <div className={`w-12 h-1 rounded-full transition-all ${selectedTime ? 'bg-slate-800 dark:bg-neutral-200' : 'bg-slate-200 dark:bg-neutral-700'}`} />
             <StepIndicator
               number={3}
               label="Confirmar"
@@ -473,7 +521,7 @@ export function PublicBookingPage({ tenant: tenantData, slug }: Props) {
       </div>
 
       {/* Content */}
-      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12 relative z-10">
         {/* Step 1: Select Service */}
         {step === 'services' && (
           <div className="max-w-4xl mx-auto animate-fade-in">
@@ -482,7 +530,7 @@ export function PublicBookingPage({ tenant: tenantData, slug }: Props) {
                 <CalendarDays className="h-3.5 w-3.5 mr-1.5" />
                 Paso 1 de 3
               </Badge>
-              <h2 className="text-2xl md:text-3xl font-bold mb-3 text-slate-900">
+              <h2 className="text-2xl md:text-3xl font-bold mb-3 text-slate-900 dark:text-white">
                 Elegí tu servicio
               </h2>
               <p className="text-muted-foreground">Selecciona el servicio que deseas reservar</p>
@@ -493,13 +541,13 @@ export function PublicBookingPage({ tenant: tenantData, slug }: Props) {
                 <Card
                   key={service.id}
                   onClick={() => handleServiceSelect(service)}
-                  className="group cursor-pointer overflow-hidden border border-slate-200 hover:border-slate-300 transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 animate-slide-up bg-white"
+                  className="group cursor-pointer overflow-hidden border border-slate-200 dark:border-neutral-700 hover:border-slate-300 dark:hover:border-neutral-600 transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 animate-slide-up bg-white dark:bg-neutral-800"
                   style={{ animationDelay: `${index * 0.1}s` }}
                 >
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between gap-4">
                       <div className="flex items-center gap-5">
-                        <div className="w-14 h-14 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 text-xl font-semibold">
+                        <div className="w-14 h-14 rounded-xl bg-slate-100 dark:bg-neutral-700 flex items-center justify-center text-slate-600 dark:text-neutral-300 text-xl font-semibold">
                           {service.image ? (
                             <img src={service.image} alt={service.name} className="w-full h-full object-cover rounded-xl" />
                           ) : (
@@ -507,7 +555,7 @@ export function PublicBookingPage({ tenant: tenantData, slug }: Props) {
                           )}
                         </div>
                         <div>
-                          <h3 className="text-lg font-semibold text-slate-900 group-hover:text-slate-700 transition-colors">
+                          <h3 className="text-lg font-semibold text-slate-900 dark:text-white group-hover:text-slate-700 dark:group-hover:text-neutral-200 transition-colors">
                             {service.name}
                           </h3>
                           {service.description && (
@@ -526,13 +574,13 @@ export function PublicBookingPage({ tenant: tenantData, slug }: Props) {
 
                       <div className="text-right flex-shrink-0">
                         {service.price !== null && (
-                          <div className="text-2xl font-bold text-slate-900">
+                          <div className="text-2xl font-bold text-slate-900 dark:text-white">
                             {formatPrice(service.price)}
                           </div>
                         )}
                         <Button
                           size="sm"
-                          className="mt-2 bg-slate-900 hover:bg-slate-800 text-white"
+                          className="mt-2 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-100 text-white"
                         >
                           Reservar
                           <ArrowRight className="h-4 w-4 ml-1.5 group-hover:translate-x-0.5 transition-transform" />
@@ -560,15 +608,15 @@ export function PublicBookingPage({ tenant: tenantData, slug }: Props) {
             </Button>
 
             {/* Selected Service Card */}
-            <Card className="mb-8 overflow-hidden border border-slate-200 shadow-sm bg-white">
+            <Card className="mb-8 overflow-hidden border border-slate-200 dark:border-neutral-700 shadow-sm bg-white dark:bg-neutral-800">
               <CardContent className="p-5">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 font-semibold">
+                  <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-neutral-700 flex items-center justify-center text-slate-600 dark:text-neutral-300 font-semibold">
                     {selectedService.name.charAt(0)}
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm text-slate-500">Servicio seleccionado</p>
-                    <p className="font-semibold text-lg text-slate-900">{selectedService.name}</p>
+                    <p className="text-sm text-slate-500 dark:text-neutral-400">Servicio seleccionado</p>
+                    <p className="font-semibold text-lg text-slate-900 dark:text-white">{selectedService.name}</p>
                   </div>
                   <div className="flex items-center gap-4">
                     <Badge variant="secondary">
@@ -576,7 +624,7 @@ export function PublicBookingPage({ tenant: tenantData, slug }: Props) {
                       {selectedService.duration} min
                     </Badge>
                     {selectedService.price !== null && (
-                      <div className="text-xl font-bold text-slate-900">
+                      <div className="text-xl font-bold text-slate-900 dark:text-white">
                         {formatPrice(selectedService.price)}
                       </div>
                     )}
@@ -587,11 +635,11 @@ export function PublicBookingPage({ tenant: tenantData, slug }: Props) {
 
             <div className="grid lg:grid-cols-2 gap-6">
               {/* Calendar */}
-              <Card className="border border-slate-200 shadow-sm bg-white">
+              <Card className="border border-slate-200 dark:border-neutral-700 shadow-sm bg-white dark:bg-neutral-800">
                 <CardContent className="p-6">
-                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                    <div className="h-8 w-8 rounded-lg bg-slate-100 flex items-center justify-center">
-                      <Calendar className="h-4 w-4 text-slate-600" />
+                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-slate-900 dark:text-white">
+                    <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-neutral-700 flex items-center justify-center">
+                      <Calendar className="h-4 w-4 text-slate-600 dark:text-neutral-300" />
                     </div>
                     Elegí una fecha
                   </h3>
@@ -603,11 +651,11 @@ export function PublicBookingPage({ tenant: tenantData, slug }: Props) {
               </Card>
 
               {/* Time Slots */}
-              <Card className="border border-slate-200 shadow-sm bg-white">
+              <Card className="border border-slate-200 dark:border-neutral-700 shadow-sm bg-white dark:bg-neutral-800">
                 <CardContent className="p-6">
-                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                    <div className="h-8 w-8 rounded-lg bg-slate-100 flex items-center justify-center">
-                      <Clock className="h-4 w-4 text-slate-600" />
+                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-slate-900 dark:text-white">
+                    <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-neutral-700 flex items-center justify-center">
+                      <Clock className="h-4 w-4 text-slate-600 dark:text-neutral-300" />
                     </div>
                     Elegí un horario
                   </h3>
@@ -632,8 +680,8 @@ export function PublicBookingPage({ tenant: tenantData, slug }: Props) {
                     </>
                   ) : (
                     <div className="flex flex-col items-center justify-center py-16 text-center">
-                      <div className="w-16 h-16 rounded-xl bg-slate-100 flex items-center justify-center mb-4">
-                        <Calendar className="h-8 w-8 text-slate-400" />
+                      <div className="w-16 h-16 rounded-xl bg-slate-100 dark:bg-neutral-700 flex items-center justify-center mb-4">
+                        <Calendar className="h-8 w-8 text-slate-400 dark:text-neutral-500" />
                       </div>
                       <p className="text-muted-foreground">
                         Selecciona una fecha para ver los horarios disponibles
@@ -659,45 +707,54 @@ export function PublicBookingPage({ tenant: tenantData, slug }: Props) {
             </Button>
 
             {/* Booking Summary */}
-            <Card className="mb-6 border border-slate-200 shadow-sm bg-white">
+            <Card className="mb-6 border border-slate-200 dark:border-neutral-700 shadow-sm bg-white dark:bg-neutral-800">
               <CardContent className="p-6">
-                <h3 className="font-semibold mb-5 flex items-center gap-2">
-                  <CheckCircle2 className="h-5 w-5 text-slate-600" />
+                <h3 className="font-semibold mb-5 flex items-center gap-2 text-slate-900 dark:text-white">
+                  <CheckCircle2 className="h-5 w-5 text-slate-600 dark:text-neutral-400" />
                   Resumen de tu reserva
                 </h3>
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50">
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-neutral-700/50">
                     <span className="text-muted-foreground flex items-center gap-2">
-                      <Sparkles className="h-4 w-4 text-slate-500" />
+                      <Sparkles className="h-4 w-4 text-slate-500 dark:text-neutral-400" />
                       Servicio
                     </span>
-                    <span className="font-medium">{selectedService.name}</span>
+                    <span className="font-medium text-slate-900 dark:text-white">{selectedService.name}</span>
                   </div>
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50">
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-neutral-700/50">
                     <span className="text-muted-foreground flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-slate-500" />
+                      <Calendar className="h-4 w-4 text-slate-500 dark:text-neutral-400" />
                       Fecha
                     </span>
-                    <span className="font-medium capitalize">
+                    <span className="font-medium capitalize text-slate-900 dark:text-white">
                       {format(selectedDate, "EEEE d 'de' MMMM", { locale: es })}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50">
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-neutral-700/50">
                     <span className="text-muted-foreground flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-slate-500" />
+                      <Clock className="h-4 w-4 text-slate-500 dark:text-neutral-400" />
                       Hora
                     </span>
-                    <span className="font-medium">{selectedTime} hs</span>
+                    <span className="font-medium text-slate-900 dark:text-white">{selectedTime} hs</span>
                   </div>
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50">
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-neutral-700/50">
                     <span className="text-muted-foreground flex items-center gap-2">
-                      <Timer className="h-4 w-4 text-slate-500" />
+                      <Timer className="h-4 w-4 text-slate-500 dark:text-neutral-400" />
                       Duración
                     </span>
-                    <span className="font-medium">{selectedService.duration} minutos</span>
+                    <span className="font-medium text-slate-900 dark:text-white">{selectedService.duration} minutos</span>
                   </div>
+                  {selectedEmployee && (
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-neutral-700/50">
+                      <span className="text-muted-foreground flex items-center gap-2">
+                        <User className="h-4 w-4 text-slate-500 dark:text-neutral-400" />
+                        Profesional
+                      </span>
+                      <span className="font-medium text-slate-900 dark:text-white">{selectedEmployee.name}</span>
+                    </div>
+                  )}
                   {selectedService.price !== null && (
-                    <div className="flex items-center justify-between p-4 rounded-lg bg-slate-900 text-white">
+                    <div className="flex items-center justify-between p-4 rounded-lg bg-slate-900 dark:bg-white text-white dark:text-neutral-900">
                       <span className="font-semibold">Total a pagar</span>
                       <span className="text-xl font-bold">
                         {formatPrice(selectedService.price)}
@@ -708,12 +765,98 @@ export function PublicBookingPage({ tenant: tenantData, slug }: Props) {
               </CardContent>
             </Card>
 
+            {/* Employee Selection (Optional) */}
+            {employees.length > 0 && (
+              <Card className="mb-6 border border-slate-200 dark:border-neutral-700 shadow-sm bg-white dark:bg-neutral-800">
+                <CardContent className="p-6">
+                  <h3 className="font-semibold mb-2 flex items-center gap-2 text-slate-900 dark:text-white">
+                    <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-neutral-700 flex items-center justify-center">
+                      <Users className="h-4 w-4 text-slate-600 dark:text-neutral-300" />
+                    </div>
+                    ¿Querés elegir un profesional?
+                  </h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Opcional. Si no seleccionás, cualquier profesional disponible te atenderá.
+                  </p>
+
+                  {loadingEmployees ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {/* Option: Any professional */}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedEmployee(null)}
+                        className={`w-full flex items-center gap-4 p-3 rounded-xl border-2 transition-all ${
+                          selectedEmployee === null
+                            ? 'border-slate-800 dark:border-white bg-slate-50 dark:bg-neutral-700'
+                            : 'border-slate-200 dark:border-neutral-600 hover:border-slate-300 dark:hover:border-neutral-500 hover:bg-slate-50 dark:hover:bg-neutral-700/50'
+                        }`}
+                      >
+                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-slate-400 to-slate-500 flex items-center justify-center text-white">
+                          <Users className="h-6 w-6" />
+                        </div>
+                        <div className="flex-1 text-left">
+                          <p className="font-medium text-slate-900 dark:text-white">Cualquier profesional</p>
+                          <p className="text-sm text-muted-foreground">El primero disponible</p>
+                        </div>
+                        {selectedEmployee === null && (
+                          <div className="w-6 h-6 rounded-full bg-slate-800 dark:bg-white flex items-center justify-center">
+                            <Check className="h-4 w-4 text-white dark:text-neutral-900" />
+                          </div>
+                        )}
+                      </button>
+
+                      {/* Individual employees */}
+                      {employees.map((employee) => (
+                        <button
+                          key={employee.id}
+                          type="button"
+                          onClick={() => setSelectedEmployee(employee)}
+                          className={`w-full flex items-center gap-4 p-3 rounded-xl border-2 transition-all ${
+                            selectedEmployee?.id === employee.id
+                              ? 'border-slate-800 dark:border-white bg-slate-50 dark:bg-neutral-700'
+                              : 'border-slate-200 dark:border-neutral-600 hover:border-slate-300 dark:hover:border-neutral-500 hover:bg-slate-50 dark:hover:bg-neutral-700/50'
+                          }`}
+                        >
+                          {employee.image ? (
+                            <img
+                              src={employee.image}
+                              alt={employee.name}
+                              className="w-12 h-12 rounded-xl object-cover"
+                            />
+                          ) : (
+                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center text-white font-semibold text-lg">
+                              {employee.name.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <div className="flex-1 text-left">
+                            <p className="font-medium text-slate-900 dark:text-white">{employee.name}</p>
+                            {employee.specialty && (
+                              <p className="text-sm text-muted-foreground">{employee.specialty}</p>
+                            )}
+                          </div>
+                          {selectedEmployee?.id === employee.id && (
+                            <div className="w-6 h-6 rounded-full bg-slate-800 dark:bg-white flex items-center justify-center">
+                              <Check className="h-4 w-4 text-white dark:text-neutral-900" />
+                            </div>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
             {/* Customer Form */}
-            <Card className="border border-slate-200 shadow-sm bg-white">
+            <Card className="border border-slate-200 dark:border-neutral-700 shadow-sm bg-white dark:bg-neutral-800">
               <CardContent className="p-6">
-                <h3 className="text-lg font-semibold mb-6 flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-lg bg-slate-100 flex items-center justify-center">
-                    <User className="h-4 w-4 text-slate-600" />
+                <h3 className="text-lg font-semibold mb-6 flex items-center gap-2 text-slate-900 dark:text-white">
+                  <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-neutral-700 flex items-center justify-center">
+                    <User className="h-4 w-4 text-slate-600 dark:text-neutral-300" />
                   </div>
                   Completá tus datos
                 </h3>
@@ -802,7 +945,7 @@ export function PublicBookingPage({ tenant: tenantData, slug }: Props) {
                   <Button
                     type="submit"
                     disabled={loading}
-                    className="w-full h-12 text-base bg-slate-900 hover:bg-slate-800 text-white rounded-lg"
+                    className="w-full h-12 text-base bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-100 text-white rounded-lg"
                   >
                     {loading ? (
                       <span className="flex items-center gap-2">
@@ -833,59 +976,59 @@ export function PublicBookingPage({ tenant: tenantData, slug }: Props) {
         {step === 'payment' && pendingBooking && selectedService && selectedDate && selectedTime && (
           <div className="max-w-lg mx-auto animate-fade-in">
             <div className="text-center mb-8">
-              <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <CreditCard className="h-8 w-8 text-amber-600" />
+              <div className="w-16 h-16 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CreditCard className="h-8 w-8 text-amber-600 dark:text-amber-400" />
               </div>
-              <h2 className="text-2xl font-bold mb-2 text-slate-900">Pago de Seña</h2>
+              <h2 className="text-2xl font-bold mb-2 text-slate-900 dark:text-white">Pago de Seña</h2>
               <p className="text-muted-foreground">
                 Para confirmar tu turno, debes abonar una seña del {tenant.settings.depositPercentage || 30}% del servicio
               </p>
             </div>
 
             {/* Booking Summary */}
-            <Card className="mb-6 border border-slate-200 shadow-sm bg-white">
+            <Card className="mb-6 border border-slate-200 dark:border-neutral-700 shadow-sm bg-white dark:bg-neutral-800">
               <CardContent className="p-6">
-                <h3 className="font-semibold mb-4 flex items-center gap-2">
-                  <CheckCircle2 className="h-5 w-5 text-slate-600" />
+                <h3 className="font-semibold mb-4 flex items-center gap-2 text-slate-900 dark:text-white">
+                  <CheckCircle2 className="h-5 w-5 text-slate-600 dark:text-neutral-400" />
                   Resumen de tu reserva
                 </h3>
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50">
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-neutral-700/50">
                     <span className="text-muted-foreground">Servicio</span>
-                    <span className="font-medium">{selectedService.name}</span>
+                    <span className="font-medium text-slate-900 dark:text-white">{selectedService.name}</span>
                   </div>
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50">
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-neutral-700/50">
                     <span className="text-muted-foreground">Fecha</span>
-                    <span className="font-medium capitalize">
+                    <span className="font-medium capitalize text-slate-900 dark:text-white">
                       {format(selectedDate, "EEEE d 'de' MMMM", { locale: es })}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50">
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-neutral-700/50">
                     <span className="text-muted-foreground">Hora</span>
-                    <span className="font-medium">{selectedTime} hs</span>
+                    <span className="font-medium text-slate-900 dark:text-white">{selectedTime} hs</span>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
             {/* Payment Details */}
-            <Card className="mb-6 border-2 border-green-200 bg-green-50">
+            <Card className="mb-6 border-2 border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20">
               <CardContent className="p-6">
                 <div className="space-y-4">
                   {selectedService.price !== null && (
                     <>
                       <div className="flex items-center justify-between">
                         <span className="text-muted-foreground">Precio del servicio</span>
-                        <span className="font-medium">{formatPrice(selectedService.price)}</span>
+                        <span className="font-medium text-slate-900 dark:text-white">{formatPrice(selectedService.price)}</span>
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-muted-foreground">Seña ({tenant.settings.depositPercentage || 30}%)</span>
-                        <span className="font-medium">{formatPrice(pendingBooking.depositAmount || 0)}</span>
+                        <span className="font-medium text-slate-900 dark:text-white">{formatPrice(pendingBooking.depositAmount || 0)}</span>
                       </div>
-                      <div className="border-t pt-4">
+                      <div className="border-t border-green-200 dark:border-green-800 pt-4">
                         <div className="flex items-center justify-between">
-                          <span className="font-semibold text-lg">A pagar ahora</span>
-                          <span className="font-bold text-2xl text-green-700">
+                          <span className="font-semibold text-lg text-slate-900 dark:text-white">A pagar ahora</span>
+                          <span className="font-bold text-2xl text-green-700 dark:text-green-400">
                             {formatPrice(pendingBooking.depositAmount || 0)}
                           </span>
                         </div>
@@ -900,12 +1043,12 @@ export function PublicBookingPage({ tenant: tenantData, slug }: Props) {
             </Card>
 
             {/* Demo Notice */}
-            <div className="rounded-lg border bg-blue-50 border-blue-200 p-4 mb-6">
+            <div className="rounded-lg border bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 p-4 mb-6">
               <div className="flex items-start gap-3">
-                <AlertCircle className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-sm font-medium text-blue-800">Pago de prueba</p>
-                  <p className="text-sm text-blue-700">
+                  <p className="text-sm font-medium text-blue-800 dark:text-blue-300">Pago de prueba</p>
+                  <p className="text-sm text-blue-700 dark:text-blue-400">
                     Este es un pago simulado para que pruebes el sistema. No se cobrará dinero real.
                   </p>
                 </div>
@@ -947,12 +1090,12 @@ export function PublicBookingPage({ tenant: tenantData, slug }: Props) {
           <div className="max-w-lg mx-auto text-center animate-scale-in">
             {/* Success Animation */}
             <div className="relative mb-8">
-              <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto">
-                <CheckCircle2 className="h-10 w-10 text-emerald-600" />
+              <div className="w-20 h-20 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mx-auto">
+                <CheckCircle2 className="h-10 w-10 text-emerald-600 dark:text-emerald-400" />
               </div>
             </div>
 
-            <h2 className="text-2xl md:text-3xl font-bold mb-3 text-slate-900">
+            <h2 className="text-2xl md:text-3xl font-bold mb-3 text-slate-900 dark:text-white">
               ¡Reserva Confirmada!
             </h2>
             <p className="text-muted-foreground text-base mb-4">
@@ -960,14 +1103,14 @@ export function PublicBookingPage({ tenant: tenantData, slug }: Props) {
             </p>
 
             {/* WhatsApp Notification Simulation */}
-            <div className="flex items-center justify-center gap-2 mb-8 p-3 bg-green-50 border border-green-200 rounded-xl">
+            <div className="flex items-center justify-center gap-2 mb-8 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl">
               <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
                 <MessageSquare className="h-4 w-4 text-white" />
               </div>
-              <span className="text-green-700 font-medium">
+              <span className="text-green-700 dark:text-green-400 font-medium">
                 Confirmación enviada a tu WhatsApp
               </span>
-              <CheckCircle2 className="h-5 w-5 text-green-600" />
+              <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
             </div>
 
             {/* Simulated WhatsApp Message Preview */}
@@ -994,6 +1137,7 @@ export function PublicBookingPage({ tenant: tenantData, slug }: Props) {
                       <p>📅 <span className="font-medium">Fecha:</span> {selectedDate && format(selectedDate, "EEEE d 'de' MMMM, yyyy", { locale: es })}</p>
                       <p>🕐 <span className="font-medium">Hora:</span> {selectedTime} hs</p>
                       <p>💇 <span className="font-medium">Servicio:</span> {selectedService?.name}</p>
+                      {selectedEmployee && <p>👤 <span className="font-medium">Profesional:</span> {selectedEmployee.name}</p>}
                       {tenant.address && <p>📍 <span className="font-medium">Dirección:</span> {tenant.address}{tenant.city && `, ${tenant.city}`}</p>}
                       {tenant.phone && <p>📞 <span className="font-medium">Teléfono:</span> {tenant.phone}</p>}
                     </div>
@@ -1010,43 +1154,52 @@ export function PublicBookingPage({ tenant: tenantData, slug }: Props) {
             </Card>
 
             {/* Booking Details Card */}
-            <Card className="text-left mb-8 border border-slate-200 shadow-sm bg-white">
+            <Card className="text-left mb-8 border border-slate-200 dark:border-neutral-700 shadow-sm bg-white dark:bg-neutral-800">
               <CardContent className="p-6">
-                <div className="flex items-center gap-4 mb-6 pb-5 border-b">
-                  <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 font-semibold">
+                <div className="flex items-center gap-4 mb-6 pb-5 border-b border-slate-200 dark:border-neutral-700">
+                  <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-neutral-700 flex items-center justify-center text-slate-600 dark:text-neutral-300 font-semibold">
                     {selectedService?.name.charAt(0)}
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Reserva en</p>
-                    <p className="font-semibold text-lg">{tenant.name}</p>
+                    <p className="font-semibold text-lg text-slate-900 dark:text-white">{tenant.name}</p>
                   </div>
                 </div>
 
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50">
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-neutral-700/50">
                     <span className="text-muted-foreground flex items-center gap-2">
-                      <Sparkles className="h-4 w-4 text-slate-500" />
+                      <Sparkles className="h-4 w-4 text-slate-500 dark:text-neutral-400" />
                       Servicio
                     </span>
-                    <span className="font-medium">{selectedService?.name}</span>
+                    <span className="font-medium text-slate-900 dark:text-white">{selectedService?.name}</span>
                   </div>
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50">
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-neutral-700/50">
                     <span className="text-muted-foreground flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-slate-500" />
+                      <Calendar className="h-4 w-4 text-slate-500 dark:text-neutral-400" />
                       Fecha
                     </span>
-                    <span className="font-medium capitalize">
+                    <span className="font-medium capitalize text-slate-900 dark:text-white">
                       {selectedDate &&
                         format(selectedDate, "EEEE d 'de' MMMM", { locale: es })}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50">
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-neutral-700/50">
                     <span className="text-muted-foreground flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-slate-500" />
+                      <Clock className="h-4 w-4 text-slate-500 dark:text-neutral-400" />
                       Hora
                     </span>
-                    <span className="font-medium">{selectedTime} hs</span>
+                    <span className="font-medium text-slate-900 dark:text-white">{selectedTime} hs</span>
                   </div>
+                  {selectedEmployee && (
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-neutral-700/50">
+                      <span className="text-muted-foreground flex items-center gap-2">
+                        <User className="h-4 w-4 text-slate-500 dark:text-neutral-400" />
+                        Profesional
+                      </span>
+                      <span className="font-medium text-slate-900 dark:text-white">{selectedEmployee.name}</span>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -1055,7 +1208,7 @@ export function PublicBookingPage({ tenant: tenantData, slug }: Props) {
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Button
                 variant="outline"
-                className="h-10 px-6"
+                className="h-10 px-6 border-slate-300 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-neutral-700"
                 onClick={handleReset}
               >
                 Reservar otro turno
@@ -1081,7 +1234,7 @@ export function PublicBookingPage({ tenant: tenantData, slug }: Props) {
       </main>
 
       {/* Footer */}
-      <footer className="bg-slate-900 text-white mt-auto">
+      <footer className="bg-slate-900 text-white mt-auto relative z-10">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-10">
           <div className="grid md:grid-cols-3 gap-8 mb-8">
             <div className="flex items-center gap-4">
@@ -1118,7 +1271,9 @@ export function PublicBookingPage({ tenant: tenantData, slug }: Props) {
           </div>
         </div>
       </footer>
-    </div>
+
+      </div>
+    </PublicThemeWrapper>
   );
 }
 
@@ -1138,17 +1293,17 @@ function StepIndicator({
       <div
         className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-300 ${
           completed
-            ? 'bg-slate-900 text-white shadow-md'
+            ? 'bg-slate-900 dark:bg-white text-white dark:text-neutral-900 shadow-md'
             : active
-            ? 'bg-slate-800 text-white shadow-lg scale-110'
-            : 'bg-slate-200 text-slate-500'
+            ? 'bg-slate-800 dark:bg-neutral-200 text-white dark:text-neutral-800 shadow-lg scale-110'
+            : 'bg-slate-200 dark:bg-neutral-700 text-slate-500 dark:text-neutral-400'
         }`}
       >
         {completed ? <Check className="h-5 w-5" /> : number}
       </div>
       <span
         className={`hidden sm:inline font-medium transition-colors ${
-          active || completed ? 'text-slate-900' : 'text-muted-foreground'
+          active || completed ? 'text-slate-900 dark:text-white' : 'text-muted-foreground'
         }`}
       >
         {label}

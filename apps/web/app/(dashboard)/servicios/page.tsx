@@ -45,12 +45,12 @@ interface Service {
 }
 
 const colorVariants = [
-  { gradient: 'from-violet-500 to-purple-500', bg: 'bg-violet-100', text: 'text-violet-600' },
-  { gradient: 'from-blue-500 to-indigo-500', bg: 'bg-blue-100', text: 'text-blue-600' },
-  { gradient: 'from-emerald-500 to-teal-500', bg: 'bg-emerald-100', text: 'text-emerald-600' },
-  { gradient: 'from-amber-500 to-orange-500', bg: 'bg-amber-100', text: 'text-amber-600' },
-  { gradient: 'from-pink-500 to-rose-500', bg: 'bg-pink-100', text: 'text-pink-600' },
-  { gradient: 'from-cyan-500 to-sky-500', bg: 'bg-cyan-100', text: 'text-cyan-600' },
+  { gradient: 'from-violet-500 to-purple-500', bg: 'bg-violet-100 dark:bg-violet-900/40', text: 'text-violet-600 dark:text-violet-400' },
+  { gradient: 'from-blue-500 to-indigo-500', bg: 'bg-blue-100 dark:bg-blue-900/40', text: 'text-blue-600 dark:text-blue-400' },
+  { gradient: 'from-emerald-500 to-teal-500', bg: 'bg-emerald-100 dark:bg-emerald-900/40', text: 'text-emerald-600 dark:text-emerald-400' },
+  { gradient: 'from-amber-500 to-orange-500', bg: 'bg-amber-100 dark:bg-amber-900/40', text: 'text-amber-600 dark:text-amber-400' },
+  { gradient: 'from-pink-500 to-rose-500', bg: 'bg-pink-100 dark:bg-pink-900/40', text: 'text-pink-600 dark:text-pink-400' },
+  { gradient: 'from-cyan-500 to-sky-500', bg: 'bg-cyan-100 dark:bg-cyan-900/40', text: 'text-cyan-600 dark:text-cyan-400' },
 ];
 
 export default function ServiciosPage() {
@@ -284,16 +284,16 @@ export default function ServiciosPage() {
       {loading ? (
         <div className="flex flex-col items-center justify-center py-16 gap-4">
           <div className="relative">
-            <div className="h-16 w-16 rounded-full border-4 border-emerald-100" />
-            <div className="absolute inset-0 h-16 w-16 rounded-full border-4 border-transparent border-t-emerald-600 animate-spin" />
+            <div className="h-16 w-16 rounded-full border-4 border-emerald-100 dark:border-emerald-900" />
+            <div className="absolute inset-0 h-16 w-16 rounded-full border-4 border-transparent border-t-emerald-600 dark:border-t-emerald-400 animate-spin" />
           </div>
           <p className="text-muted-foreground">Cargando servicios...</p>
         </div>
       ) : services.length === 0 ? (
         <Card className="border-0 shadow-soft">
           <CardContent className="py-16 text-center">
-            <div className="h-16 w-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4">
-              <Scissors className="h-8 w-8 text-emerald-600" />
+            <div className="h-16 w-16 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center mx-auto mb-4">
+              <Scissors className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
             </div>
             <h3 className="font-semibold text-lg mb-2">No tienes servicios</h3>
             <p className="text-muted-foreground mb-6">
@@ -373,9 +373,9 @@ export default function ServiciosPage() {
                         {formatPrice(service.price)}
                       </span>
                     </div>
-                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100">
-                      <Clock className="h-4 w-4 text-slate-600" />
-                      <span className="font-medium text-slate-600">
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-neutral-800">
+                      <Clock className="h-4 w-4 text-slate-600 dark:text-neutral-400" />
+                      <span className="font-medium text-slate-600 dark:text-neutral-400">
                         {service.duration} min
                       </span>
                     </div>

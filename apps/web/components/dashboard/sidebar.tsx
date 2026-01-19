@@ -1,8 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useSession } from 'next-auth/react';
+import { createApiClient } from '@/lib/api';
 import {
   Calendar,
   LayoutDashboard,
@@ -19,6 +21,7 @@ import {
   HelpCircle,
   Home,
   Link2,
+  UserCog,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -58,6 +61,7 @@ const navigationSections: NavSection[] = [
     items: [
       { name: 'Turnos', href: '/turnos', icon: Calendar },
       { name: 'Servicios', href: '/servicios', icon: Scissors },
+      { name: 'Empleados', href: '/empleados', icon: UserCog },
       { name: 'Clientes', href: '/clientes', icon: Users },
       { name: 'Horarios', href: '/horarios', icon: Clock },
     ],
@@ -157,7 +161,7 @@ function NavSectionComponent({
   );
 }
 
-function SidebarContent({ pathname }: { pathname: string }) {
+function SidebarContent({ pathname, tenantSlug }: { pathname: string; tenantSlug: string | null }) {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
 
   const toggleSection = (title: string) => {
@@ -194,14 +198,16 @@ function SidebarContent({ pathname }: { pathname: string }) {
 
       {/* Bottom Section */}
       <div className="border-t p-3 space-y-1">
-        <Link
-          href="/demo-barberia"
-          target="_blank"
-          className="flex items-center px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted transition-colors group"
-        >
-          <ExternalLink className="mr-3 h-4 w-4 flex-shrink-0 group-hover:scale-110 transition-transform" />
-          Ver mi pagina
-        </Link>
+        {tenantSlug && (
+          <Link
+            href={`/${tenantSlug}`}
+            target="_blank"
+            className="flex items-center px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted transition-colors group"
+          >
+            <ExternalLink className="mr-3 h-4 w-4 flex-shrink-0 group-hover:scale-110 transition-transform" />
+            Ver mi página
+          </Link>
+        )}
         <Link
           href="/ayuda"
           className="flex items-center px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted transition-colors group"
@@ -217,6 +223,23 @@ function SidebarContent({ pathname }: { pathname: string }) {
 export function DashboardSidebar() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [tenantSlug, setTenantSlug] = useState<string | null>(null);
+  const { data: session } = useSession();
+
+  // Fetch tenant slug
+  useEffect(() => {
+    const fetchTenant = async () => {
+      if (!session?.accessToken) return;
+      try {
+        const api = createApiClient(session.accessToken as string);
+        const tenant = await api.getTenant();
+        setTenantSlug(tenant.slug);
+      } catch {
+        // Silently fail - the link just won't show
+      }
+    };
+    fetchTenant();
+  }, [session?.accessToken]);
 
   // Mobile bottom nav items - most important ones
   const mobileNavItems = [
@@ -232,7 +255,7 @@ export function DashboardSidebar() {
       {/* Desktop Sidebar */}
       <aside className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 lg:flex lg:w-64 lg:flex-col">
         <div className="flex flex-col flex-grow bg-background border-r">
-          <SidebarContent pathname={pathname} />
+          <SidebarContent pathname={pathname} tenantSlug={tenantSlug} />
         </div>
       </aside>
 
@@ -267,7 +290,7 @@ export function DashboardSidebar() {
                     </button>
                   </SheetTrigger>
                   <SheetContent side="left" className="p-0 w-72">
-                    <SidebarContent pathname={pathname} />
+                    <SidebarContent pathname={pathname} tenantSlug={tenantSlug} />
                   </SheetContent>
                 </Sheet>
               );

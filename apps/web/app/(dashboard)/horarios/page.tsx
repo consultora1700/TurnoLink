@@ -40,13 +40,13 @@ const dayIcons: Record<number, React.ReactNode> = {
 };
 
 const dayColors: Record<number, { bg: string; gradient: string; text: string }> = {
-  0: { bg: 'bg-amber-100', gradient: 'from-amber-500 to-orange-500', text: 'text-amber-600' },
-  1: { bg: 'bg-blue-100', gradient: 'from-blue-500 to-indigo-500', text: 'text-blue-600' },
-  2: { bg: 'bg-violet-100', gradient: 'from-violet-500 to-purple-500', text: 'text-violet-600' },
-  3: { bg: 'bg-emerald-100', gradient: 'from-emerald-500 to-teal-500', text: 'text-emerald-600' },
-  4: { bg: 'bg-pink-100', gradient: 'from-pink-500 to-rose-500', text: 'text-pink-600' },
-  5: { bg: 'bg-cyan-100', gradient: 'from-cyan-500 to-sky-500', text: 'text-cyan-600' },
-  6: { bg: 'bg-slate-100', gradient: 'from-slate-500 to-slate-600', text: 'text-slate-600' },
+  0: { bg: 'bg-amber-100 dark:bg-amber-900/40', gradient: 'from-amber-500 to-orange-500', text: 'text-amber-600 dark:text-amber-400' },
+  1: { bg: 'bg-blue-100 dark:bg-blue-900/40', gradient: 'from-blue-500 to-indigo-500', text: 'text-blue-600 dark:text-blue-400' },
+  2: { bg: 'bg-violet-100 dark:bg-violet-900/40', gradient: 'from-violet-500 to-purple-500', text: 'text-violet-600 dark:text-violet-400' },
+  3: { bg: 'bg-emerald-100 dark:bg-emerald-900/40', gradient: 'from-emerald-500 to-teal-500', text: 'text-emerald-600 dark:text-emerald-400' },
+  4: { bg: 'bg-pink-100 dark:bg-pink-900/40', gradient: 'from-pink-500 to-rose-500', text: 'text-pink-600 dark:text-pink-400' },
+  5: { bg: 'bg-cyan-100 dark:bg-cyan-900/40', gradient: 'from-cyan-500 to-sky-500', text: 'text-cyan-600 dark:text-cyan-400' },
+  6: { bg: 'bg-slate-100 dark:bg-neutral-800', gradient: 'from-slate-500 to-slate-600', text: 'text-slate-600 dark:text-neutral-400' },
 };
 
 export default function HorariosPage() {
@@ -170,14 +170,14 @@ export default function HorariosPage() {
       {loading ? (
         <div className="flex flex-col items-center justify-center py-16 gap-4">
           <div className="relative">
-            <div className="h-16 w-16 rounded-full border-4 border-orange-100" />
-            <div className="absolute inset-0 h-16 w-16 rounded-full border-4 border-transparent border-t-orange-600 animate-spin" />
+            <div className="h-16 w-16 rounded-full border-4 border-orange-100 dark:border-orange-900" />
+            <div className="absolute inset-0 h-16 w-16 rounded-full border-4 border-transparent border-t-orange-600 dark:border-t-orange-400 animate-spin" />
           </div>
           <p className="text-muted-foreground">Cargando horarios...</p>
         </div>
       ) : (
         <Card className="border-0 shadow-soft overflow-hidden">
-          <CardHeader className="bg-gradient-to-r from-slate-50 to-orange-50/50">
+          <CardHeader className="bg-gradient-to-r from-slate-50 to-orange-50/50 dark:from-neutral-800 dark:to-orange-900/20">
             <CardTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5 text-orange-500" />
               Horarios Semanales
@@ -195,7 +195,7 @@ export default function HorariosPage() {
                       flex items-center gap-4 p-4 rounded-xl border-2 transition-all
                       ${schedule.isActive
                         ? `${colors.bg} border-transparent`
-                        : 'bg-slate-50 border-slate-200'}
+                        : 'bg-slate-50 dark:bg-neutral-800 border-slate-200 dark:border-neutral-700'}
                     `}
                   >
                     {/* Day Info */}
@@ -204,7 +204,7 @@ export default function HorariosPage() {
                         h-10 w-10 rounded-lg flex items-center justify-center transition-all
                         ${schedule.isActive
                           ? `bg-gradient-to-br ${colors.gradient} text-white shadow-lg`
-                          : 'bg-slate-200 text-slate-400'}
+                          : 'bg-slate-200 dark:bg-neutral-700 text-slate-400 dark:text-neutral-500'}
                       `}>
                         {dayIcons[schedule.dayOfWeek]}
                       </div>
@@ -221,7 +221,7 @@ export default function HorariosPage() {
                     {/* Time Inputs */}
                     <div className="flex items-center gap-3 flex-1">
                       <div className="flex items-center gap-2">
-                        <Sun className="h-4 w-4 text-amber-500" />
+                        <Sun className="h-4 w-4 text-amber-500 dark:text-amber-400" />
                         <Input
                           type="time"
                           value={schedule.startTime}
@@ -234,7 +234,7 @@ export default function HorariosPage() {
                       </div>
                       <span className="text-muted-foreground font-medium">a</span>
                       <div className="flex items-center gap-2">
-                        <Moon className="h-4 w-4 text-indigo-500" />
+                        <Moon className="h-4 w-4 text-indigo-500 dark:text-indigo-400" />
                         <Input
                           type="time"
                           value={schedule.endTime}
@@ -250,9 +250,9 @@ export default function HorariosPage() {
                     {/* Toggle */}
                     <div className="flex items-center gap-3">
                       {schedule.isActive ? (
-                        <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                        <CheckCircle2 className="h-5 w-5 text-emerald-500 dark:text-emerald-400" />
                       ) : (
-                        <XCircle className="h-5 w-5 text-slate-400" />
+                        <XCircle className="h-5 w-5 text-slate-400 dark:text-neutral-500" />
                       )}
                       <Switch
                         checked={schedule.isActive}
@@ -270,7 +270,7 @@ export default function HorariosPage() {
       )}
 
       {/* Tips Card */}
-      <Card className="border-0 shadow-soft bg-gradient-to-r from-amber-50 to-orange-50">
+      <Card className="border-0 shadow-soft bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/30 dark:to-orange-900/30">
         <CardContent className="p-6">
           <div className="flex items-start gap-4">
             <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center text-white flex-shrink-0">

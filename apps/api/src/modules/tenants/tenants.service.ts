@@ -95,6 +95,9 @@ export class TenantsService {
         requireEmail: settings.requireEmail,
         primaryColor: settings.primaryColor,
         secondaryColor: settings.secondaryColor,
+        accentColor: settings.accentColor,
+        enableDarkMode: settings.enableDarkMode ?? true,
+        backgroundStyle: settings.backgroundStyle ?? 'modern',
         maxAdvanceBookingDays: settings.maxAdvanceBookingDays,
         minAdvanceBookingHours: settings.minAdvanceBookingHours,
         requireDeposit: settings.requireDeposit ?? false,
@@ -130,9 +133,11 @@ export class TenantsService {
             ? JSON.parse(currentTenant.settings)
             : currentTenant.settings)
         : DEFAULT_SETTINGS;
+      // Parse settings if it's a string (from frontend JSON.stringify)
+      const newSettings = typeof settings === 'string' ? JSON.parse(settings) : settings;
       data.settings = JSON.stringify({
         ...currentSettings,
-        ...settings,
+        ...newSettings,
       });
     }
 

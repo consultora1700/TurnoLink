@@ -20,6 +20,10 @@ import {
   Sparkles,
   CreditCard,
   Percent,
+  ImageIcon,
+  Palette,
+  Moon,
+  Sun,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -29,12 +33,19 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { createApiClient } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
+import { ImageUpload } from '@/components/ui/image-upload';
+import { BackgroundStylePreview, BACKGROUND_STYLE_OPTIONS, BackgroundStyle } from '@/components/ui/background-styles';
 import Link from 'next/link';
 
 interface TenantSettings {
   requireDeposit?: boolean;
   depositPercentage?: number;
   depositMode?: string;
+  primaryColor?: string;
+  secondaryColor?: string;
+  accentColor?: string;
+  enableDarkMode?: boolean;
+  backgroundStyle?: BackgroundStyle;
 }
 
 interface Tenant {
@@ -47,6 +58,8 @@ interface Tenant {
   address: string | null;
   city: string | null;
   instagram: string | null;
+  logo: string | null;
+  coverImage: string | null;
   settings?: string | TenantSettings;
 }
 
@@ -65,11 +78,20 @@ export default function ConfiguracionPage() {
     address: '',
     city: '',
     instagram: '',
+    logo: '',
+    coverImage: '',
   });
   const [depositSettings, setDepositSettings] = useState({
     requireDeposit: false,
     depositPercentage: 30,
     depositMode: 'simulated' as 'simulated' | 'mercadopago',
+  });
+  const [themeSettings, setThemeSettings] = useState({
+    primaryColor: '#D62971',
+    secondaryColor: '#8B5CF6',
+    accentColor: '#F59E0B',
+    enableDarkMode: true,
+    backgroundStyle: 'modern' as BackgroundStyle,
   });
 
   useEffect(() => {
@@ -92,8 +114,10 @@ export default function ConfiguracionPage() {
       address: data.address || '',
       city: data.city || '',
       instagram: data.instagram || '',
+      logo: data.logo || '',
+      coverImage: data.coverImage || '',
     });
-    // Parse settings for deposit config
+    // Parse settings for deposit and theme config
     if (data.settings) {
       const settings = typeof data.settings === 'string'
         ? JSON.parse(data.settings)
@@ -102,6 +126,13 @@ export default function ConfiguracionPage() {
         requireDeposit: settings.requireDeposit ?? false,
         depositPercentage: settings.depositPercentage ?? 30,
         depositMode: settings.depositMode ?? 'simulated',
+      });
+      setThemeSettings({
+        primaryColor: settings.primaryColor ?? '#D62971',
+        secondaryColor: settings.secondaryColor ?? '#8B5CF6',
+        accentColor: settings.accentColor ?? '#F59E0B',
+        enableDarkMode: settings.enableDarkMode ?? true,
+        backgroundStyle: (settings.backgroundStyle as BackgroundStyle) ?? 'modern',
       });
     }
     setLoading(false);
@@ -115,7 +146,10 @@ export default function ConfiguracionPage() {
       const api = createApiClient(session.accessToken as string);
       await api.updateTenant({
         ...formData,
-        settings: JSON.stringify(depositSettings),
+        settings: JSON.stringify({
+          ...depositSettings,
+          ...themeSettings,
+        }),
       });
 
       toast({
@@ -153,8 +187,8 @@ export default function ConfiguracionPage() {
     return (
       <div className="flex flex-col items-center justify-center py-16 gap-4">
         <div className="relative">
-          <div className="h-16 w-16 rounded-full border-4 border-slate-100" />
-          <div className="absolute inset-0 h-16 w-16 rounded-full border-4 border-transparent border-t-slate-600 animate-spin" />
+          <div className="h-16 w-16 rounded-full border-4 border-slate-100 dark:border-neutral-700" />
+          <div className="absolute inset-0 h-16 w-16 rounded-full border-4 border-transparent border-t-slate-600 dark:border-t-neutral-400 animate-spin" />
         </div>
         <p className="text-muted-foreground">Cargando configuración...</p>
       </div>
@@ -237,7 +271,7 @@ export default function ConfiguracionPage() {
                 <Input
                   value={publicUrl}
                   readOnly
-                  className="font-mono text-sm h-11 pr-24 bg-slate-50"
+                  className="font-mono text-sm h-11 pr-24 bg-slate-50 dark:bg-neutral-800"
                 />
                 <div className="absolute right-1 top-1 flex gap-1">
                   <Button
@@ -367,6 +401,59 @@ export default function ConfiguracionPage() {
           </CardContent>
         </Card>
 
+        {/* Images Section */}
+        <Card className="border-0 shadow-soft overflow-hidden">
+          <div className="h-1 bg-gradient-to-r from-purple-500 to-pink-500" />
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                <ImageIcon className="h-4 w-4 text-white" />
+              </div>
+              Imágenes
+            </CardTitle>
+            <CardDescription>
+              Logo y portada de tu página pública
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-2">
+              <Label>Logo del negocio</Label>
+              <ImageUpload
+                value={formData.logo}
+                onChange={(url) => setFormData({ ...formData, logo: url })}
+                onUpload={async (file) => {
+                  if (!session?.accessToken) throw new Error('No autenticado');
+                  const api = createApiClient(session.accessToken as string);
+                  return api.uploadMedia(file, 'logos');
+                }}
+                aspectRatio="square"
+                placeholder="Subir logo"
+              />
+              <p className="text-xs text-muted-foreground">
+                Recomendado: imagen cuadrada, mínimo 200x200px
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Imagen de portada</Label>
+              <ImageUpload
+                value={formData.coverImage}
+                onChange={(url) => setFormData({ ...formData, coverImage: url })}
+                onUpload={async (file) => {
+                  if (!session?.accessToken) throw new Error('No autenticado');
+                  const api = createApiClient(session.accessToken as string);
+                  return api.uploadMedia(file, 'covers');
+                }}
+                aspectRatio="banner"
+                placeholder="Subir portada"
+              />
+              <p className="text-xs text-muted-foreground">
+                Recomendado: imagen horizontal 3:1, mínimo 1200x400px
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Location */}
         <Card className="border-0 shadow-soft overflow-hidden">
           <div className="h-1 bg-gradient-to-r from-amber-500 to-orange-500" />
@@ -469,12 +556,12 @@ export default function ConfiguracionPage() {
                   </p>
                 </div>
 
-                <div className="rounded-lg border bg-amber-50 border-amber-200 p-4">
+                <div className="rounded-lg border bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-800 p-4">
                   <div className="flex items-start gap-3">
-                    <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                    <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-sm font-medium text-amber-800">Modo Demo Activo</p>
-                      <p className="text-sm text-amber-700">
+                      <p className="text-sm font-medium text-amber-800 dark:text-amber-300">Modo Demo Activo</p>
+                      <p className="text-sm text-amber-700 dark:text-amber-400">
                         Actualmente los pagos están en modo simulado para demostración.
                         Los clientes podrán &quot;pagar&quot; sin usar dinero real.
                       </p>
@@ -486,16 +573,217 @@ export default function ConfiguracionPage() {
           </CardContent>
         </Card>
 
+        {/* Theme Settings for Public Page */}
+        <Card className="border-0 shadow-soft lg:col-span-3 overflow-hidden">
+          <div className="h-1 bg-gradient-to-r from-pink-500 to-violet-500" />
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-pink-500 to-violet-500 flex items-center justify-center">
+                <Palette className="h-4 w-4 text-white" />
+              </div>
+              Personalización Visual
+            </CardTitle>
+            <CardDescription>
+              Configura los colores y tema de tu página pública de reservas
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Dark Mode Toggle */}
+            <div className="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-slate-50 to-slate-100 dark:from-neutral-800 dark:to-neutral-900">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-white dark:bg-neutral-700 shadow-sm flex items-center justify-center">
+                  {themeSettings.enableDarkMode ? (
+                    <Moon className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+                  ) : (
+                    <Sun className="h-5 w-5 text-amber-500 dark:text-amber-400" />
+                  )}
+                </div>
+                <div>
+                  <Label htmlFor="enableDarkMode" className="text-base font-medium">
+                    Permitir modo oscuro
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Los visitantes podrán cambiar entre tema claro y oscuro
+                  </p>
+                </div>
+              </div>
+              <Switch
+                id="enableDarkMode"
+                checked={themeSettings.enableDarkMode}
+                onCheckedChange={(checked) =>
+                  setThemeSettings({ ...themeSettings, enableDarkMode: checked })
+                }
+              />
+            </div>
+
+            {/* Background Style Selector */}
+            <div className="space-y-4">
+              <div>
+                <Label className="text-base font-medium">Estilo de fondo</Label>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Elige el estilo visual del fondo de tu página pública
+                </p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                {BACKGROUND_STYLE_OPTIONS.map((option) => (
+                  <BackgroundStylePreview
+                    key={option.value}
+                    style={option.value}
+                    selected={themeSettings.backgroundStyle === option.value}
+                    onClick={() => setThemeSettings({ ...themeSettings, backgroundStyle: option.value })}
+                    label={option.label}
+                    description={option.description}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Color Pickers */}
+            <div className="grid gap-6 md:grid-cols-3">
+              {/* Primary Color */}
+              <div className="space-y-3">
+                <Label className="text-sm font-medium">Color principal</Label>
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <input
+                      type="color"
+                      value={themeSettings.primaryColor}
+                      onChange={(e) =>
+                        setThemeSettings({ ...themeSettings, primaryColor: e.target.value })
+                      }
+                      className="w-12 h-12 rounded-lg cursor-pointer border-2 border-slate-200 overflow-hidden"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <Input
+                      value={themeSettings.primaryColor}
+                      onChange={(e) =>
+                        setThemeSettings({ ...themeSettings, primaryColor: e.target.value })
+                      }
+                      placeholder="#D62971"
+                      className="h-10 font-mono text-sm"
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Botones, acentos y elementos destacados
+                </p>
+              </div>
+
+              {/* Secondary Color */}
+              <div className="space-y-3">
+                <Label className="text-sm font-medium">Color secundario</Label>
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <input
+                      type="color"
+                      value={themeSettings.secondaryColor}
+                      onChange={(e) =>
+                        setThemeSettings({ ...themeSettings, secondaryColor: e.target.value })
+                      }
+                      className="w-12 h-12 rounded-lg cursor-pointer border-2 border-slate-200 overflow-hidden"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <Input
+                      value={themeSettings.secondaryColor}
+                      onChange={(e) =>
+                        setThemeSettings({ ...themeSettings, secondaryColor: e.target.value })
+                      }
+                      placeholder="#8B5CF6"
+                      className="h-10 font-mono text-sm"
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Fondos secundarios y badges
+                </p>
+              </div>
+
+              {/* Accent Color */}
+              <div className="space-y-3">
+                <Label className="text-sm font-medium">Color de acento</Label>
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <input
+                      type="color"
+                      value={themeSettings.accentColor}
+                      onChange={(e) =>
+                        setThemeSettings({ ...themeSettings, accentColor: e.target.value })
+                      }
+                      className="w-12 h-12 rounded-lg cursor-pointer border-2 border-slate-200 overflow-hidden"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <Input
+                      value={themeSettings.accentColor}
+                      onChange={(e) =>
+                        setThemeSettings({ ...themeSettings, accentColor: e.target.value })
+                      }
+                      placeholder="#F59E0B"
+                      className="h-10 font-mono text-sm"
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Detalles y elementos especiales
+                </p>
+              </div>
+            </div>
+
+            {/* Preview */}
+            <div className="p-4 rounded-xl border bg-slate-50 dark:bg-neutral-800">
+              <p className="text-sm font-medium mb-3">Vista previa de colores</p>
+              <div className="flex items-center gap-3">
+                <div
+                  className="h-10 w-10 rounded-lg shadow-sm"
+                  style={{ backgroundColor: themeSettings.primaryColor }}
+                />
+                <div
+                  className="h-10 w-10 rounded-lg shadow-sm"
+                  style={{ backgroundColor: themeSettings.secondaryColor }}
+                />
+                <div
+                  className="h-10 w-10 rounded-lg shadow-sm"
+                  style={{ backgroundColor: themeSettings.accentColor }}
+                />
+                <span className="ml-3 text-sm text-muted-foreground">
+                  Así se verán los colores en tu página pública
+                </span>
+              </div>
+            </div>
+
+            {/* Reset to defaults */}
+            <div className="flex justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setThemeSettings({
+                    primaryColor: '#D62971',
+                    secondaryColor: '#8B5CF6',
+                    accentColor: '#F59E0B',
+                    enableDarkMode: true,
+                    backgroundStyle: 'modern',
+                  })
+                }
+              >
+                Restaurar colores predeterminados
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Tips */}
-        <Card className="border-0 shadow-soft lg:col-span-3 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-100">
+        <Card className="border-0 shadow-soft lg:col-span-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 border-blue-100 dark:border-blue-800">
           <CardContent className="py-6">
             <div className="flex items-start gap-4">
               <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center flex-shrink-0">
                 <AlertCircle className="h-5 w-5 text-white" />
               </div>
               <div>
-                <h3 className="font-semibold text-blue-900 mb-1">Consejos para tu perfil</h3>
-                <ul className="text-sm text-blue-700 space-y-1">
+                <h3 className="font-semibold text-blue-900 dark:text-blue-200 mb-1">Consejos para tu perfil</h3>
+                <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
                   <li>• Usa un nombre de negocio claro y fácil de recordar</li>
                   <li>• Agrega una descripción atractiva que destaque tus servicios</li>
                   <li>• Incluye tu teléfono e Instagram para que tus clientes te contacten</li>

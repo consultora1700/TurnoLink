@@ -170,6 +170,58 @@ async function main() {
 
   console.log('✅ Schedules created');
 
+  // Delete existing employees and create new ones
+  await prisma.employee.deleteMany({
+    where: { tenantId: demoTenant.id },
+  });
+
+  // Create Demo Employees - Estética
+  const employeesData = [
+    {
+      name: 'María Fernández',
+      email: 'maria.fernandez@bellaestetica.com',
+      phone: '+54 11 5555-1001',
+      image: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=200&h=200&fit=crop&crop=face',
+      specialty: 'Tratamientos Faciales',
+      bio: 'Especialista en tratamientos faciales con más de 8 años de experiencia. Certificada en cosmiatría avanzada.',
+      isActive: true,
+      order: 1,
+    },
+    {
+      name: 'Lucía Gómez',
+      email: 'lucia.gomez@bellaestetica.com',
+      phone: '+54 11 5555-1002',
+      image: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&h=200&fit=crop&crop=face',
+      specialty: 'Manicura y Pedicura',
+      bio: 'Experta en nail art y técnicas de esmaltado semipermanente. Creativa y detallista.',
+      isActive: true,
+      order: 2,
+    },
+    {
+      name: 'Ana Rodríguez',
+      email: 'ana.rodriguez@bellaestetica.com',
+      phone: '+54 11 5555-1003',
+      image: 'https://images.unsplash.com/photo-1489424731084-a5d8b219a5bb?w=200&h=200&fit=crop&crop=face',
+      specialty: 'Masajes y Spa',
+      bio: 'Masajista profesional especializada en técnicas relajantes y descontracturantes. Certificada en aromaterapia.',
+      isActive: true,
+      order: 3,
+    },
+  ];
+
+  const employees = [];
+  for (const emp of employeesData) {
+    const employee = await prisma.employee.create({
+      data: {
+        tenantId: demoTenant.id,
+        ...emp,
+      },
+    });
+    employees.push(employee);
+  }
+
+  console.log('✅ Employees created:', employees.length);
+
   // Delete existing customers and create new ones
   await prisma.customer.deleteMany({
     where: { tenantId: demoTenant.id },

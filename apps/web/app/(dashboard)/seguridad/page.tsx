@@ -175,8 +175,8 @@ export default function SeguridadPage() {
     return (
       <div className="flex flex-col items-center justify-center py-16 gap-4">
         <div className="relative">
-          <div className="h-16 w-16 rounded-full border-4 border-emerald-100" />
-          <div className="absolute inset-0 h-16 w-16 rounded-full border-4 border-transparent border-t-emerald-600 animate-spin" />
+          <div className="h-16 w-16 rounded-full border-4 border-emerald-100 dark:border-emerald-900" />
+          <div className="absolute inset-0 h-16 w-16 rounded-full border-4 border-transparent border-t-emerald-600 dark:border-t-emerald-400 animate-spin" />
         </div>
         <p className="text-muted-foreground">Cargando configuración de seguridad...</p>
       </div>
@@ -274,7 +274,7 @@ export default function SeguridadPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="p-4 rounded-xl bg-slate-50">
+          <div className="p-4 rounded-xl bg-slate-50 dark:bg-neutral-800">
             <p className="text-sm text-muted-foreground">
               La autenticación de dos factores (2FA) agrega una capa extra de seguridad a tu cuenta.
               Además de tu contraseña, necesitarás un código de tu aplicación de autenticación para iniciar sesión.
@@ -282,7 +282,7 @@ export default function SeguridadPage() {
           </div>
 
           {error && (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 text-red-700 text-sm">
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-sm">
               <AlertCircle className="h-4 w-4" />
               {error}
             </div>
@@ -290,13 +290,13 @@ export default function SeguridadPage() {
 
           {is2FAEnabled ? (
             <div className="space-y-4">
-              <div className="flex items-center gap-3 p-4 rounded-xl bg-emerald-50 border border-emerald-100">
-                <div className="h-10 w-10 rounded-lg bg-emerald-100 flex items-center justify-center">
-                  <ShieldCheck className="h-5 w-5 text-emerald-600" />
+              <div className="flex items-center gap-3 p-4 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-100 dark:border-emerald-800">
+                <div className="h-10 w-10 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center">
+                  <ShieldCheck className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                 </div>
                 <div>
-                  <p className="font-medium text-emerald-800">Tu cuenta está protegida</p>
-                  <p className="text-sm text-emerald-600">La autenticación de dos factores está activa</p>
+                  <p className="font-medium text-emerald-800 dark:text-emerald-300">Tu cuenta está protegida</p>
+                  <p className="text-sm text-emerald-600 dark:text-emerald-400">La autenticación de dos factores está activa</p>
                 </div>
               </div>
               <div className="flex gap-3">
@@ -325,13 +325,13 @@ export default function SeguridadPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-50 border border-amber-100">
-                <div className="h-10 w-10 rounded-lg bg-amber-100 flex items-center justify-center">
-                  <ShieldAlert className="h-5 w-5 text-amber-600" />
+              <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-50 dark:bg-amber-900/30 border border-amber-100 dark:border-amber-800">
+                <div className="h-10 w-10 rounded-lg bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center">
+                  <ShieldAlert className="h-5 w-5 text-amber-600 dark:text-amber-400" />
                 </div>
                 <div>
-                  <p className="font-medium text-amber-800">Tu cuenta no está protegida</p>
-                  <p className="text-sm text-amber-600">Activa 2FA para mayor seguridad</p>
+                  <p className="font-medium text-amber-800 dark:text-amber-300">Tu cuenta no está protegida</p>
+                  <p className="text-sm text-amber-600 dark:text-amber-400">Activa 2FA para mayor seguridad</p>
                 </div>
               </div>
               <Button
@@ -374,16 +374,16 @@ export default function SeguridadPage() {
             ].map((tip, index) => (
               <div
                 key={index}
-                className={`flex items-center gap-3 p-3 rounded-xl ${tip.done ? 'bg-emerald-50' : 'bg-slate-50'}`}
+                className={`flex items-center gap-3 p-3 rounded-xl ${tip.done ? 'bg-emerald-50 dark:bg-emerald-900/30' : 'bg-slate-50 dark:bg-neutral-800'}`}
               >
-                <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${tip.done ? 'bg-emerald-100' : 'bg-slate-100'}`}>
+                <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${tip.done ? 'bg-emerald-100 dark:bg-emerald-900/50' : 'bg-slate-100 dark:bg-neutral-700'}`}>
                   {tip.done ? (
-                    <Check className="h-4 w-4 text-emerald-600" />
+                    <Check className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                   ) : (
                     <X className="h-4 w-4 text-slate-400" />
                   )}
                 </div>
-                <span className={`text-sm ${tip.done ? 'text-emerald-800' : 'text-slate-600'}`}>
+                <span className={`text-sm ${tip.done ? 'text-emerald-800 dark:text-emerald-300' : 'text-slate-600 dark:text-neutral-300'}`}>
                   {tip.text}
                 </span>
               </div>
@@ -418,7 +418,7 @@ export default function SeguridadPage() {
                     />
                   </div>
                 ) : (
-                  <div className="w-56 h-56 bg-slate-100 rounded-2xl flex items-center justify-center mb-4">
+                  <div className="w-56 h-56 bg-slate-100 dark:bg-neutral-800 rounded-2xl flex items-center justify-center mb-4">
                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                   </div>
                 )}
@@ -432,7 +432,7 @@ export default function SeguridadPage() {
                       <Input
                         value={secret}
                         readOnly
-                        className="font-mono text-sm h-11 bg-slate-50"
+                        className="font-mono text-sm h-11 bg-slate-50 dark:bg-neutral-800"
                       />
                       <Button variant="outline" size="icon" onClick={copySecret} className="h-11 w-11">
                         {copied ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
@@ -441,8 +441,8 @@ export default function SeguridadPage() {
                   </div>
                 )}
 
-                <div className="text-sm text-muted-foreground text-center space-y-1 p-4 bg-slate-50 rounded-xl">
-                  <p className="font-medium text-slate-700">Pasos:</p>
+                <div className="text-sm text-muted-foreground text-center space-y-1 p-4 bg-slate-50 dark:bg-neutral-800 rounded-xl">
+                  <p className="font-medium text-slate-700 dark:text-neutral-300">Pasos:</p>
                   <p>1. Abre Google Authenticator</p>
                   <p>2. Toca el botón + para agregar una cuenta</p>
                   <p>3. Selecciona "Escanear código QR"</p>
@@ -488,7 +488,7 @@ export default function SeguridadPage() {
                     />
                   </div>
                   {error && (
-                    <p className="text-sm text-destructive text-center p-3 bg-red-50 rounded-xl">{error}</p>
+                    <p className="text-sm text-destructive text-center p-3 bg-red-50 dark:bg-red-900/30 rounded-xl">{error}</p>
                   )}
                 </div>
               </div>
@@ -522,10 +522,10 @@ export default function SeguridadPage() {
                 </DialogDescription>
               </DialogHeader>
               <div className="py-6">
-                <div className="bg-slate-100 rounded-xl p-4 mb-4">
+                <div className="bg-slate-100 dark:bg-neutral-800 rounded-xl p-4 mb-4">
                   <div className="grid grid-cols-2 gap-2 font-mono text-sm">
                     {backupCodes.map((code, index) => (
-                      <div key={index} className="text-center p-2 bg-white rounded-lg">
+                      <div key={index} className="text-center p-2 bg-white dark:bg-neutral-700 rounded-lg">
                         {code}
                       </div>
                     ))}
@@ -562,10 +562,10 @@ export default function SeguridadPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="py-6">
-            <div className="bg-slate-100 rounded-xl p-4 mb-4">
+            <div className="bg-slate-100 dark:bg-neutral-800 rounded-xl p-4 mb-4">
               <div className="grid grid-cols-2 gap-2 font-mono text-sm">
                 {backupCodes.map((code, index) => (
-                  <div key={index} className="text-center p-2 bg-white rounded-lg">
+                  <div key={index} className="text-center p-2 bg-white dark:bg-neutral-700 rounded-lg">
                     {code}
                   </div>
                 ))}
@@ -589,8 +589,8 @@ export default function SeguridadPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-red-100 flex items-center justify-center">
-                <ShieldAlert className="h-4 w-4 text-red-600" />
+              <div className="h-8 w-8 rounded-lg bg-red-100 dark:bg-red-900/40 flex items-center justify-center">
+                <ShieldAlert className="h-4 w-4 text-red-600 dark:text-red-400" />
               </div>
               Desactivar 2FA
             </AlertDialogTitle>
@@ -613,7 +613,7 @@ export default function SeguridadPage() {
               />
             </div>
             {error && (
-              <p className="text-sm text-destructive text-center mt-3 p-3 bg-red-50 rounded-xl">{error}</p>
+              <p className="text-sm text-destructive text-center mt-3 p-3 bg-red-50 dark:bg-red-900/30 rounded-xl">{error}</p>
             )}
           </div>
           <AlertDialogFooter>

@@ -69,8 +69,14 @@ export interface TenantPublic {
     requireEmail: boolean;
     primaryColor: string;
     secondaryColor: string;
+    accentColor?: string;
+    enableDarkMode?: boolean;
+    backgroundStyle?: 'minimal' | 'modern' | 'elegant' | 'fresh' | 'vibrant';
     maxAdvanceBookingDays: number;
     minAdvanceBookingHours: number;
+    requireDeposit?: boolean;
+    depositPercentage?: number;
+    depositMode?: string;
   };
   services: ServicePublic[];
   categories: Category[];
@@ -105,11 +111,36 @@ export interface Category {
   order: number;
 }
 
+export interface Employee {
+  id: string;
+  tenantId: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  image: string | null;
+  specialty: string | null;
+  bio: string | null;
+  isActive: boolean;
+  order: number;
+}
+
+export interface CreateEmployeeData {
+  name: string;
+  email?: string;
+  phone?: string;
+  image?: string;
+  specialty?: string;
+  bio?: string;
+  isActive?: boolean;
+  order?: number;
+}
+
 export interface Booking {
   id: string;
   tenantId: string;
   serviceId: string;
   customerId: string;
+  employeeId: string | null;
   date: string;
   startTime: string;
   endTime: string;
@@ -118,6 +149,7 @@ export interface Booking {
   createdAt: string;
   service: Service;
   customer: Customer;
+  employee: Employee | null;
 }
 
 export interface Customer {
@@ -164,6 +196,7 @@ export interface DashboardStats {
 
 export interface CreateBookingData {
   serviceId: string;
+  employeeId?: string;
   date: string;
   startTime: string;
   customerName: string;
@@ -376,9 +409,22 @@ export const authApi = {
 // Public API (No auth required)
 // =============================================================================
 
+export interface EmployeePublic {
+  id: string;
+  name: string;
+  image: string | null;
+  specialty: string | null;
+  bio: string | null;
+}
+
 export const publicApi = {
   getTenant: async (slug: string): Promise<TenantPublic> => {
-    return request<TenantPublic>(`/public/tenants/${slug}`);
+    // No cache to always get fresh tenant settings
+    return request<TenantPublic>(`/public/tenants/${slug}`, { cache: 'no-store' });
+  },
+
+  getEmployees: async (slug: string): Promise<EmployeePublic[]> => {
+    return request<EmployeePublic[]>(`/public/tenants/${slug}/employees`);
   },
 
   getAvailability: async (
@@ -542,6 +588,32 @@ export function createApiClient(token: string) {
 
     unblockDate: (id: string) =>
       authRequest<void>(`/schedules/blocked/${id}`, { method: 'DELETE' }),
+
+    // Employees
+    getEmployees: () => authRequest<Employee[]>('/employees'),
+
+    getEmployee: (id: string) => authRequest<Employee>(`/employees/${id}`),
+
+    createEmployee: (data: CreateEmployeeData) =>
+      authRequest<Employee>('/employees', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+
+    updateEmployee: (id: string, data: Partial<CreateEmployeeData>) =>
+      authRequest<Employee>(`/employees/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }),
+
+    deleteEmployee: (id: string) =>
+      authRequest<void>(`/employees/${id}`, { method: 'DELETE' }),
+
+    reorderEmployees: (employeeIds: string[]) =>
+      authRequest<Employee[]>('/employees/reorder', {
+        method: 'POST',
+        body: JSON.stringify({ employeeIds }),
+      }),
 
     // Media
     uploadMedia: async (file: File, folder?: string): Promise<{ url: string }> => {

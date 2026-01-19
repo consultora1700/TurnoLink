@@ -56,41 +56,41 @@ type ViewMode = 'week' | 'month';
 
 const statusConfig: Record<string, { bg: string; text: string; border: string; icon: React.ElementType; label: string; dot: string }> = {
   PENDING: {
-    bg: 'bg-amber-50',
-    text: 'text-amber-700',
-    border: 'border-amber-200',
+    bg: 'bg-amber-50 dark:bg-amber-900/30',
+    text: 'text-amber-700 dark:text-amber-300',
+    border: 'border-amber-200 dark:border-amber-800',
     icon: AlertCircle,
     label: 'Pendiente',
     dot: 'bg-amber-500'
   },
   CONFIRMED: {
-    bg: 'bg-blue-50',
-    text: 'text-blue-700',
-    border: 'border-blue-200',
+    bg: 'bg-blue-50 dark:bg-blue-900/30',
+    text: 'text-blue-700 dark:text-blue-300',
+    border: 'border-blue-200 dark:border-blue-800',
     icon: CheckCircle2,
     label: 'Confirmado',
     dot: 'bg-blue-500'
   },
   COMPLETED: {
-    bg: 'bg-emerald-50',
-    text: 'text-emerald-700',
-    border: 'border-emerald-200',
+    bg: 'bg-emerald-50 dark:bg-emerald-900/30',
+    text: 'text-emerald-700 dark:text-emerald-300',
+    border: 'border-emerald-200 dark:border-emerald-800',
     icon: CheckCircle2,
     label: 'Completado',
     dot: 'bg-emerald-500'
   },
   CANCELLED: {
-    bg: 'bg-red-50',
-    text: 'text-red-700',
-    border: 'border-red-200',
+    bg: 'bg-red-50 dark:bg-red-900/30',
+    text: 'text-red-700 dark:text-red-300',
+    border: 'border-red-200 dark:border-red-800',
     icon: XCircle,
     label: 'Cancelado',
     dot: 'bg-red-500'
   },
   NO_SHOW: {
-    bg: 'bg-slate-50',
-    text: 'text-slate-700',
-    border: 'border-slate-200',
+    bg: 'bg-slate-50 dark:bg-neutral-800',
+    text: 'text-slate-700 dark:text-neutral-300',
+    border: 'border-slate-200 dark:border-neutral-700',
     icon: XCircle,
     label: 'No asistió',
     dot: 'bg-slate-500'
@@ -99,24 +99,32 @@ const statusConfig: Record<string, { bg: string; text: string; border: string; i
 
 export default function TurnosPage() {
   const { data: session } = useSession();
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState<Date | null>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>('week');
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  // Initialize date on client side only to avoid hydration mismatch
+  useEffect(() => {
+    setCurrentDate(new Date());
+    setMounted(true);
+  }, []);
 
   // Calculate date ranges based on view mode
   const getDateRange = () => {
+    const date = currentDate || new Date();
     if (viewMode === 'week') {
       return {
-        start: startOfWeek(currentDate, { weekStartsOn: 1 }),
-        end: endOfWeek(currentDate, { weekStartsOn: 1 })
+        start: startOfWeek(date, { weekStartsOn: 1 }),
+        end: endOfWeek(date, { weekStartsOn: 1 })
       };
     } else {
       return {
-        start: startOfMonth(currentDate),
-        end: endOfMonth(currentDate)
+        start: startOfMonth(date),
+        end: endOfMonth(date)
       };
     }
   };
@@ -124,7 +132,7 @@ export default function TurnosPage() {
   const { start: startDate, end: endDate } = getDateRange();
 
   useEffect(() => {
-    if (session?.accessToken) {
+    if (session?.accessToken && mounted) {
       setLoading(true);
       const api = createApiClient(session.accessToken as string);
       api
@@ -141,7 +149,7 @@ export default function TurnosPage() {
         })
         .finally(() => setLoading(false));
     }
-  }, [session, currentDate, viewMode]);
+  }, [session, mounted, startDate.getTime(), endDate.getTime(), viewMode]);
 
   const handleStatusChange = async (bookingId: string, newStatus: 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW') => {
     if (!session?.accessToken) return;
@@ -161,23 +169,28 @@ export default function TurnosPage() {
 
   const navigatePrev = () => {
     if (viewMode === 'week') {
-      setCurrentDate(addDays(currentDate, -7));
+      setCurrentDate(addDays(currentDate!, -7));
     } else {
-      setCurrentDate(subMonths(currentDate, 1));
+      setCurrentDate(subMonths(currentDate!, 1));
     }
   };
 
   const navigateNext = () => {
     if (viewMode === 'week') {
-      setCurrentDate(addDays(currentDate, 7));
+      setCurrentDate(addDays(currentDate!, 7));
     } else {
-      setCurrentDate(addMonths(currentDate, 1));
+      setCurrentDate(addMonths(currentDate!, 1));
     }
   };
 
   const getBookingsForDay = (day: Date) => {
+    const dayStr = format(day, 'yyyy-MM-dd');
     return bookings
-      .filter((b) => format(new Date(b.date), 'yyyy-MM-dd') === format(day, 'yyyy-MM-dd'))
+      .filter((b) => {
+        // Extract just the date part from the ISO string to avoid timezone issues
+        const bookingDateStr = b.date.split('T')[0];
+        return bookingDateStr === dayStr;
+      })
       .sort((a, b) => a.startTime.localeCompare(b.startTime));
   };
 
@@ -191,6 +204,19 @@ export default function TurnosPage() {
   const days = viewMode === 'week'
     ? Array.from({ length: 7 }, (_, i) => addDays(startDate, i))
     : eachDayOfInterval({ start: startOfWeek(startDate, { weekStartsOn: 1 }), end: endOfWeek(endDate, { weekStartsOn: 1 }) });
+
+  // Show loading state until client is mounted to avoid hydration mismatch
+  if (!mounted) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 gap-4">
+        <div className="relative">
+          <div className="h-16 w-16 rounded-full border-4 border-indigo-100" />
+          <div className="absolute inset-0 h-16 w-16 rounded-full border-4 border-transparent border-t-indigo-600 animate-spin" />
+        </div>
+        <p className="text-muted-foreground">Cargando calendario...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -242,11 +268,11 @@ export default function TurnosPage() {
         <CardContent className="p-3 md:p-4">
           <div className="flex items-center justify-between gap-2">
             {/* View Toggle */}
-            <div className="flex bg-slate-100 rounded-lg p-1">
+            <div className="flex bg-slate-100 dark:bg-neutral-800 rounded-lg p-1">
               <button
                 onClick={() => setViewMode('week')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
-                  viewMode === 'week' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                  viewMode === 'week' ? 'bg-white dark:bg-neutral-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-neutral-200'
                 }`}
               >
                 <CalendarDays className="h-4 w-4" />
@@ -255,7 +281,7 @@ export default function TurnosPage() {
               <button
                 onClick={() => setViewMode('month')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
-                  viewMode === 'month' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                  viewMode === 'month' ? 'bg-white dark:bg-neutral-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-neutral-200'
                 }`}
               >
                 <LayoutGrid className="h-4 w-4" />
@@ -272,7 +298,7 @@ export default function TurnosPage() {
                 <p className="font-semibold text-sm md:text-base">
                   {viewMode === 'week'
                     ? `${format(startDate, "d MMM", { locale: es })} - ${format(endDate, "d MMM", { locale: es })}`
-                    : format(currentDate, "MMMM yyyy", { locale: es })
+                    : format(currentDate!, "MMMM yyyy", { locale: es })
                   }
                 </p>
               </div>
@@ -297,8 +323,8 @@ export default function TurnosPage() {
       {loading ? (
         <div className="flex flex-col items-center justify-center py-12 gap-4">
           <div className="relative">
-            <div className="h-12 w-12 rounded-full border-4 border-indigo-100" />
-            <div className="absolute inset-0 h-12 w-12 rounded-full border-4 border-transparent border-t-indigo-600 animate-spin" />
+            <div className="h-12 w-12 rounded-full border-4 border-indigo-100 dark:border-indigo-900" />
+            <div className="absolute inset-0 h-12 w-12 rounded-full border-4 border-transparent border-t-indigo-600 dark:border-t-indigo-400 animate-spin" />
           </div>
           <p className="text-muted-foreground text-sm">Cargando turnos...</p>
         </div>
@@ -322,10 +348,10 @@ export default function TurnosPage() {
                         className={`flex flex-col items-center min-w-[52px] px-3 py-2 rounded-xl transition-all ${
                           isSelected
                             ? 'bg-indigo-600 text-white shadow-lg scale-105'
-                            : 'bg-white border border-slate-200 text-slate-700 hover:border-indigo-300'
+                            : 'bg-white dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-700 dark:text-neutral-300 hover:border-indigo-300 dark:hover:border-indigo-600'
                         }`}
                       >
-                        <span className={`text-[10px] uppercase font-medium ${isSelected ? 'text-white/80' : 'text-slate-500'}`}>
+                        <span className={`text-[10px] uppercase font-medium ${isSelected ? 'text-white/80' : 'text-slate-500 dark:text-neutral-400'}`}>
                           {format(day, 'EEE', { locale: es })}
                         </span>
                         <span className="text-lg font-bold">{format(day, 'd')}</span>
@@ -398,9 +424,9 @@ export default function TurnosPage() {
                       key={day.toISOString()}
                       className={`border-0 shadow-sm overflow-hidden ${dayIsToday ? 'ring-2 ring-indigo-500' : ''}`}
                     >
-                      <CardHeader className={`p-2 ${dayIsToday ? 'bg-indigo-600 text-white' : 'bg-slate-50'}`}>
+                      <CardHeader className={`p-2 ${dayIsToday ? 'bg-indigo-600 text-white' : 'bg-slate-50 dark:bg-neutral-800'}`}>
                         <div className="text-center">
-                          <span className={`text-[10px] uppercase ${dayIsToday ? 'text-white/80' : 'text-slate-500'}`}>
+                          <span className={`text-[10px] uppercase ${dayIsToday ? 'text-white/80' : 'text-slate-500 dark:text-neutral-400'}`}>
                             {format(day, 'EEE', { locale: es })}
                           </span>
                           <p className="text-xl font-bold">{format(day, 'd')}</p>
@@ -408,7 +434,7 @@ export default function TurnosPage() {
                       </CardHeader>
                       <CardContent className="p-1.5 space-y-1 min-h-[180px] max-h-[300px] overflow-y-auto">
                         {dayBookings.length === 0 ? (
-                          <div className="flex items-center justify-center h-20 text-slate-400">
+                          <div className="flex items-center justify-center h-20 text-slate-400 dark:text-neutral-500">
                             <span className="text-xs">Sin turnos</span>
                           </div>
                         ) : (
@@ -421,7 +447,7 @@ export default function TurnosPage() {
                                 className={`p-2 rounded-lg ${config.bg} border ${config.border} cursor-pointer hover:shadow-md transition-all`}
                               >
                                 <div className="flex items-center gap-1 mb-1">
-                                  <Clock className="h-3 w-3 text-slate-500" />
+                                  <Clock className="h-3 w-3 text-slate-500 dark:text-neutral-400" />
                                   <span className="text-xs font-semibold">{booking.startTime}</span>
                                   <div className={`ml-auto h-2 w-2 rounded-full ${config.dot}`} />
                                 </div>
@@ -446,7 +472,7 @@ export default function TurnosPage() {
                 {/* Day Headers */}
                 <div className="grid grid-cols-7 mb-2">
                   {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map((dayName) => (
-                    <div key={dayName} className="text-center text-xs font-medium text-slate-500 py-2">
+                    <div key={dayName} className="text-center text-xs font-medium text-slate-500 dark:text-neutral-400 py-2">
                       {dayName}
                     </div>
                   ))}
@@ -457,7 +483,7 @@ export default function TurnosPage() {
                   {days.map((day) => {
                     const dayBookings = getBookingsForDay(day);
                     const dayIsToday = isToday(day);
-                    const isCurrentMonth = isSameMonth(day, currentDate);
+                    const isCurrentMonth = isSameMonth(day, currentDate!);
 
                     return (
                       <div
@@ -469,11 +495,11 @@ export default function TurnosPage() {
                         }}
                         className={`
                           min-h-[80px] md:min-h-[100px] p-1 md:p-2 rounded-lg border cursor-pointer transition-all
-                          ${dayIsToday ? 'bg-indigo-50 border-indigo-300' : 'bg-white border-slate-100 hover:border-slate-300'}
+                          ${dayIsToday ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-300 dark:border-indigo-700' : 'bg-white dark:bg-neutral-800 border-slate-100 dark:border-neutral-700 hover:border-slate-300 dark:hover:border-neutral-600'}
                           ${!isCurrentMonth ? 'opacity-40' : ''}
                         `}
                       >
-                        <div className={`text-right text-sm font-medium mb-1 ${dayIsToday ? 'text-indigo-600' : ''}`}>
+                        <div className={`text-right text-sm font-medium mb-1 ${dayIsToday ? 'text-indigo-600 dark:text-indigo-400' : ''}`}>
                           {format(day, 'd')}
                         </div>
 
@@ -505,7 +531,7 @@ export default function TurnosPage() {
                             </div>
                           )}
                           {dayBookings.length > 3 && (
-                            <div className="text-[10px] text-slate-500 hidden md:block">
+                            <div className="text-[10px] text-slate-500 dark:text-neutral-400 hidden md:block">
                               +{dayBookings.length - 3} más
                             </div>
                           )}
@@ -546,9 +572,9 @@ export default function TurnosPage() {
               })()}
 
               {/* Date & Time */}
-              <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
-                <div className="h-10 w-10 rounded-lg bg-indigo-100 flex items-center justify-center">
-                  <CalendarIcon className="h-5 w-5 text-indigo-600" />
+              <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-neutral-800 rounded-lg">
+                <div className="h-10 w-10 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center">
+                  <CalendarIcon className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
                 </div>
                 <div>
                   <p className="font-semibold">{format(new Date(selectedBooking.date), "EEEE d 'de' MMMM", { locale: es })}</p>
@@ -557,9 +583,9 @@ export default function TurnosPage() {
               </div>
 
               {/* Customer */}
-              <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
-                <div className="h-10 w-10 rounded-lg bg-pink-100 flex items-center justify-center">
-                  <User className="h-5 w-5 text-pink-600" />
+              <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-neutral-800 rounded-lg">
+                <div className="h-10 w-10 rounded-lg bg-pink-100 dark:bg-pink-900/40 flex items-center justify-center">
+                  <User className="h-5 w-5 text-pink-600 dark:text-pink-400" />
                 </div>
                 <div className="flex-1">
                   <p className="font-semibold">{selectedBooking.customer.name}</p>
@@ -568,9 +594,9 @@ export default function TurnosPage() {
               </div>
 
               {/* Service */}
-              <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
-                <div className="h-10 w-10 rounded-lg bg-violet-100 flex items-center justify-center">
-                  <Scissors className="h-5 w-5 text-violet-600" />
+              <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-neutral-800 rounded-lg">
+                <div className="h-10 w-10 rounded-lg bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center">
+                  <Scissors className="h-5 w-5 text-violet-600 dark:text-violet-400" />
                 </div>
                 <div className="flex-1">
                   <p className="font-semibold">{selectedBooking.service.name}</p>
@@ -580,8 +606,8 @@ export default function TurnosPage() {
 
               {/* Notes */}
               {selectedBooking.notes && (
-                <div className="p-3 bg-amber-50 rounded-lg">
-                  <p className="text-sm text-amber-800">{selectedBooking.notes}</p>
+                <div className="p-3 bg-amber-50 dark:bg-amber-900/30 rounded-lg">
+                  <p className="text-sm text-amber-800 dark:text-amber-300">{selectedBooking.notes}</p>
                 </div>
               )}
 
@@ -619,7 +645,7 @@ export default function TurnosPage() {
                     </Button>
                     <Button
                       variant="outline"
-                      className="border-red-200 text-red-600 hover:bg-red-50"
+                      className="border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30"
                       onClick={() => handleStatusChange(selectedBooking.id, 'CANCELLED')}
                     >
                       <XCircle className="h-4 w-4 mr-2" />
@@ -639,7 +665,7 @@ export default function TurnosPage() {
                     </Button>
                     <Button
                       variant="outline"
-                      className="border-slate-200 text-slate-600 hover:bg-slate-50"
+                      className="border-slate-200 dark:border-neutral-700 text-slate-600 dark:text-neutral-400 hover:bg-slate-50 dark:hover:bg-neutral-800"
                       onClick={() => handleStatusChange(selectedBooking.id, 'NO_SHOW')}
                     >
                       No asistió

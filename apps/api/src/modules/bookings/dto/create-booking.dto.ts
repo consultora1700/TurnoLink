@@ -15,6 +15,11 @@ export class CreateBookingDto {
   @IsNotEmpty()
   serviceId: string;
 
+  @ApiPropertyOptional({ description: 'ID del empleado asignado' })
+  @IsOptional()
+  @IsUUID()
+  employeeId?: string;
+
   @ApiProperty({ example: '2024-01-15', description: 'Date in YYYY-MM-DD format' })
   @IsString()
   @IsNotEmpty()

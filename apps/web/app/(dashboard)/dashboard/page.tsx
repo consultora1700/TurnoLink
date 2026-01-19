@@ -169,16 +169,16 @@ export default function DashboardPage() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Upcoming Bookings */}
-        <Card className="border shadow-sm bg-white/80 backdrop-blur-sm">
-          <CardHeader className="flex flex-row items-center justify-between border-b bg-slate-50/50">
+        <Card className="border shadow-sm bg-white/80 dark:bg-neutral-800/80 backdrop-blur-sm">
+          <CardHeader className="flex flex-row items-center justify-between border-b bg-slate-50/50 dark:bg-neutral-700/50">
             <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                <Calendar className="h-4 w-4 text-blue-600" />
+              <div className="h-8 w-8 rounded-lg bg-blue-500/10 dark:bg-blue-500/20 flex items-center justify-center">
+                <Calendar className="h-4 w-4 text-blue-600 dark:text-blue-400" />
               </div>
               <CardTitle className="text-base">Próximos Turnos</CardTitle>
             </div>
             <Link href="/turnos">
-              <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-700 hover:bg-blue-50">
+              <Button variant="ghost" size="sm" className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30">
                 Ver todos
                 <ArrowRight className="ml-1 h-4 w-4" />
               </Button>
@@ -191,8 +191,8 @@ export default function DashboardPage() {
                   <div
                     key={booking.id}
                     className={cn(
-                      "flex items-center justify-between p-4 hover:bg-slate-50/50 transition-colors",
-                      index === 0 && "bg-blue-50/30"
+                      "flex items-center justify-between p-4 hover:bg-slate-50/50 dark:hover:bg-neutral-700/50 transition-colors",
+                      index === 0 && "bg-blue-50/30 dark:bg-blue-900/20"
                     )}
                   >
                     <div className="flex items-center gap-3">
@@ -219,8 +219,8 @@ export default function DashboardPage() {
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
-                  <Calendar className="h-6 w-6 text-slate-400" />
+                <div className="h-12 w-12 rounded-full bg-slate-100 dark:bg-neutral-700 flex items-center justify-center mb-3">
+                  <Calendar className="h-6 w-6 text-slate-400 dark:text-neutral-500" />
                 </div>
                 <p className="text-muted-foreground">No hay turnos próximos</p>
                 <Link href="/turnos" className="mt-2">
@@ -234,16 +234,16 @@ export default function DashboardPage() {
         </Card>
 
         {/* Recent Customers */}
-        <Card className="border shadow-sm bg-white/80 backdrop-blur-sm">
-          <CardHeader className="flex flex-row items-center justify-between border-b bg-slate-50/50">
+        <Card className="border shadow-sm bg-white/80 dark:bg-neutral-800/80 backdrop-blur-sm">
+          <CardHeader className="flex flex-row items-center justify-between border-b bg-slate-50/50 dark:bg-neutral-700/50">
             <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                <Users className="h-4 w-4 text-amber-600" />
+              <div className="h-8 w-8 rounded-lg bg-amber-500/10 dark:bg-amber-500/20 flex items-center justify-center">
+                <Users className="h-4 w-4 text-amber-600 dark:text-amber-400" />
               </div>
               <CardTitle className="text-base">Clientes Recientes</CardTitle>
             </div>
             <Link href="/clientes">
-              <Button variant="ghost" size="sm" className="text-amber-600 hover:text-amber-700 hover:bg-amber-50">
+              <Button variant="ghost" size="sm" className="text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/30">
                 Ver todos
                 <ArrowRight className="ml-1 h-4 w-4" />
               </Button>
@@ -255,7 +255,7 @@ export default function DashboardPage() {
                 {stats.recentCustomers.map((customer, index) => (
                   <div
                     key={customer.id}
-                    className="flex items-center justify-between p-4 hover:bg-slate-50/50 transition-colors"
+                    className="flex items-center justify-between p-4 hover:bg-slate-50/50 dark:hover:bg-neutral-700/50 transition-colors"
                   >
                     <div className="flex items-center gap-3">
                       <div className={cn(
@@ -282,8 +282,8 @@ export default function DashboardPage() {
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
-                  <Users className="h-6 w-6 text-slate-400" />
+                <div className="h-12 w-12 rounded-full bg-slate-100 dark:bg-neutral-700 flex items-center justify-center mb-3">
+                  <Users className="h-6 w-6 text-slate-400 dark:text-neutral-500" />
                 </div>
                 <p className="text-muted-foreground">No hay clientes aún</p>
                 <Link href="/clientes" className="mt-2">
@@ -300,42 +300,42 @@ export default function DashboardPage() {
       {/* Quick Actions */}
       <div className="grid gap-4 md:grid-cols-3">
         <Link href="/turnos">
-          <Card className="group cursor-pointer border-2 border-dashed border-blue-200 hover:border-blue-400 bg-blue-50/30 hover:bg-blue-50 transition-all">
+          <Card className="group cursor-pointer border-2 border-blue-200 dark:border-blue-800 hover:border-blue-400 dark:hover:border-blue-600 bg-blue-50/30 dark:bg-blue-900/20 hover:bg-blue-50 dark:hover:bg-blue-900/40 transition-all">
             <CardContent className="flex items-center gap-4 p-6">
               <div className="h-12 w-12 rounded-xl bg-blue-500 flex items-center justify-center text-white group-hover:scale-110 transition-transform">
                 <Calendar className="h-6 w-6" />
               </div>
               <div>
-                <p className="font-semibold text-blue-900">Gestionar Turnos</p>
-                <p className="text-sm text-blue-600">Ver calendario y reservas</p>
+                <p className="font-semibold text-blue-900 dark:text-blue-100">Gestionar Turnos</p>
+                <p className="text-sm text-blue-600 dark:text-blue-400">Ver calendario y reservas</p>
               </div>
             </CardContent>
           </Card>
         </Link>
 
         <Link href="/servicios">
-          <Card className="group cursor-pointer border-2 border-dashed border-emerald-200 hover:border-emerald-400 bg-emerald-50/30 hover:bg-emerald-50 transition-all">
+          <Card className="group cursor-pointer border-2 border-emerald-200 dark:border-emerald-800 hover:border-emerald-400 dark:hover:border-emerald-600 bg-emerald-50/30 dark:bg-emerald-900/20 hover:bg-emerald-50 dark:hover:bg-emerald-900/40 transition-all">
             <CardContent className="flex items-center gap-4 p-6">
               <div className="h-12 w-12 rounded-xl bg-emerald-500 flex items-center justify-center text-white group-hover:scale-110 transition-transform">
                 <Scissors className="h-6 w-6" />
               </div>
               <div>
-                <p className="font-semibold text-emerald-900">Ver Servicios</p>
-                <p className="text-sm text-emerald-600">Administrar servicios</p>
+                <p className="font-semibold text-emerald-900 dark:text-emerald-100">Ver Servicios</p>
+                <p className="text-sm text-emerald-600 dark:text-emerald-400">Administrar servicios</p>
               </div>
             </CardContent>
           </Card>
         </Link>
 
         <Link href="/clientes">
-          <Card className="group cursor-pointer border-2 border-dashed border-violet-200 hover:border-violet-400 bg-violet-50/30 hover:bg-violet-50 transition-all">
+          <Card className="group cursor-pointer border-2 border-violet-200 dark:border-violet-800 hover:border-violet-400 dark:hover:border-violet-600 bg-violet-50/30 dark:bg-violet-900/20 hover:bg-violet-50 dark:hover:bg-violet-900/40 transition-all">
             <CardContent className="flex items-center gap-4 p-6">
               <div className="h-12 w-12 rounded-xl bg-violet-500 flex items-center justify-center text-white group-hover:scale-110 transition-transform">
                 <Users className="h-6 w-6" />
               </div>
               <div>
-                <p className="font-semibold text-violet-900">Ver Clientes</p>
-                <p className="text-sm text-violet-600">Gestionar clientes</p>
+                <p className="font-semibold text-violet-900 dark:text-violet-100">Ver Clientes</p>
+                <p className="text-sm text-violet-600 dark:text-violet-400">Gestionar clientes</p>
               </div>
             </CardContent>
           </Card>
