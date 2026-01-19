@@ -298,14 +298,14 @@ export default function HomePage() {
       </section>
 
       {/* Logos Section */}
-      <section className="py-12 border-y bg-muted/30">
+      <section className="py-8 sm:py-12 border-y bg-muted/30">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <p className="text-center text-sm text-muted-foreground mb-8">
+          <p className="text-center text-xs sm:text-sm text-muted-foreground mb-4 sm:mb-8">
             {t('landing.logos.title')}
           </p>
-          <div className="flex flex-wrap justify-center items-center gap-8 md:gap-16 opacity-60">
+          <div className="flex flex-wrap justify-center items-center gap-4 sm:gap-8 md:gap-16 opacity-60">
             {['Bella Estética', 'Spa Zen', 'Centro Bienestar', 'Studio Nails', 'Dr. González'].map((name, i) => (
-              <div key={i} className="text-xl font-bold text-slate-400 dark:text-neutral-500">
+              <div key={i} className="text-sm sm:text-xl font-bold text-slate-400 dark:text-neutral-500">
                 {name}
               </div>
             ))}
@@ -330,39 +330,39 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6 lg:gap-8">
             <FeatureCard
-              icon={<Calendar className="h-6 w-6" />}
+              icon={<Calendar className="h-5 w-5 sm:h-6 sm:w-6" />}
               title={t('landing.features.calendar.title')}
               description={t('landing.features.calendar.description')}
               gradient="from-brand-500 to-brand-600"
             />
             <FeatureCard
-              icon={<Clock className="h-6 w-6" />}
+              icon={<Clock className="h-5 w-5 sm:h-6 sm:w-6" />}
               title={t('landing.features.booking.title')}
               description={t('landing.features.booking.description')}
               gradient="from-blue-500 to-cyan-500"
             />
             <FeatureCard
-              icon={<MessageSquare className="h-6 w-6" />}
+              icon={<MessageSquare className="h-5 w-5 sm:h-6 sm:w-6" />}
               title={t('landing.features.notifications.title')}
               description={t('landing.features.notifications.description')}
               gradient="from-green-500 to-emerald-500"
             />
             <FeatureCard
-              icon={<Users className="h-6 w-6" />}
+              icon={<Users className="h-5 w-5 sm:h-6 sm:w-6" />}
               title={t('landing.features.customers.title')}
               description={t('landing.features.customers.description')}
               gradient="from-orange-500 to-amber-500"
             />
             <FeatureCard
-              icon={<Smartphone className="h-6 w-6" />}
+              icon={<Smartphone className="h-5 w-5 sm:h-6 sm:w-6" />}
               title={t('landing.features.responsive.title')}
               description={t('landing.features.responsive.description')}
               gradient="from-pink-500 to-rose-500"
             />
             <FeatureCard
-              icon={<BarChart3 className="h-6 w-6" />}
+              icon={<BarChart3 className="h-5 w-5 sm:h-6 sm:w-6" />}
               title={t('landing.features.reports.title')}
               description={t('landing.features.reports.description')}
               gradient="from-brand-600 to-brand-700"
@@ -387,44 +387,44 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
             <MiniFeatureCard
-              icon={<Scissors className="h-5 w-5" />}
+              icon={<Scissors className="h-4 w-4 sm:h-5 sm:w-5" />}
               title="Gestión de Servicios"
               description="Crea y organiza tus servicios con precios, duraciones y categorías personalizadas."
             />
             <MiniFeatureCard
-              icon={<UserCog className="h-5 w-5" />}
+              icon={<UserCog className="h-4 w-4 sm:h-5 sm:w-5" />}
               title="Equipo de Trabajo"
               description="Administra empleados, asigna especialidades y gestiona sus horarios individuales."
             />
             <MiniFeatureCard
-              icon={<CalendarDays className="h-5 w-5" />}
+              icon={<CalendarDays className="h-4 w-4 sm:h-5 sm:w-5" />}
               title="Horarios Flexibles"
               description="Configura horarios por día de la semana y bloquea fechas especiales fácilmente."
             />
             <MiniFeatureCard
-              icon={<ClipboardList className="h-5 w-5" />}
+              icon={<ClipboardList className="h-4 w-4 sm:h-5 sm:w-5" />}
               title="Estados de Turnos"
               description="Controla el ciclo completo: pendiente, confirmado, completado, cancelado o no-show."
             />
             <MiniFeatureCard
-              icon={<Users className="h-5 w-5" />}
+              icon={<Users className="h-4 w-4 sm:h-5 sm:w-5" />}
               title="CRM de Clientes"
               description="Historial completo de visitas, notas y datos de contacto de cada cliente."
             />
             <MiniFeatureCard
-              icon={<TrendingUp className="h-5 w-5" />}
+              icon={<TrendingUp className="h-4 w-4 sm:h-5 sm:w-5" />}
               title="Estadísticas en Vivo"
               description="Métricas del día, semana y mes con próximos turnos y clientes recientes."
             />
             <MiniFeatureCard
-              icon={<Bell className="h-5 w-5" />}
+              icon={<Bell className="h-4 w-4 sm:h-5 sm:w-5" />}
               title="Notificaciones"
               description="Email y WhatsApp automáticos para confirmaciones y recordatorios."
             />
             <MiniFeatureCard
-              icon={<Ban className="h-5 w-5" />}
+              icon={<Ban className="h-4 w-4 sm:h-5 sm:w-5" />}
               title="Días Bloqueados"
               description="Marca vacaciones, feriados o días sin servicio con un solo click."
             />
@@ -761,39 +761,39 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 max-w-5xl mx-auto">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6 lg:gap-8 max-w-5xl mx-auto">
             <CustomerFeatureCard
-              icon={<Scissors className="h-6 w-6" />}
+              icon={<Scissors className="h-5 w-5 sm:h-6 sm:w-6" />}
               title="Elegir Servicio"
               description="Catálogo visual con descripciones, precios y duración de cada servicio."
               step="1"
             />
             <CustomerFeatureCard
-              icon={<UserCog className="h-6 w-6" />}
+              icon={<UserCog className="h-5 w-5 sm:h-6 sm:w-6" />}
               title="Seleccionar Profesional"
               description="Opción de elegir su empleado favorito o dejar que el sistema asigne."
               step="2"
             />
             <CustomerFeatureCard
-              icon={<CalendarDays className="h-6 w-6" />}
+              icon={<CalendarDays className="h-5 w-5 sm:h-6 sm:w-6" />}
               title="Fecha y Hora"
               description="Calendario interactivo mostrando solo los horarios disponibles en tiempo real."
               step="3"
             />
             <CustomerFeatureCard
-              icon={<UserPlus className="h-6 w-6" />}
+              icon={<UserPlus className="h-5 w-5 sm:h-6 sm:w-6" />}
               title="Datos de Contacto"
               description="Formulario simple con nombre, teléfono y email (configurable)."
               step="4"
             />
             <CustomerFeatureCard
-              icon={<CheckCircle2 className="h-6 w-6" />}
+              icon={<CheckCircle2 className="h-5 w-5 sm:h-6 sm:w-6" />}
               title="Confirmación Instantánea"
               description="Resumen del turno con todos los detalles y confirmación inmediata."
               step="5"
             />
             <CustomerFeatureCard
-              icon={<Bell className="h-6 w-6" />}
+              icon={<Bell className="h-5 w-5 sm:h-6 sm:w-6" />}
               title="Recordatorios"
               description="Notificaciones automáticas por email o WhatsApp antes del turno."
               step="6"
@@ -814,7 +814,7 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8 lg:gap-12 max-w-5xl mx-auto">
+          <div className="grid grid-cols-3 gap-3 sm:gap-8 lg:gap-12 max-w-5xl mx-auto">
             <StepCard
               number="01"
               title={t('landing.howItWorks.step1.title')}
@@ -843,7 +843,7 @@ export default function HomePage() {
             </h2>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-6 lg:gap-8 max-w-6xl mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 max-w-6xl mx-auto">
             <TestimonialCard
               quote={t('landing.testimonials.testimonial1.quote')}
               author={t('landing.testimonials.testimonial1.author')}
@@ -892,28 +892,28 @@ export default function HomePage() {
                 </div>
                 <p className="mt-2 text-white/80">Facturación mensual</p>
               </div>
-              <div className="p-8">
-                <ul className="space-y-3 mb-6">
+              <div className="p-6 sm:p-8">
+                <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 mb-6">
                   {[
                     { text: t('landing.pricing.features.unlimited'), icon: Calendar },
                     { text: t('landing.pricing.features.customers'), icon: Users },
-                    { text: 'Gestión de servicios y categorías', icon: Scissors },
+                    { text: 'Gestión de servicios', icon: Scissors },
                     { text: 'Empleados ilimitados', icon: UserCog },
                     { text: t('landing.pricing.features.notifications'), icon: Bell },
                     { text: t('landing.pricing.features.calendar'), icon: CalendarDays },
                     { text: t('landing.pricing.features.customPage'), icon: Palette },
-                    { text: '5 estilos de fondo + modo oscuro', icon: Layers },
+                    { text: '5 estilos + modo oscuro', icon: Layers },
                     { text: t('landing.pricing.features.schedule'), icon: Clock },
-                    { text: 'Días bloqueados y vacaciones', icon: Ban },
-                    { text: 'Integración con Mercado Pago', icon: CreditCard },
+                    { text: 'Días bloqueados', icon: Ban },
+                    { text: 'Mercado Pago', icon: CreditCard },
                     { text: t('landing.pricing.features.reports'), icon: BarChart3 },
-                    { text: 'Autenticación 2FA (TOTP)', icon: Shield },
-                    { text: 'Multi-idioma (ES/EN)', icon: Languages },
+                    { text: '2FA (TOTP)', icon: Shield },
+                    { text: 'Multi-idioma', icon: Languages },
                     { text: t('landing.pricing.features.support'), icon: MessageSquare },
                   ].map((feature, i) => (
-                    <li key={i} className="flex items-center gap-3">
-                      <feature.icon className="h-4 w-4 text-brand-500 flex-shrink-0" />
-                      <span className="text-sm">{feature.text}</span>
+                    <li key={i} className="flex items-center gap-2 sm:gap-3">
+                      <feature.icon className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-brand-500 flex-shrink-0" />
+                      <span className="text-xs sm:text-sm">{feature.text}</span>
                     </li>
                   ))}
                 </ul>
@@ -1041,12 +1041,12 @@ function FeatureCard({
   gradient: string;
 }) {
   return (
-    <div className="group relative bg-card rounded-2xl border p-6 lg:p-8 hover:border-brand-200 dark:hover:border-brand-400/50 hover:shadow-soft-lg transition-all duration-300">
-      <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${gradient} flex items-center justify-center text-white mb-6 group-hover:scale-110 transition-transform duration-300`}>
+    <div className="group relative bg-card rounded-xl sm:rounded-2xl border p-4 sm:p-6 lg:p-8 hover:border-brand-200 dark:hover:border-brand-400/50 hover:shadow-soft-lg transition-all duration-300">
+      <div className={`w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-gradient-to-br ${gradient} flex items-center justify-center text-white mb-3 sm:mb-6 group-hover:scale-110 transition-transform duration-300`}>
         {icon}
       </div>
-      <h3 className="text-xl font-semibold mb-3">{title}</h3>
-      <p className="text-muted-foreground leading-relaxed">{description}</p>
+      <h3 className="text-base sm:text-xl font-semibold mb-1 sm:mb-3">{title}</h3>
+      <p className="text-xs sm:text-base text-muted-foreground leading-relaxed hidden sm:block">{description}</p>
     </div>
   );
 }
@@ -1062,11 +1062,11 @@ function StepCard({
 }) {
   return (
     <div className="text-center">
-      <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-primary text-white text-2xl font-bold mb-6 shadow-glow">
+      <div className="inline-flex items-center justify-center w-10 h-10 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-gradient-primary text-white text-base sm:text-2xl font-bold mb-3 sm:mb-6 shadow-glow">
         {number}
       </div>
-      <h3 className="text-xl font-semibold mb-3">{title}</h3>
-      <p className="text-muted-foreground">{description}</p>
+      <h3 className="text-sm sm:text-xl font-semibold mb-1 sm:mb-3">{title}</h3>
+      <p className="text-xs sm:text-base text-muted-foreground hidden sm:block">{description}</p>
     </div>
   );
 }
@@ -1083,16 +1083,16 @@ function TestimonialCard({
   rating: number;
 }) {
   return (
-    <div className="bg-card rounded-2xl border p-6 lg:p-8">
-      <div className="flex gap-1 mb-4">
+    <div className="bg-card rounded-xl sm:rounded-2xl border p-4 sm:p-6 lg:p-8">
+      <div className="flex gap-0.5 sm:gap-1 mb-2 sm:mb-4">
         {Array.from({ length: rating }).map((_, i) => (
-          <Star key={i} className="h-5 w-5 fill-amber-400 text-amber-400" />
+          <Star key={i} className="h-3.5 w-3.5 sm:h-5 sm:w-5 fill-amber-400 text-amber-400" />
         ))}
       </div>
-      <p className="text-lg mb-6 leading-relaxed">&ldquo;{quote}&rdquo;</p>
+      <p className="text-sm sm:text-lg mb-3 sm:mb-6 leading-relaxed line-clamp-4 sm:line-clamp-none">&ldquo;{quote}&rdquo;</p>
       <div>
-        <p className="font-semibold">{author}</p>
-        <p className="text-sm text-muted-foreground">{role}</p>
+        <p className="font-semibold text-sm sm:text-base">{author}</p>
+        <p className="text-xs sm:text-sm text-muted-foreground">{role}</p>
       </div>
     </div>
   );
@@ -1108,12 +1108,12 @@ function MiniFeatureCard({
   description: string;
 }) {
   return (
-    <div className="bg-card rounded-xl border p-5 hover:border-brand-200 dark:hover:border-brand-400/50 hover:shadow-md transition-all duration-300">
-      <div className="w-10 h-10 rounded-xl bg-brand-100 dark:bg-brand-900/30 flex items-center justify-center text-brand-600 dark:text-brand-400 mb-4">
+    <div className="bg-card rounded-lg sm:rounded-xl border p-3 sm:p-5 hover:border-brand-200 dark:hover:border-brand-400/50 hover:shadow-md transition-all duration-300">
+      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-brand-100 dark:bg-brand-900/30 flex items-center justify-center text-brand-600 dark:text-brand-400 mb-2 sm:mb-4">
         {icon}
       </div>
-      <h3 className="font-semibold mb-2">{title}</h3>
-      <p className="text-sm text-muted-foreground leading-relaxed">{description}</p>
+      <h3 className="font-semibold text-sm sm:text-base mb-1 sm:mb-2">{title}</h3>
+      <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed hidden sm:block">{description}</p>
     </div>
   );
 }
@@ -1174,15 +1174,15 @@ function CustomerFeatureCard({
   step: string;
 }) {
   return (
-    <div className="relative bg-card rounded-2xl border p-6 hover:border-pink-200 dark:hover:border-pink-400/50 hover:shadow-lg transition-all duration-300">
-      <div className="absolute -top-3 -left-3 w-8 h-8 rounded-full bg-gradient-to-br from-pink-500 to-violet-500 flex items-center justify-center text-white text-sm font-bold shadow-md">
+    <div className="relative bg-card rounded-xl sm:rounded-2xl border p-4 sm:p-6 hover:border-pink-200 dark:hover:border-pink-400/50 hover:shadow-lg transition-all duration-300">
+      <div className="absolute -top-2 -left-2 sm:-top-3 sm:-left-3 w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-pink-500 to-violet-500 flex items-center justify-center text-white text-xs sm:text-sm font-bold shadow-md">
         {step}
       </div>
-      <div className="w-12 h-12 rounded-xl bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center text-pink-600 dark:text-pink-400 mb-4 mt-2">
+      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center text-pink-600 dark:text-pink-400 mb-2 sm:mb-4 mt-1 sm:mt-2">
         {icon}
       </div>
-      <h3 className="text-lg font-semibold mb-2">{title}</h3>
-      <p className="text-sm text-muted-foreground leading-relaxed">{description}</p>
+      <h3 className="text-sm sm:text-lg font-semibold mb-1 sm:mb-2">{title}</h3>
+      <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed hidden sm:block">{description}</p>
     </div>
   );
 }
