@@ -44,6 +44,7 @@ import {
   BadgeDollarSign,
 } from 'lucide-react';
 import { FloatingParticles } from '@/components/landing/floating-particles';
+import { ScrollToTop } from '@/components/landing/scroll-to-top';
 
 export default function HomePage() {
   const { t } = useTranslation();
@@ -966,6 +967,9 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* Scroll to Top Button */}
+      <ScrollToTop />
 
       {/* Footer */}
       <footer className="border-t bg-muted/50">
