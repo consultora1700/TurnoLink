@@ -9,6 +9,9 @@ export type { UseTenantReturn } from './use-tenant';
 export { useAvailability } from './use-availability';
 export type { UseAvailabilityReturn } from './use-availability';
 
+export { useDailyAvailability } from './use-daily-availability';
+export type { UseDailyAvailabilityReturn, DailyAvailabilityDay } from './use-daily-availability';
+
 export { useBooking } from './use-booking';
 export type { UseBookingReturn, BookingStatus } from './use-booking';
 

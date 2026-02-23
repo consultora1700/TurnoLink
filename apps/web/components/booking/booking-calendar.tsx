@@ -5,6 +5,7 @@ import {
   format,
   addMonths,
   subMonths,
+  addDays,
   startOfMonth,
   endOfMonth,
   eachDayOfInterval,
@@ -12,6 +13,7 @@ import {
   isSameDay,
   isToday,
   isBefore,
+  isAfter,
   startOfDay,
 } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -22,9 +24,10 @@ import { cn } from '@/lib/utils';
 interface Props {
   selectedDate: Date | null;
   onSelect: (date: Date) => void;
+  maxAdvanceDays?: number;
 }
 
-export function BookingCalendar({ selectedDate, onSelect }: Props) {
+export function BookingCalendar({ selectedDate, onSelect, maxAdvanceDays = 30 }: Props) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
   const days = eachDayOfInterval({
@@ -36,15 +39,21 @@ export function BookingCalendar({ selectedDate, onSelect }: Props) {
   const emptyDays = firstDayOfMonth === 0 ? 6 : firstDayOfMonth - 1;
 
   const today = startOfDay(new Date());
+  const maxDate = startOfDay(addDays(today, maxAdvanceDays));
+
+  // Disable navigation to months entirely before today or after maxDate
+  const canGoPrev = isSameMonth(currentMonth, today) ? false : isAfter(startOfMonth(currentMonth), today) || isSameMonth(currentMonth, addMonths(today, 1));
+  const canGoNext = isBefore(startOfMonth(addMonths(currentMonth, 1)), maxDate) || isSameMonth(addMonths(currentMonth, 1), maxDate);
 
   return (
-    <div className="bg-background border rounded-lg p-4">
+    <div className="bg-background border rounded-lg p-2 sm:p-4">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <Button
           variant="ghost"
           size="icon"
           onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
+          disabled={isSameMonth(currentMonth, today)}
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
@@ -55,6 +64,7 @@ export function BookingCalendar({ selectedDate, onSelect }: Props) {
           variant="ghost"
           size="icon"
           onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
+          disabled={!canGoNext}
         >
           <ChevronRight className="h-4 w-4" />
         </Button>
@@ -82,6 +92,8 @@ export function BookingCalendar({ selectedDate, onSelect }: Props) {
         {/* Days */}
         {days.map((day) => {
           const isPast = isBefore(day, today);
+          const isBeyondMax = isAfter(day, maxDate);
+          const isDisabled = isPast || isBeyondMax;
           const isSelected = selectedDate && isSameDay(day, selectedDate);
           const isCurrentMonth = isSameMonth(day, currentMonth);
           const isTodayDate = isToday(day);
@@ -89,13 +101,13 @@ export function BookingCalendar({ selectedDate, onSelect }: Props) {
           return (
             <button
               key={day.toISOString()}
-              onClick={() => !isPast && onSelect(day)}
-              disabled={isPast}
+              onClick={() => !isDisabled && onSelect(day)}
+              disabled={isDisabled}
               className={cn(
                 'h-10 rounded-md text-sm font-medium transition-colors',
                 !isCurrentMonth && 'text-muted-foreground/50',
-                isPast && 'text-muted-foreground/30 cursor-not-allowed',
-                !isPast && !isSelected && 'hover:bg-muted',
+                isDisabled && 'text-muted-foreground/30 cursor-not-allowed',
+                !isDisabled && !isSelected && 'hover:bg-muted',
                 isSelected && 'bg-primary text-primary-foreground',
                 isTodayDate && !isSelected && 'border border-primary'
               )}

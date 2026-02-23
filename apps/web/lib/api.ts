@@ -30,6 +30,7 @@ export interface User {
   name: string;
   role: string;
   tenantId: string | null;
+  tenantType?: string;
   isActive: boolean;
 }
 
@@ -72,11 +73,18 @@ export interface TenantPublic {
     accentColor?: string;
     enableDarkMode?: boolean;
     backgroundStyle?: 'minimal' | 'modern' | 'elegant' | 'fresh' | 'vibrant';
+    heroStyle?: string;
     maxAdvanceBookingDays: number;
     minAdvanceBookingHours: number;
     requireDeposit?: boolean;
     depositPercentage?: number;
     depositMode?: string;
+    smartTimeSlots?: boolean;
+    bookingMode?: 'HOURLY' | 'DAILY';
+    dailyCheckInTime?: string;
+    dailyCheckOutTime?: string;
+    dailyMinNights?: number;
+    dailyMaxNights?: number;
   };
   services: ServicePublic[];
   categories: Category[];
@@ -90,9 +98,13 @@ export interface Service {
   price: number;
   duration: number;
   image: string | null;
+  includes: string | null;
   isActive: boolean;
   order: number;
   categoryId: string | null;
+  images?: string[];
+  imageDisplayMode?: string;
+  variations?: VariationGroup[];
 }
 
 export interface ServicePublic {
@@ -102,6 +114,7 @@ export interface ServicePublic {
   price: number | null;
   duration: number;
   image: string | null;
+  includes: string | null;
   categoryId: string | null;
 }
 
@@ -135,6 +148,86 @@ export interface CreateEmployeeData {
   order?: number;
 }
 
+// Branch types
+export interface Branch {
+  id: string;
+  tenantId: string;
+  name: string;
+  slug: string;
+  image: string | null;
+  address: string | null;
+  city: string | null;
+  phone: string | null;
+  email: string | null;
+  isMain: boolean;
+  isActive: boolean;
+  order: number;
+  createdAt: string;
+  updatedAt: string;
+  _count?: {
+    branchServices: number;
+    branchEmployees: number;
+  };
+}
+
+export interface BranchPublic {
+  id: string;
+  name: string;
+  slug: string;
+  image: string | null;
+  address: string | null;
+  city: string | null;
+  phone: string | null;
+  email: string | null;
+  isMain: boolean;
+}
+
+export interface CreateBranchData {
+  name: string;
+  slug: string;
+  image?: string;
+  address?: string;
+  city?: string;
+  phone?: string;
+  email?: string;
+  isMain?: boolean;
+  isActive?: boolean;
+  order?: number;
+}
+
+export interface BranchService {
+  id: string;
+  branchId: string;
+  serviceId: string;
+  priceOverride: number | null;
+  isActive: boolean;
+  service: Service;
+}
+
+export interface BranchEmployee {
+  id: string;
+  branchId: string;
+  employeeId: string;
+  isActive: boolean;
+  employee: Employee;
+}
+
+export interface BranchSchedule {
+  id: string;
+  branchId: string;
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  isActive: boolean;
+}
+
+export interface BranchBlockedDate {
+  id: string;
+  branchId: string;
+  date: string;
+  reason: string | null;
+}
+
 export interface Booking {
   id: string;
   tenantId: string;
@@ -144,6 +237,9 @@ export interface Booking {
   date: string;
   startTime: string;
   endTime: string;
+  checkOutDate: string | null;
+  totalNights: number | null;
+  totalPrice: number | null;
   status: 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW';
   notes: string | null;
   createdAt: string;
@@ -196,6 +292,7 @@ export interface DashboardStats {
 
 export interface CreateBookingData {
   serviceId: string;
+  branchId?: string;
   employeeId?: string;
   date: string;
   startTime: string;
@@ -205,6 +302,39 @@ export interface CreateBookingData {
   notes?: string;
 }
 
+export interface CreateDailyBookingData {
+  serviceId: string;
+  branchId?: string;
+  checkInDate: string;
+  checkOutDate: string;
+  customerName: string;
+  customerPhone: string;
+  customerEmail?: string;
+  notes?: string;
+}
+
+export interface DailyAvailabilityDay {
+  date: string;
+  available: boolean;
+}
+
+// Service Variations
+export interface VariationOption {
+  id: string;
+  name: string;
+  priceModifier: number;
+  pricingType: 'absolute' | 'relative';
+  durationModifier: number;
+}
+
+export interface VariationGroup {
+  id: string;
+  label: string;
+  type: 'single' | 'multi';
+  required: boolean;
+  options: VariationOption[];
+}
+
 export interface CreateServiceData {
   name: string;
   description?: string;
@@ -212,6 +342,11 @@ export interface CreateServiceData {
   duration: number;
   isActive?: boolean;
   categoryId?: string;
+  image?: string;
+  images?: string[];
+  imageDisplayMode?: string;
+  includes?: string;
+  variations?: string;
 }
 
 export interface UpdateServiceData extends Partial<CreateServiceData> {
@@ -223,6 +358,107 @@ export interface ScheduleUpdate {
   startTime: string;
   endTime: string;
   isActive: boolean;
+}
+
+// Talent Profile types
+export interface TalentProfile {
+  id: string;
+  name: string;
+  phone: string | null;
+  image: string | null;
+  specialty: string | null;
+  category: string | null;
+  coverImage: string | null;
+  headerTemplate: string | null;
+  headline: string | null;
+  bio: string | null;
+  yearsExperience: number | null;
+  skills: string[];
+  certifications: string[];
+  availability: string | null;
+  preferredZones: string[];
+  openToWork: boolean;
+  profileVisible: boolean;
+  experiences: Array<{
+    id: string;
+    businessName: string;
+    role: string;
+    startDate: string;
+    endDate: string | null;
+    isCurrent: boolean;
+    description: string | null;
+  }>;
+}
+
+// My Professional Profile (self-registered PROFESSIONAL users)
+export interface MyProfileData {
+  name: string;
+  phone?: string;
+  headline?: string;
+  bio?: string;
+  specialty?: string;
+  category?: string;
+  image?: string;
+  coverImage?: string;
+  headerTemplate?: string;
+  yearsExperience?: number;
+  skills?: string[];
+  certifications?: string[];
+  availability?: string;
+  preferredZones?: string[];
+  openToWork?: boolean;
+  profileVisible?: boolean;
+}
+
+export interface ExperienceData {
+  businessName: string;
+  role: string;
+  startDate: string;
+  endDate?: string;
+  isCurrent?: boolean;
+  description?: string;
+}
+
+// Talent Proposal types
+export interface TalentProposal {
+  id: string;
+  profileId: string;
+  profile?: { name: string; specialty: string | null; image: string | null; email?: string; phone?: string | null };
+  senderTenantId: string;
+  senderTenant?: { name: string };
+  role: string;
+  message: string;
+  availability: string | null;
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED';
+  respondedAt: string | null;
+  responseMessage: string | null;
+  viewedAt: string | null;
+  createdAt: string;
+}
+
+// Public Talent types (reduced data for unauthenticated visitors)
+export interface PublicTalentProfile {
+  id: string;
+  name: string;
+  image: string | null;
+  specialty: string | null;
+  headline: string | null;
+  bio: string | null;
+  yearsExperience: number | null;
+  skills: string[];
+  availability: string | null;
+  openToWork: boolean;
+}
+
+export interface PublicTalentProfileDetail extends PublicTalentProfile {
+  experiences: Array<{
+    id: string;
+    businessName: string;
+    role: string;
+    startDate: string;
+    endDate: string | null;
+    isCurrent: boolean;
+  }>;
 }
 
 // =============================================================================
@@ -300,15 +536,19 @@ async function request<T>(
         headers,
       });
 
-      // Handle non-JSON responses
+      // Handle empty and non-JSON responses
       const contentType = response.headers.get('content-type');
+      const contentLength = response.headers.get('content-length');
       let data: unknown;
 
-      if (contentType?.includes('application/json')) {
+      // Empty body (e.g. null returned from API)
+      if (contentLength === '0') {
+        data = null;
+      } else if (contentType?.includes('application/json')) {
         data = await response.json();
       } else {
         const text = await response.text();
-        data = { message: text };
+        data = text.length === 0 ? null : { message: text };
       }
 
       if (!response.ok) {
@@ -320,9 +560,7 @@ async function request<T>(
         );
       }
 
-      // Handle wrapped responses
-      const responseData = data as { data?: T };
-      return (responseData.data !== undefined ? responseData.data : data) as T;
+      return data as T;
 
     } catch (error) {
       lastError = error as Error;
@@ -365,14 +603,18 @@ export const authApi = {
     email: string;
     password: string;
     name: string;
-    businessName: string;
-    businessSlug: string;
+    businessName?: string;
+    businessSlug?: string;
+    accountType?: 'BUSINESS' | 'PROFESSIONAL';
+    companyName?: string;
+    specialty?: string;
+    category?: string;
   }) => {
     return request<{
       accessToken: string;
       refreshToken: string;
       user: User;
-      tenant: Tenant;
+      tenant: Tenant & { type?: string };
     }>('/auth/register', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -400,6 +642,22 @@ export const authApi = {
       method: 'POST',
       body: JSON.stringify({ currentPassword, newPassword }),
       token,
+      retries: 0,
+    });
+  },
+
+  forgotPassword: async (email: string) => {
+    return request<{ message: string }>('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+      retries: 0,
+    });
+  },
+
+  resetPassword: async (token: string, newPassword: string) => {
+    return request<{ message: string }>('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, newPassword }),
       retries: 0,
     });
   },
@@ -444,6 +702,106 @@ export const publicApi = {
       retries: 0, // Don't retry booking creation
     });
   },
+
+  getDailyAvailability: async (
+    slug: string,
+    startDate: string,
+    endDate: string,
+    branchId?: string
+  ): Promise<DailyAvailabilityDay[]> => {
+    const params = new URLSearchParams({ startDate, endDate });
+    if (branchId) params.append('branchId', branchId);
+    return request<DailyAvailabilityDay[]>(`/public/bookings/${slug}/daily-availability?${params}`);
+  },
+
+  createDailyBooking: async (slug: string, data: CreateDailyBookingData): Promise<Booking & { requiresPayment?: boolean; depositMode?: string }> => {
+    return request<Booking & { requiresPayment?: boolean; depositMode?: string }>(`/public/bookings/${slug}/daily`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+      retries: 0,
+    });
+  },
+
+  // Branch public methods
+  getBranches: async (slug: string): Promise<BranchPublic[]> => {
+    return request<BranchPublic[]>(`/public/tenants/${slug}/branches`);
+  },
+
+  getBranch: async (slug: string, branchSlug: string): Promise<Branch> => {
+    return request<Branch>(`/public/tenants/${slug}/branches/${branchSlug}`);
+  },
+
+  getBranchServices: async (slug: string, branchSlug: string): Promise<ServicePublic[]> => {
+    return request<ServicePublic[]>(`/public/tenants/${slug}/branches/${branchSlug}/services`);
+  },
+
+  getBranchEmployees: async (
+    slug: string,
+    branchSlug: string,
+    serviceId?: string
+  ): Promise<EmployeePublic[]> => {
+    const params = serviceId ? `?serviceId=${serviceId}` : '';
+    return request<EmployeePublic[]>(`/public/tenants/${slug}/branches/${branchSlug}/employees${params}`);
+  },
+
+  getBranchAvailability: async (
+    slug: string,
+    branchSlug: string,
+    date: string,
+    serviceId?: string
+  ): Promise<TimeSlot[]> => {
+    const params = new URLSearchParams({ date });
+    if (serviceId) params.append('serviceId', serviceId);
+    return request<TimeSlot[]>(`/public/tenants/${slug}/branches/${branchSlug}/availability?${params}`);
+  },
+};
+
+// =============================================================================
+// Public Professional Profile API
+// =============================================================================
+
+export const publicProfileApi = {
+  getProposalsReceived: (token: string) =>
+    request<TalentProposal[]>(`/public/professional-profile/${token}/proposals`),
+
+  respondProposal: (token: string, proposalId: string, data: { status: 'ACCEPTED' | 'REJECTED'; responseMessage?: string }) =>
+    request<TalentProposal>(`/public/professional-profile/${token}/proposals/${proposalId}/respond`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  markProposalViewed: (token: string, proposalId: string) =>
+    request<{ success: boolean }>(`/public/professional-profile/${token}/proposals/${proposalId}/viewed`, {
+      method: 'PUT',
+    }),
+};
+
+// =============================================================================
+// Public Talent Browse API (no auth required)
+// =============================================================================
+
+export const publicTalentApi = {
+  browse: (params?: {
+    search?: string;
+    specialty?: string;
+    category?: string;
+    availability?: string;
+    openToWork?: boolean;
+    page?: number;
+    limit?: number;
+  }) => {
+    const query = params
+      ? `?${new URLSearchParams(
+          Object.entries(params)
+            .filter(([, v]) => v !== undefined)
+            .map(([k, v]) => [k, String(v)])
+        ).toString()}`
+      : '';
+    return request<PaginatedResponse<PublicTalentProfile>>(`/public/talent${query}`);
+  },
+
+  getProfile: (id: string) =>
+    request<PublicTalentProfileDetail>(`/public/talent/${id}`),
 };
 
 // =============================================================================
@@ -467,7 +825,7 @@ export function createApiClient(token: string) {
     // Tenant
     getTenant: () => authRequest<Tenant>('/tenants/current'),
 
-    updateTenant: (data: Partial<Omit<Tenant, 'id' | 'slug'>>) =>
+    updateTenant: (data: Partial<Omit<Tenant, 'id'>>) =>
       authRequest<Tenant>('/tenants/current', {
         method: 'PUT',
         body: JSON.stringify(data),
@@ -521,6 +879,16 @@ export function createApiClient(token: string) {
     },
 
     getTodayBookings: () => authRequest<Booking[]>('/bookings/today'),
+
+    getRecentBookings: () => authRequest<{
+      id: string;
+      customerName: string;
+      serviceName: string;
+      date: string;
+      startTime: string;
+      createdAt: string;
+      status: string;
+    }[]>('/bookings/recent'),
 
     getBooking: (id: string) => authRequest<Booking>(`/bookings/${id}`),
 
@@ -615,6 +983,116 @@ export function createApiClient(token: string) {
         body: JSON.stringify({ employeeIds }),
       }),
 
+    getEmployeeServices: (id: string) =>
+      authRequest<Service[]>(`/employees/${id}/services`),
+
+    updateEmployeeServices: (id: string, serviceIds: string[]) =>
+      authRequest<Service[]>(`/employees/${id}/services`, {
+        method: 'PUT',
+        body: JSON.stringify({ serviceIds }),
+      }),
+
+    // Branches
+    getBranches: () => authRequest<Branch[]>('/branches'),
+
+    getBranch: (id: string) => authRequest<Branch>(`/branches/${id}`),
+
+    createBranch: (data: CreateBranchData) =>
+      authRequest<Branch>('/branches', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+
+    updateBranch: (id: string, data: Partial<CreateBranchData>) =>
+      authRequest<Branch>(`/branches/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }),
+
+    deleteBranch: (id: string) =>
+      authRequest<void>(`/branches/${id}`, { method: 'DELETE' }),
+
+    reorderBranches: (branchIds: string[]) =>
+      authRequest<Branch[]>('/branches/reorder', {
+        method: 'POST',
+        body: JSON.stringify({ branchIds }),
+      }),
+
+    // Branch Services
+    getBranchServices: (branchId: string) =>
+      authRequest<BranchService[]>(`/branches/${branchId}/services`),
+
+    assignServiceToBranch: (branchId: string, serviceId: string, priceOverride?: number) =>
+      authRequest<BranchService>(`/branches/${branchId}/services`, {
+        method: 'POST',
+        body: JSON.stringify({ serviceId, priceOverride }),
+      }),
+
+    removeServiceFromBranch: (branchId: string, serviceId: string) =>
+      authRequest<void>(`/branches/${branchId}/services/${serviceId}`, {
+        method: 'DELETE',
+      }),
+
+    bulkAssignServicesToBranch: (branchId: string, serviceIds: string[]) =>
+      authRequest<BranchService[]>(`/branches/${branchId}/services`, {
+        method: 'PUT',
+        body: JSON.stringify({ serviceIds }),
+      }),
+
+    // Branch Employees
+    getBranchEmployees: (branchId: string) =>
+      authRequest<BranchEmployee[]>(`/branches/${branchId}/employees`),
+
+    assignEmployeeToBranch: (branchId: string, employeeId: string) =>
+      authRequest<BranchEmployee>(`/branches/${branchId}/employees`, {
+        method: 'POST',
+        body: JSON.stringify({ employeeId }),
+      }),
+
+    removeEmployeeFromBranch: (branchId: string, employeeId: string) =>
+      authRequest<void>(`/branches/${branchId}/employees/${employeeId}`, {
+        method: 'DELETE',
+      }),
+
+    bulkAssignEmployeesToBranch: (branchId: string, employeeIds: string[]) =>
+      authRequest<BranchEmployee[]>(`/branches/${branchId}/employees`, {
+        method: 'PUT',
+        body: JSON.stringify({ employeeIds }),
+      }),
+
+    // Branch Schedules
+    getBranchSchedules: (branchId: string) =>
+      authRequest<BranchSchedule[]>(`/branches/${branchId}/schedules`),
+
+    updateBranchSchedules: (
+      branchId: string,
+      schedules: Array<{
+        dayOfWeek: number;
+        startTime: string;
+        endTime: string;
+        isActive: boolean;
+      }>
+    ) =>
+      authRequest<BranchSchedule[]>(`/branches/${branchId}/schedules`, {
+        method: 'PUT',
+        body: JSON.stringify({ schedules }),
+      }),
+
+    // Branch Blocked Dates
+    getBranchBlockedDates: (branchId: string) =>
+      authRequest<BranchBlockedDate[]>(`/branches/${branchId}/blocked-dates`),
+
+    addBranchBlockedDate: (branchId: string, date: string, reason?: string) =>
+      authRequest<BranchBlockedDate>(`/branches/${branchId}/blocked-dates`, {
+        method: 'POST',
+        body: JSON.stringify({ date, reason }),
+      }),
+
+    removeBranchBlockedDate: (branchId: string, blockedDateId: string) =>
+      authRequest<void>(`/branches/${branchId}/blocked-dates/${blockedDateId}`, {
+        method: 'DELETE',
+      }),
+
     // Media
     uploadMedia: async (file: File, folder?: string): Promise<{ url: string }> => {
       const formData = new FormData();
@@ -645,6 +1123,186 @@ export function createApiClient(token: string) {
 
     deleteMedia: (id: string) =>
       authRequest<void>(`/media/${id}`, { method: 'DELETE' }),
+
+    // Subscriptions
+    getSubscription: () => authRequest<{
+      id: string;
+      status: string;
+      billingPeriod: string;
+      trialEndAt: string | null;
+      currentPeriodEnd: string | null;
+      plan: {
+        id: string;
+        name: string;
+        slug: string;
+        priceMonthly: number;
+        priceYearly: number | null;
+      };
+    }>('/subscriptions'),
+
+    getSubscriptionStatus: () => authRequest<{
+      isTrialing: boolean;
+      isActive: boolean;
+      isExpired: boolean;
+      daysRemaining: number;
+      status: string;
+    }>('/subscriptions/status'),
+
+    startTrial: (planSlug?: string) =>
+      authRequest('/subscriptions/trial', {
+        method: 'POST',
+        body: JSON.stringify({ planSlug }),
+      }),
+
+    activateSubscription: (billingPeriod: 'MONTHLY' | 'YEARLY') =>
+      authRequest('/subscriptions/activate', {
+        method: 'POST',
+        body: JSON.stringify({ billingPeriod }),
+      }),
+
+    cancelSubscription: (reason?: string) =>
+      authRequest('/subscriptions/cancel', {
+        method: 'PATCH',
+        body: JSON.stringify({ reason }),
+      }),
+
+    // Email Verification
+    sendVerificationEmail: () =>
+      authRequest<{ success: boolean; message: string }>('/email-verification/send', {
+        method: 'POST',
+      }),
+
+    getEmailVerificationStatus: () =>
+      authRequest<{ emailVerified: boolean }>('/email-verification/status'),
+
+    // Reviews
+    getReviews: () => authRequest<{
+      id: string;
+      rating: number;
+      comment: string | null;
+      createdAt: string;
+      customer: { name: string };
+    }[]>('/reviews'),
+
+    getReviewStats: () => authRequest<{
+      totalBookings: number;
+      bookingsThisWeek: number;
+      bookingsThisMonth: number;
+      averageRating: number;
+      totalReviews: number;
+    }>('/reviews/stats'),
+
+    updateReviewVisibility: (id: string, isVisible: boolean) =>
+      authRequest(`/reviews/${id}/visibility`, {
+        method: 'PATCH',
+        body: JSON.stringify({ isVisible }),
+      }),
+
+    // Talent Browse
+    browseTalent: (params?: {
+      search?: string;
+      specialty?: string;
+      availability?: string;
+      openToWork?: boolean;
+      category?: string;
+      page?: number;
+      limit?: number;
+    }) => {
+      const query = params
+        ? `?${new URLSearchParams(
+            Object.entries(params)
+              .filter(([, v]) => v !== undefined)
+              .map(([k, v]) => [k, String(v)])
+          ).toString()}`
+        : '';
+      return authRequest<PaginatedResponse<TalentProfile>>(`/professional-profiles/browse${query}`);
+    },
+
+    getTalentProfile: (id: string) =>
+      authRequest<TalentProfile>(`/professional-profiles/browse/${id}`),
+
+    sendProposal: (profileId: string, data: { role: string; message: string; availability?: string }) =>
+      authRequest<TalentProposal>(`/professional-profiles/browse/${profileId}/proposal`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+
+    getProposalsSent: () =>
+      authRequest<TalentProposal[]>(`/professional-profiles/proposals/sent`),
+
+    // My Professional Profile (PROFESSIONAL users)
+    getMyProfile: () =>
+      authRequest<TalentProfile | null>(`/professional-profiles/my-profile`),
+
+    createMyProfile: (data: MyProfileData) =>
+      authRequest<TalentProfile>(`/professional-profiles/my-profile`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+
+    updateMyProfile: (data: MyProfileData) =>
+      authRequest<TalentProfile>(`/professional-profiles/my-profile`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }),
+
+    addMyExperience: (data: ExperienceData) =>
+      authRequest<{ id: string }>(`/professional-profiles/my-profile/experience`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+
+    updateMyExperience: (id: string, data: ExperienceData) =>
+      authRequest(`/professional-profiles/my-profile/experience/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }),
+
+    deleteMyExperience: (id: string) =>
+      authRequest(`/professional-profiles/my-profile/experience/${id}`, {
+        method: 'DELETE',
+      }),
+
+    getMyProposals: () =>
+      authRequest<TalentProposal[]>(`/professional-profiles/my-profile/proposals`),
+
+    respondToMyProposal: (proposalId: string, data: { status: string; responseMessage?: string }) =>
+      authRequest<TalentProposal>(`/professional-profiles/my-profile/proposals/${proposalId}/respond`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+
+    // Autogestion - Create booking directly from dashboard
+    createBooking: (data: CreateBookingData) =>
+      authRequest<Booking>('/bookings', {
+        method: 'POST',
+        body: JSON.stringify(data),
+        retries: 0,
+      }),
+
+    getAvailability: (date: string, serviceId?: string) => {
+      const params = new URLSearchParams({ date });
+      if (serviceId) params.append('serviceId', serviceId);
+      return authRequest<TimeSlot[]>(`/bookings/availability?${params}`);
+    },
+
+    // Generic request method for custom endpoints
+    get: <T>(endpoint: string) => authRequest<T>(endpoint),
+
+    post: <T>(endpoint: string, data?: unknown) =>
+      authRequest<T>(endpoint, {
+        method: 'POST',
+        body: data ? JSON.stringify(data) : undefined,
+      }),
+
+    patch: <T>(endpoint: string, data?: unknown) =>
+      authRequest<T>(endpoint, {
+        method: 'PATCH',
+        body: data ? JSON.stringify(data) : undefined,
+      }),
+
+    delete: <T>(endpoint: string) =>
+      authRequest<T>(endpoint, { method: 'DELETE' }),
   };
 }
 

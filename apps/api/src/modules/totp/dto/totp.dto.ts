@@ -17,9 +17,6 @@ export class Login2FADto {
 
 export class DisableTotpDto {
   @IsString()
-  password: string;
-
-  @IsString()
-  @Length(6, 6)
+  @Length(6, 8) // 6 for TOTP, 8 for backup codes
   code: string;
 }

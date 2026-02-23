@@ -59,6 +59,7 @@ export const authOptions: NextAuthOptions = {
             name: data.user.name,
             role: data.user.role,
             tenantId: data.user.tenantId,
+            tenantType: data.user.tenantType || 'BUSINESS',
             accessToken: data.accessToken,
             refreshToken: data.refreshToken,
           };
@@ -83,6 +84,7 @@ export const authOptions: NextAuthOptions = {
           id: user.id,
           role: user.role,
           tenantId: user.tenantId,
+          tenantType: user.tenantType || 'BUSINESS',
           accessToken: user.accessToken,
           refreshToken: user.refreshToken,
           accessTokenExpires: Date.now() + ACCESS_TOKEN_TTL,
@@ -124,6 +126,7 @@ export const authOptions: NextAuthOptions = {
         name: session.user?.name || '',
         role: token.role as string,
         tenantId: token.tenantId as string,
+        tenantType: (token.tenantType as string) || 'BUSINESS',
       };
       session.accessToken = token.accessToken as string;
 
@@ -138,6 +141,17 @@ export const authOptions: NextAuthOptions = {
     strategy: 'jwt',
     maxAge: 7 * 24 * 60 * 60, // 7 days
   },
+  cookies: {
+    sessionToken: {
+      name: process.env.NODE_ENV === 'production' ? '__Secure-next-auth.session-token' : 'next-auth.session-token',
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+      },
+    },
+  },
   secret: process.env.NEXTAUTH_SECRET,
-  debug: process.env.NODE_ENV === 'development',
+  debug: true,
 };

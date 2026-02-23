@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { AppLoggerService } from '../../common/logger';
 
 export interface WhatsAppResult {
   success: boolean;
@@ -8,6 +9,10 @@ export interface WhatsAppResult {
 
 @Injectable()
 export class WhatsAppService {
+  constructor(private readonly logger: AppLoggerService) {
+    this.logger.setContext('WhatsAppService');
+  }
+
   /**
    * Genera un enlace de WhatsApp Web para enviar el mensaje.
    * No depende de servicios externos como Twilio.
@@ -18,8 +23,10 @@ export class WhatsAppService {
     const encodedMessage = encodeURIComponent(message);
     const whatsappLink = `https://wa.me/${normalizedPhone.replace('+', '')}?text=${encodedMessage}`;
 
-    console.log('[WhatsApp] Confirmación generada para:', normalizedPhone);
-    console.log('[WhatsApp] Link:', whatsappLink);
+    this.logger.log('WhatsApp link generated', {
+      phone: normalizedPhone,
+      action: 'whatsapp.link.generated',
+    });
 
     return {
       success: true,

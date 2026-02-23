@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import {
   format,
   addDays,
@@ -28,24 +29,65 @@ import {
   Plus,
   Sparkles,
   Phone,
-  X,
   User,
   Scissors,
-  MapPin,
   MessageSquare,
   CalendarDays,
   LayoutGrid,
+  ExternalLink,
+  Layers,
+  Star,
+  Moon,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { createApiClient } from '@/lib/api';
+import { createApiClient, Tenant } from '@/lib/api';
+import { notifications, errorNotifications } from '@/lib/notifications';
+import { formatDuration, formatPrice, parseBookingDate } from '@/lib/utils';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+
+/**
+ * Normalizes a phone number for WhatsApp.
+ * Handles Argentine numbers without country code.
+ */
+function normalizePhoneForWhatsApp(phone: string): string {
+  let cleaned = phone.replace(/\D/g, '');
+  if (cleaned.startsWith('0')) cleaned = cleaned.substring(1);
+  if (cleaned.length === 10 && !cleaned.startsWith('54')) {
+    cleaned = '549' + cleaned;
+  } else if (cleaned.length === 11 && cleaned.startsWith('15')) {
+    cleaned = '549' + cleaned.substring(2);
+  } else if (cleaned.length >= 12 && cleaned.startsWith('54') && !cleaned.startsWith('549')) {
+    cleaned = '549' + cleaned.substring(2);
+  }
+  return cleaned;
+}
 
 interface Booking {
   id: string;
   date: string;
   startTime: string;
   endTime: string;
+  checkOutDate?: string | null;
+  totalNights?: number | null;
+  totalPrice?: number | null;
   status: string;
   notes: string | null;
   service: { id: string; name: string; duration: number; price?: number };
@@ -99,6 +141,7 @@ const statusConfig: Record<string, { bg: string; text: string; border: string; i
 
 export default function TurnosPage() {
   const { data: session } = useSession();
+  const router = useRouter();
   const [currentDate, setCurrentDate] = useState<Date | null>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
@@ -106,12 +149,29 @@ export default function TurnosPage() {
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [tenantSlug, setTenantSlug] = useState<string | null>(null);
+  const [tenantData, setTenantData] = useState<Tenant | null>(null);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [bookingToCancel, setBookingToCancel] = useState<Booking | null>(null);
 
   // Initialize date on client side only to avoid hydration mismatch
   useEffect(() => {
     setCurrentDate(new Date());
     setMounted(true);
   }, []);
+
+  // Load tenant data for "Nuevo Turno" button and WhatsApp messages
+  useEffect(() => {
+    if (session?.accessToken) {
+      const api = createApiClient(session.accessToken as string);
+      api.getTenant().then((tenant) => {
+        setTenantSlug(tenant.slug);
+        setTenantData(tenant);
+      }).catch(() => {
+        // Silently fail - button will be disabled
+      });
+    }
+  }, [session]);
 
   // Calculate date ranges based on view mode
   const getDateRange = () => {
@@ -153,17 +213,121 @@ export default function TurnosPage() {
 
   const handleStatusChange = async (bookingId: string, newStatus: 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW') => {
     if (!session?.accessToken) return;
-    const api = createApiClient(session.accessToken as string);
-    await api.updateBookingStatus(bookingId, newStatus);
-    const data = await api.getBookings({
-      startDate: format(startDate, 'yyyy-MM-dd'),
-      endDate: format(endDate, 'yyyy-MM-dd'),
+
+    try {
+      const api = createApiClient(session.accessToken as string);
+      await api.updateBookingStatus(bookingId, newStatus);
+
+      // Show appropriate notification based on status
+      switch (newStatus) {
+        case 'CONFIRMED':
+          notifications.bookingConfirmed();
+          break;
+        case 'COMPLETED':
+          notifications.bookingCompleted();
+          break;
+        case 'CANCELLED':
+          notifications.bookingCancelled();
+          break;
+      }
+
+      // Reload bookings
+      const data = await api.getBookings({
+        startDate: format(startDate, 'yyyy-MM-dd'),
+        endDate: format(endDate, 'yyyy-MM-dd'),
+      });
+      const bookingsArray = Array.isArray(data) ? data : (data?.data || []);
+      setBookings(bookingsArray as Booking[]);
+
+      if (selectedBooking?.id === bookingId) {
+        const updated = bookingsArray.find((b: Booking) => b.id === bookingId);
+        if (updated) setSelectedBooking(updated);
+        else setSelectedBooking(null);
+      }
+    } catch (error) {
+      errorNotifications.saveFailed();
+      console.error('Error updating booking status:', error);
+    }
+  };
+
+  const handleCancelClick = (booking: Booking) => {
+    setBookingToCancel(booking);
+    setShowCancelDialog(true);
+  };
+
+  const confirmCancel = async () => {
+    if (bookingToCancel) {
+      await handleStatusChange(bookingToCancel.id, 'CANCELLED');
+      setShowCancelDialog(false);
+      setBookingToCancel(null);
+    }
+  };
+
+  const handleNewBooking = () => {
+    if (tenantSlug) {
+      window.open(`/${tenantSlug}`, '_blank');
+    }
+  };
+
+  const buildWhatsAppMessage = (booking: Booking) => {
+    if (booking.checkOutDate) {
+      // Daily booking message
+      const checkIn = parseBookingDate(booking.date).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
+      const checkOut = parseBookingDate(booking.checkOutDate).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
+      let msg = `Hola ${booking.customer.name}! Tu reserva de *${booking.service.name}* está confirmada. Check-in: *${checkIn}* / Check-out: *${checkOut}* (${booking.totalNights} ${booking.totalNights === 1 ? 'noche' : 'noches'}).`;
+      if (tenantData?.address) {
+        msg += ` Te esperamos en ${tenantData.address}${tenantData.city ? `, ${tenantData.city}` : ''}.`;
+      }
+      msg += ' Gracias!';
+      return msg;
+    }
+    // Hourly booking message
+    const date = parseBookingDate(booking.date).toLocaleDateString('es-AR', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
     });
-    const bookingsArray = Array.isArray(data) ? data : (data?.data || []);
-    setBookings(bookingsArray as Booking[]);
-    if (selectedBooking?.id === bookingId) {
-      const updated = bookingsArray.find((b: Booking) => b.id === bookingId);
-      if (updated) setSelectedBooking(updated);
+    let msg = `Hola ${booking.customer.name}! Tu turno de *${booking.service.name}* el *${date}* a las *${booking.startTime} hs* está confirmado.`;
+    if (tenantData?.address) {
+      msg += ` Te esperamos en ${tenantData.address}${tenantData.city ? `, ${tenantData.city}` : ''}.`;
+    }
+    msg += ' Gracias!';
+    return msg;
+  };
+
+  const openWhatsApp = (booking: Booking) => {
+    const message = buildWhatsAppMessage(booking);
+    window.open(
+      `https://wa.me/${normalizePhoneForWhatsApp(booking.customer.phone)}?text=${encodeURIComponent(message)}`,
+      '_blank',
+    );
+  };
+
+  const handleConfirmAndWhatsApp = async (booking: Booking) => {
+    if (!session?.accessToken) return;
+    try {
+      const api = createApiClient(session.accessToken as string);
+      await api.updateBookingStatus(booking.id, 'CONFIRMED');
+      notifications.bookingConfirmed();
+
+      // Reload bookings
+      const data = await api.getBookings({
+        startDate: format(startDate, 'yyyy-MM-dd'),
+        endDate: format(endDate, 'yyyy-MM-dd'),
+      });
+      const bookingsArray = Array.isArray(data) ? data : (data?.data || []);
+      setBookings(bookingsArray as Booking[]);
+
+      if (selectedBooking?.id === booking.id) {
+        const updated = bookingsArray.find((b: Booking) => b.id === booking.id);
+        if (updated) setSelectedBooking(updated);
+        else setSelectedBooking(null);
+      }
+
+      // Open WhatsApp with confirmation message
+      openWhatsApp(booking);
+    } catch {
+      errorNotifications.saveFailed();
     }
   };
 
@@ -187,9 +351,14 @@ export default function TurnosPage() {
     const dayStr = format(day, 'yyyy-MM-dd');
     return bookings
       .filter((b) => {
-        // Extract just the date part from the ISO string to avoid timezone issues
         const bookingDateStr = b.date.split('T')[0];
-        return bookingDateStr === dayStr;
+        // Hourly booking: exact date match
+        if (!b.checkOutDate) {
+          return bookingDateStr === dayStr;
+        }
+        // Daily booking: day falls within [checkIn, checkOut)
+        const checkOutStr = b.checkOutDate.split('T')[0];
+        return dayStr >= bookingDateStr && dayStr < checkOutStr;
       })
       .sort((a, b) => a.startTime.localeCompare(b.startTime));
   };
@@ -236,28 +405,46 @@ export default function TurnosPage() {
                 <p className="text-white/70 text-sm hidden md:block">Gestiona los turnos de tu negocio</p>
               </div>
             </div>
-            <Button size="sm" className="bg-white text-indigo-600 hover:bg-white/90 shadow-lg h-9 md:h-10">
+            <Button
+              size="sm"
+              className="bg-white text-indigo-600 hover:bg-white/90 shadow-lg h-9 md:h-10"
+              onClick={handleNewBooking}
+              disabled={!tenantSlug}
+            >
               <Plus className="h-4 w-4 md:mr-2" />
               <span className="hidden md:inline">Nuevo Turno</span>
+              <ExternalLink className="h-3 w-3 ml-1 hidden md:inline" />
             </Button>
           </div>
 
           <div className="grid grid-cols-4 gap-2 md:gap-4 pt-4 border-t border-white/20">
-            <div className="text-center">
-              <p className="text-xl md:text-2xl font-bold">{totalPeriod}</p>
-              <p className="text-white/70 text-[10px] md:text-xs">{viewMode === 'week' ? 'Esta Semana' : 'Este Mes'}</p>
+            <div className="flex flex-col items-center justify-center p-2 sm:p-3 rounded-lg bg-white/10 backdrop-blur-sm">
+              <div className="flex items-center gap-1 sm:gap-2">
+                <Layers className="h-4 w-4 sm:h-5 sm:w-5 text-white/70 hidden sm:block" />
+                <p className="text-xl sm:text-2xl md:text-3xl font-bold">{totalPeriod}</p>
+              </div>
+              <p className="text-white/70 text-[10px] sm:text-xs md:text-sm">{viewMode === 'week' ? 'Esta Semana' : 'Este Mes'}</p>
             </div>
-            <div className="text-center">
-              <p className="text-xl md:text-2xl font-bold">{pendingCount}</p>
-              <p className="text-white/70 text-[10px] md:text-xs">Pendientes</p>
+            <div className="flex flex-col items-center justify-center p-2 sm:p-3 rounded-lg bg-white/10 backdrop-blur-sm">
+              <div className="flex items-center gap-1 sm:gap-2">
+                <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-white/70 hidden sm:block" />
+                <p className="text-xl sm:text-2xl md:text-3xl font-bold">{pendingCount}</p>
+              </div>
+              <p className="text-white/70 text-[10px] sm:text-xs md:text-sm">Pendientes</p>
             </div>
-            <div className="text-center">
-              <p className="text-xl md:text-2xl font-bold">{confirmedCount}</p>
-              <p className="text-white/70 text-[10px] md:text-xs">Confirmados</p>
+            <div className="flex flex-col items-center justify-center p-2 sm:p-3 rounded-lg bg-white/10 backdrop-blur-sm">
+              <div className="flex items-center gap-1 sm:gap-2">
+                <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 text-white/70 hidden sm:block" />
+                <p className="text-xl sm:text-2xl md:text-3xl font-bold">{confirmedCount}</p>
+              </div>
+              <p className="text-white/70 text-[10px] sm:text-xs md:text-sm">Confirmados</p>
             </div>
-            <div className="text-center">
-              <p className="text-xl md:text-2xl font-bold">{completedCount}</p>
-              <p className="text-white/70 text-[10px] md:text-xs">Completados</p>
+            <div className="flex flex-col items-center justify-center p-2 sm:p-3 rounded-lg bg-white/10 backdrop-blur-sm">
+              <div className="flex items-center gap-1 sm:gap-2">
+                <Star className="h-4 w-4 sm:h-5 sm:w-5 text-white/70 hidden sm:block" />
+                <p className="text-xl sm:text-2xl md:text-3xl font-bold">{completedCount}</p>
+              </div>
+              <p className="text-white/70 text-[10px] sm:text-xs md:text-sm">Completados</p>
             </div>
           </div>
         </div>
@@ -384,6 +571,7 @@ export default function TurnosPage() {
 
                     return dayBookings.map((booking) => {
                       const config = statusConfig[booking.status] || statusConfig.PENDING;
+                      const isDaily = !!booking.checkOutDate;
                       return (
                         <Card
                           key={booking.id}
@@ -393,13 +581,27 @@ export default function TurnosPage() {
                           <CardContent className="p-4">
                             <div className="flex items-center gap-3">
                               <div className="text-center shrink-0 w-14">
-                                <p className="text-lg font-bold">{booking.startTime}</p>
-                                <p className="text-[10px] text-muted-foreground">{booking.service.duration} min</p>
+                                {isDaily ? (
+                                  <>
+                                    <Moon className="h-4 w-4 mx-auto mb-0.5 text-indigo-500" />
+                                    <p className="text-[10px] text-muted-foreground">{booking.totalNights} {booking.totalNights === 1 ? 'noche' : 'noches'}</p>
+                                  </>
+                                ) : (
+                                  <>
+                                    <p className="text-lg font-bold">{booking.startTime}</p>
+                                    <p className="text-[10px] text-muted-foreground">{formatDuration(booking.service.duration)}</p>
+                                  </>
+                                )}
                               </div>
                               <div className={`w-1 self-stretch rounded-full ${config.dot}`} />
                               <div className="flex-1 min-w-0">
                                 <p className="font-semibold truncate">{booking.customer.name}</p>
-                                <p className="text-sm text-muted-foreground truncate">{booking.service.name}</p>
+                                <p className="text-sm text-muted-foreground truncate">
+                                  {isDaily
+                                    ? `${booking.service.name} · ${booking.date.split('T')[0].slice(5)} → ${booking.checkOutDate!.split('T')[0].slice(5)}`
+                                    : booking.service.name
+                                  }
+                                </p>
                               </div>
                               <Badge className={`${config.bg} ${config.text} border-0 text-[10px] shrink-0`}>
                                 {config.label}
@@ -440,6 +642,7 @@ export default function TurnosPage() {
                         ) : (
                           dayBookings.map((booking) => {
                             const config = statusConfig[booking.status] || statusConfig.PENDING;
+                            const isDaily = !!booking.checkOutDate;
                             return (
                               <div
                                 key={booking.id}
@@ -447,8 +650,14 @@ export default function TurnosPage() {
                                 className={`p-2 rounded-lg ${config.bg} border ${config.border} cursor-pointer hover:shadow-md transition-all`}
                               >
                                 <div className="flex items-center gap-1 mb-1">
-                                  <Clock className="h-3 w-3 text-slate-500 dark:text-neutral-400" />
-                                  <span className="text-xs font-semibold">{booking.startTime}</span>
+                                  {isDaily ? (
+                                    <Moon className="h-3 w-3 text-indigo-500" />
+                                  ) : (
+                                    <Clock className="h-3 w-3 text-slate-500 dark:text-neutral-400" />
+                                  )}
+                                  <span className="text-xs font-semibold">
+                                    {isDaily ? `${booking.totalNights}N` : booking.startTime}
+                                  </span>
                                   <div className={`ml-auto h-2 w-2 rounded-full ${config.dot}`} />
                                 </div>
                                 <p className="text-xs font-medium truncate">{booking.customer.name}</p>
@@ -507,6 +716,7 @@ export default function TurnosPage() {
                         <div className="space-y-0.5">
                           {dayBookings.slice(0, 3).map((booking) => {
                             const config = statusConfig[booking.status] || statusConfig.PENDING;
+                            const isDaily = !!booking.checkOutDate;
                             return (
                               <div
                                 key={booking.id}
@@ -516,7 +726,7 @@ export default function TurnosPage() {
                                 }}
                                 className={`text-[10px] px-1.5 py-0.5 rounded ${config.bg} ${config.text} truncate hidden md:block`}
                               >
-                                {booking.startTime} {booking.customer.name.split(' ')[0]}
+                                {isDaily ? `${booking.totalNights}N` : booking.startTime} {booking.customer.name.split(' ')[0]}
                               </div>
                             );
                           })}
@@ -546,19 +756,17 @@ export default function TurnosPage() {
         </>
       )}
 
-      {/* Booking Detail Modal */}
-      {selectedBooking && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={() => setSelectedBooking(null)}>
-          <Card className="w-full max-w-md border-0 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">Detalle del Turno</CardTitle>
-                <Button variant="ghost" size="icon" onClick={() => setSelectedBooking(null)} className="h-8 w-8">
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
+      {/* Booking Detail Dialog */}
+      <Dialog open={!!selectedBooking} onOpenChange={(open) => !open && setSelectedBooking(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Detalle del Turno</DialogTitle>
+            <DialogDescription>
+              Información y acciones del turno seleccionado
+            </DialogDescription>
+          </DialogHeader>
+          {selectedBooking && (
+            <div className="space-y-4">
               {/* Status Badge */}
               {(() => {
                 const config = statusConfig[selectedBooking.status] || statusConfig.PENDING;
@@ -574,18 +782,36 @@ export default function TurnosPage() {
               {/* Date & Time */}
               <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-neutral-800 rounded-lg">
                 <div className="h-10 w-10 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center">
-                  <CalendarIcon className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                  {selectedBooking.checkOutDate ? (
+                    <Moon className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                  ) : (
+                    <CalendarIcon className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                  )}
                 </div>
                 <div>
-                  <p className="font-semibold">{format(new Date(selectedBooking.date), "EEEE d 'de' MMMM", { locale: es })}</p>
-                  <p className="text-sm text-muted-foreground">{selectedBooking.startTime} - {selectedBooking.endTime}</p>
+                  {selectedBooking.checkOutDate ? (
+                    <>
+                      <p className="font-semibold">
+                        {format(parseBookingDate(selectedBooking.date), "EEE d MMM", { locale: es })} → {format(parseBookingDate(selectedBooking.checkOutDate), "EEE d MMM", { locale: es })}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {selectedBooking.totalNights} {selectedBooking.totalNights === 1 ? 'noche' : 'noches'}
+                        {selectedBooking.totalPrice != null && ` · Total: ${formatPrice(Number(selectedBooking.totalPrice))}`}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="font-semibold">{format(parseBookingDate(selectedBooking.date), "EEEE d 'de' MMMM", { locale: es })}</p>
+                      <p className="text-sm text-muted-foreground">{selectedBooking.startTime} - {selectedBooking.endTime}</p>
+                    </>
+                  )}
                 </div>
               </div>
 
               {/* Customer */}
               <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-neutral-800 rounded-lg">
-                <div className="h-10 w-10 rounded-lg bg-pink-100 dark:bg-pink-900/40 flex items-center justify-center">
-                  <User className="h-5 w-5 text-pink-600 dark:text-pink-400" />
+                <div className="h-10 w-10 rounded-lg bg-teal-100 dark:bg-teal-900/40 flex items-center justify-center">
+                  <User className="h-5 w-5 text-teal-600 dark:text-teal-400" />
                 </div>
                 <div className="flex-1">
                   <p className="font-semibold">{selectedBooking.customer.name}</p>
@@ -600,7 +826,12 @@ export default function TurnosPage() {
                 </div>
                 <div className="flex-1">
                   <p className="font-semibold">{selectedBooking.service.name}</p>
-                  <p className="text-sm text-muted-foreground">{selectedBooking.service.duration} minutos</p>
+                  <p className="text-sm text-muted-foreground">
+                    {selectedBooking.checkOutDate
+                      ? (selectedBooking.service.price != null ? `${formatPrice(selectedBooking.service.price)}/noche` : '')
+                      : formatDuration(selectedBooking.service.duration)
+                    }
+                  </p>
                 </div>
               </div>
 
@@ -613,15 +844,65 @@ export default function TurnosPage() {
 
               {/* Actions */}
               <div className="flex flex-col gap-2 pt-2">
+                {/* PENDING: Combined confirm + WhatsApp, and cancel */}
+                {selectedBooking.status === 'PENDING' && (
+                  <>
+                    <Button
+                      className="w-full h-14 text-lg bg-green-600 hover:bg-green-700 text-white"
+                      onClick={() => handleConfirmAndWhatsApp(selectedBooking)}
+                    >
+                      <MessageSquare className="h-5 w-5 mr-2" />
+                      Confirmar y enviar WhatsApp
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="w-full border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30"
+                      onClick={() => handleCancelClick(selectedBooking)}
+                    >
+                      <XCircle className="h-4 w-4 mr-2" />
+                      Cancelar Turno
+                    </Button>
+                  </>
+                )}
+
+                {/* CONFIRMED: WhatsApp message + status actions */}
+                {selectedBooking.status === 'CONFIRMED' && (
+                  <>
+                    <Button
+                      className="w-full bg-green-600 hover:bg-green-700 text-white"
+                      onClick={() => openWhatsApp(selectedBooking)}
+                    >
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      Enviar mensaje por WhatsApp
+                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        className="flex-1 bg-violet-500 hover:bg-violet-600"
+                        onClick={() => handleStatusChange(selectedBooking.id, 'COMPLETED')}
+                      >
+                        <Sparkles className="h-4 w-4 mr-2" />
+                        Marcar Completado
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="border-slate-200 dark:border-neutral-700 text-slate-600 dark:text-neutral-400 hover:bg-slate-50 dark:hover:bg-neutral-800"
+                        onClick={() => handleStatusChange(selectedBooking.id, 'NO_SHOW')}
+                      >
+                        No asistió
+                      </Button>
+                    </div>
+                  </>
+                )}
+
                 {/* Contact buttons */}
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
                     className="flex-1"
-                    onClick={() => window.open(`https://wa.me/${selectedBooking.customer.phone.replace(/\D/g, '')}`, '_blank')}
+                    onClick={() => window.open(`https://wa.me/${normalizePhoneForWhatsApp(selectedBooking.customer.phone)}`, '_blank')}
                   >
                     <MessageSquare className="h-4 w-4 mr-2 text-green-600" />
-                    WhatsApp
+                    Chat
                   </Button>
                   <Button
                     variant="outline"
@@ -632,51 +913,41 @@ export default function TurnosPage() {
                     Llamar
                   </Button>
                 </div>
-
-                {/* Status change buttons */}
-                {selectedBooking.status === 'PENDING' && (
-                  <div className="flex gap-2">
-                    <Button
-                      className="flex-1 bg-emerald-500 hover:bg-emerald-600"
-                      onClick={() => handleStatusChange(selectedBooking.id, 'CONFIRMED')}
-                    >
-                      <CheckCircle2 className="h-4 w-4 mr-2" />
-                      Confirmar
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30"
-                      onClick={() => handleStatusChange(selectedBooking.id, 'CANCELLED')}
-                    >
-                      <XCircle className="h-4 w-4 mr-2" />
-                      Cancelar
-                    </Button>
-                  </div>
-                )}
-
-                {selectedBooking.status === 'CONFIRMED' && (
-                  <div className="flex gap-2">
-                    <Button
-                      className="flex-1 bg-violet-500 hover:bg-violet-600"
-                      onClick={() => handleStatusChange(selectedBooking.id, 'COMPLETED')}
-                    >
-                      <Sparkles className="h-4 w-4 mr-2" />
-                      Marcar Completado
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="border-slate-200 dark:border-neutral-700 text-slate-600 dark:text-neutral-400 hover:bg-slate-50 dark:hover:bg-neutral-800"
-                      onClick={() => handleStatusChange(selectedBooking.id, 'NO_SHOW')}
-                    >
-                      No asistió
-                    </Button>
-                  </div>
-                )}
               </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Cancel Confirmation AlertDialog */}
+      <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Cancelar este turno?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {bookingToCancel && (
+                <>
+                  Estás por cancelar el turno de <strong>{bookingToCancel.customer.name}</strong> para{' '}
+                  <strong>{bookingToCancel.service.name}</strong> el{' '}
+                  <strong>{format(parseBookingDate(bookingToCancel.date), "d 'de' MMMM", { locale: es })}</strong> a las{' '}
+                  <strong>{bookingToCancel.startTime}</strong>.
+                  <br /><br />
+                  Esta acción no se puede deshacer.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Volver</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmCancel}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Sí, cancelar turno
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

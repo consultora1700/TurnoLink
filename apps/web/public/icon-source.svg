@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Rounded square background -->
+  <rect width="512" height="512" rx="112" fill="#3F8697"/>
+  <!-- Lighter overlay for subtle gradient effect -->
+  <rect width="512" height="256" rx="112" fill="#4A9DAF" opacity="0.25"/>
+
+  <!-- Calendar body -->
+  <rect x="88" y="148" width="336" height="284" rx="28" fill="white"/>
+
+  <!-- Calendar rings -->
+  <rect x="172" y="108" width="28" height="72" rx="14" fill="white"/>
+  <rect x="312" y="108" width="28" height="72" rx="14" fill="white"/>
+
+  <!-- Header accent bar -->
+  <rect x="88" y="148" width="336" height="64" rx="28" fill="#3F8697" opacity="0.12"/>
+  <rect x="88" y="184" width="336" height="28" fill="#3F8697" opacity="0.12"/>
+
+  <!-- Checkmark — bold and centered -->
+  <polyline
+    points="196,330 242,380 332,272"
+    fill="none"
+    stroke="#3F8697"
+    stroke-width="36"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+</svg>

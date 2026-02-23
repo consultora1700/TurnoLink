@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
@@ -67,44 +67,69 @@ export class CustomersService {
   }
 
   async findByPhone(tenantId: string, phone: string) {
-    return this.prisma.customer.findUnique({
+    return this.prisma.customer.findFirst({
       where: {
-        tenantId_phone: {
-          tenantId,
-          phone,
-        },
+        tenantId,
+        phone,
       },
     });
   }
 
+  /**
+   * Update a customer with atomic tenant isolation.
+   * Uses interactive transaction to ensure the record belongs to tenant before updating.
+   */
   async update(
     tenantId: string,
     id: string,
     updateCustomerDto: UpdateCustomerDto,
   ) {
-    await this.findById(tenantId, id);
+    return this.prisma.$transaction(async (tx) => {
+      // Verify ownership atomically
+      const customer = await tx.customer.findFirst({
+        where: { id, tenantId },
+      });
 
-    return this.prisma.customer.update({
-      where: { id },
-      data: updateCustomerDto,
+      if (!customer) {
+        throw new NotFoundException('Customer not found');
+      }
+
+      // Safe to update - ownership verified within same transaction
+      return tx.customer.update({
+        where: { id },
+        data: updateCustomerDto,
+      });
     });
   }
 
+  /**
+   * Delete a customer with atomic tenant isolation.
+   * Prevents deletion if customer has existing bookings.
+   */
   async delete(tenantId: string, id: string) {
-    await this.findById(tenantId, id);
+    return this.prisma.$transaction(async (tx) => {
+      // Verify ownership atomically
+      const customer = await tx.customer.findFirst({
+        where: { id, tenantId },
+      });
 
-    // Check if customer has bookings
-    const bookingsCount = await this.prisma.booking.count({
-      where: { customerId: id },
+      if (!customer) {
+        throw new NotFoundException('Customer not found');
+      }
+
+      // Check if customer has bookings
+      const bookingsCount = await tx.booking.count({
+        where: { customerId: id },
+      });
+
+      if (bookingsCount > 0) {
+        throw new BadRequestException(
+          'Cannot delete customer with existing bookings',
+        );
+      }
+
+      return tx.customer.delete({ where: { id } });
     });
-
-    if (bookingsCount > 0) {
-      throw new NotFoundException(
-        'Cannot delete customer with existing bookings',
-      );
-    }
-
-    return this.prisma.customer.delete({ where: { id } });
   }
 
   async incrementBookings(customerId: string) {

@@ -2,7 +2,10 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsOptional,
   IsString,
+  IsBoolean,
   MaxLength,
+  MinLength,
+  Matches,
   IsUrl,
 } from 'class-validator';
 
@@ -71,9 +74,23 @@ class TenantSettingsDto {
   @IsOptional()
   @IsString()
   depositMode?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  smartTimeSlots?: boolean;
 }
 
 export class UpdateTenantDto {
+  @ApiPropertyOptional({ example: 'mi-negocio' })
+  @IsOptional()
+  @IsString()
+  @MinLength(3, { message: 'La URL debe tener al menos 3 caracteres' })
+  @MaxLength(50, { message: 'La URL no puede exceder 50 caracteres' })
+  @Matches(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/, {
+    message: 'Solo letras minúsculas, números y guiones. No puede empezar ni terminar con guión.',
+  })
+  slug?: string;
+
   @ApiPropertyOptional({ example: 'My Barbershop' })
   @IsOptional()
   @IsString()

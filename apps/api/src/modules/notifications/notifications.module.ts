@@ -1,12 +1,21 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { NotificationsService } from './notifications.service';
 import { EmailService } from './email.service';
 import { WhatsAppService } from './whatsapp.service';
-import { BookingsModule } from '../bookings/bookings.module';
+import { BookingEventsListener } from './booking-events.listener';
+import { EmailNotificationsService } from './email-notifications.service';
+import { PushModule } from '../push/push.module';
 
 @Module({
-  imports: [forwardRef(() => BookingsModule)],
-  providers: [NotificationsService, EmailService, WhatsAppService],
-  exports: [NotificationsService],
+  imports: [ConfigModule, PushModule],
+  providers: [
+    NotificationsService,
+    EmailService,
+    WhatsAppService,
+    BookingEventsListener, // Listens to booking events
+    EmailNotificationsService,
+  ],
+  exports: [NotificationsService, EmailNotificationsService],
 })
 export class NotificationsModule {}

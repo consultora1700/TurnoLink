@@ -136,8 +136,8 @@ function VibrantStyle() {
       {/* Main gradient background */}
       <div
         className="absolute inset-0
-          bg-gradient-to-br from-primary/25 via-transparent to-pink-500/20
-          dark:from-primary/35 dark:via-transparent dark:to-pink-500/30"
+          bg-gradient-to-br from-primary/25 via-transparent to-teal-500/20
+          dark:from-primary/35 dark:via-transparent dark:to-teal-500/30"
       />
       {/* Geometric circles - larger and more visible */}
       <div
@@ -164,14 +164,14 @@ function VibrantStyle() {
       {/* Top left accent blob */}
       <div
         className="absolute -top-24 -left-24 w-96 h-96 rounded-full blur-3xl
-          bg-gradient-to-br from-primary/35 to-pink-500/25
-          dark:from-primary/50 dark:to-pink-500/40"
+          bg-gradient-to-br from-primary/35 to-teal-500/25
+          dark:from-primary/50 dark:to-teal-500/40"
       />
       {/* Bottom right accent blob */}
       <div
         className="absolute -bottom-24 -right-24 w-96 h-96 rounded-full blur-3xl
-          bg-gradient-to-tl from-primary/35 to-pink-500/25
-          dark:from-primary/50 dark:to-pink-500/40"
+          bg-gradient-to-tl from-primary/35 to-teal-500/25
+          dark:from-primary/50 dark:to-teal-500/40"
       />
     </>
   );

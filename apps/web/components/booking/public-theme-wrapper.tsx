@@ -116,32 +116,42 @@ export function PublicThemeWrapper({
   const [theme, setTheme] = useState<Theme>('light');
   const [mounted, setMounted] = useState(false);
 
+  // Apply theme to <html> + colorScheme + localStorage — single source of truth
+  const applyThemeToDOM = (t: Theme) => {
+    const root = document.documentElement;
+    root.classList.remove('light', 'dark');
+    root.classList.add(t);
+    root.style.colorScheme = t;
+  };
+
   useEffect(() => {
+    let initial: Theme = 'light';
+
     const stored = localStorage.getItem(STORAGE_KEY) as Theme | null;
     if (stored && enableDarkMode) {
-      setTheme(stored);
+      initial = stored;
+    } else if (enableDarkMode) {
+      // Sync with system preference or existing <html> class
+      const htmlDark = document.documentElement.classList.contains('dark');
+      const systemDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches;
+      if (htmlDark || systemDark) {
+        initial = 'dark';
+      }
     }
+
+    setTheme(initial);
+    applyThemeToDOM(initial);
     setMounted(true);
   }, [STORAGE_KEY, enableDarkMode]);
 
   useEffect(() => {
-    if (mounted && enableDarkMode) {
-      localStorage.setItem(STORAGE_KEY, theme);
-      // Dispatch event for floating toggle sync
-      window.dispatchEvent(new CustomEvent('public-theme-change', { detail: theme }));
+    if (mounted) {
+      applyThemeToDOM(theme);
+      if (enableDarkMode) {
+        localStorage.setItem(STORAGE_KEY, theme);
+      }
     }
   }, [theme, mounted, STORAGE_KEY, enableDarkMode]);
-
-  // Listen for theme changes from floating toggle
-  useEffect(() => {
-    const handleThemeUpdate = (e: CustomEvent<Theme>) => {
-      setTheme(e.detail);
-    };
-    window.addEventListener('public-theme-update', handleThemeUpdate as EventListener);
-    return () => {
-      window.removeEventListener('public-theme-update', handleThemeUpdate as EventListener);
-    };
-  }, []);
 
   const toggleTheme = () => {
     if (enableDarkMode) {
@@ -149,8 +159,18 @@ export function PublicThemeWrapper({
     }
   };
 
+  // Cleanup: restore <html> to light when unmounting (navigating away from public page)
+  useEffect(() => {
+    return () => {
+      const dashboardTheme = localStorage.getItem('turnolink-theme') as Theme | null;
+      applyThemeToDOM(dashboardTheme || 'light');
+    };
+  }, []);
+
   // Generate CSS variables from custom colors
   const customStyles: React.CSSProperties = {};
+
+  // Primary color - main actions, buttons, links
   if (colors.primaryColor) {
     const primaryHSL = hexToHSL(colors.primaryColor);
     if (primaryHSL) {
@@ -160,31 +180,37 @@ export function PublicThemeWrapper({
       });
       (customStyles as Record<string, string>)['--primary'] = `${primaryHSL.h} ${primaryHSL.s}% ${primaryHSL.l}%`;
       (customStyles as Record<string, string>)['--ring'] = `${primaryHSL.h} ${primaryHSL.s}% ${primaryHSL.l}%`;
-      (customStyles as Record<string, string>)['--accent'] = `${primaryHSL.h} ${primaryHSL.s}% ${primaryHSL.l}%`;
     }
   }
+
+  // Secondary color - secondary buttons, badges, backgrounds
   if (colors.secondaryColor) {
     const secondaryHSL = hexToHSL(colors.secondaryColor);
     if (secondaryHSL) {
+      const variations = generateColorVariations(colors.secondaryColor);
+      Object.entries(variations).forEach(([key, value]) => {
+        (customStyles as Record<string, string>)[`--tenant-secondary-${key}`] = value;
+      });
       (customStyles as Record<string, string>)['--secondary'] = `${secondaryHSL.h} ${secondaryHSL.s}% ${secondaryHSL.l}%`;
     }
   }
 
-  if (!mounted) {
-    return (
-      <div className="min-h-screen" style={customStyles}>
-        {children}
-      </div>
-    );
+  // Accent color - highlights, special elements, notifications
+  if (colors.accentColor) {
+    const accentHSL = hexToHSL(colors.accentColor);
+    if (accentHSL) {
+      const variations = generateColorVariations(colors.accentColor);
+      Object.entries(variations).forEach(([key, value]) => {
+        (customStyles as Record<string, string>)[`--tenant-accent-${key}`] = value;
+      });
+      (customStyles as Record<string, string>)['--accent'] = `${accentHSL.h} ${accentHSL.s}% ${accentHSL.l}%`;
+    }
   }
 
   return (
     <PublicThemeContext.Provider value={{ theme, toggleTheme, colors }}>
       <div
-        className={cn(
-          theme,
-          'min-h-screen transition-colors duration-300'
-        )}
+        className="min-h-screen transition-colors duration-300"
         style={customStyles}
       >
         {children}
@@ -221,6 +247,7 @@ export function PublicThemeToggle({ className }: { className?: string }) {
       onClick={toggleTheme}
       className={cn(
         'h-9 w-9 relative overflow-hidden bg-white/10 backdrop-blur rounded-full hover:bg-white/20 transition-colors',
+        'focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:ring-offset-0',
         className
       )}
       aria-label={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
@@ -241,64 +268,30 @@ export function PublicThemeToggle({ className }: { className?: string }) {
   );
 }
 
-// Floating theme toggle for public pages - self-contained with its own state
+// Floating theme toggle for public pages — delegates to PublicThemeWrapper context.
+// Must be rendered inside <PublicThemeWrapper>.
 export function PublicThemeToggleFloating({
   className,
-  tenantSlug
 }: {
   className?: string;
-  tenantSlug: string;
+  tenantSlug?: string; // kept for backwards-compat call-sites, unused
 }) {
-  const STORAGE_KEY = `public-theme-${tenantSlug}`;
-  const [theme, setTheme] = useState<Theme>('light');
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY) as Theme | null;
-    if (stored) {
-      setTheme(stored);
-    }
-    setMounted(true);
-
-    // Listen for theme changes from wrapper
-    const handleThemeChange = (e: CustomEvent<Theme>) => {
-      setTheme(e.detail);
-    };
-    window.addEventListener('public-theme-change', handleThemeChange as EventListener);
-    return () => {
-      window.removeEventListener('public-theme-change', handleThemeChange as EventListener);
-    };
-  }, [STORAGE_KEY]);
-
-  const toggleTheme = () => {
-    const newTheme = theme === 'light' ? 'dark' : 'light';
-    setTheme(newTheme);
-    localStorage.setItem(STORAGE_KEY, newTheme);
-    // Dispatch event for wrapper sync
-    window.dispatchEvent(new CustomEvent('public-theme-update', { detail: newTheme }));
-    // Also update the DOM directly for immediate effect
-    const wrapper = document.querySelector('.light, .dark');
-    if (wrapper) {
-      wrapper.classList.remove('light', 'dark');
-      wrapper.classList.add(newTheme);
-    }
-  };
-
-  if (!mounted) {
-    return null;
-  }
+  const { theme, toggleTheme } = usePublicTheme();
 
   return (
-    <Button
-      variant="outline"
-      size="icon"
+    <button
+      type="button"
       onClick={toggleTheme}
       className={cn(
         'fixed bottom-4 right-4 z-50 h-12 w-12 rounded-full shadow-lg',
-        'bg-background/80 backdrop-blur-md border-border/50',
-        'hover:scale-110 transition-all duration-300',
+        'bg-white/90 dark:bg-neutral-800/90 backdrop-blur-md',
+        'border border-slate-200 dark:border-neutral-700',
+        'hover:scale-110 active:scale-95 transition-all duration-300',
+        'flex items-center justify-center',
+        'outline-none focus:outline-none',
         className
       )}
+      style={{ WebkitTapHighlightColor: 'transparent' }}
       aria-label={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
     >
       <Sun
@@ -313,6 +306,6 @@ export function PublicThemeToggleFloating({
           theme === 'dark' ? 'rotate-0 scale-100 opacity-100' : 'rotate-90 scale-0 opacity-0'
         )}
       />
-    </Button>
+    </button>
   );
 }

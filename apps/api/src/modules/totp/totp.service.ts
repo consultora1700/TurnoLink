@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, UnauthorizedException, Logger } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import * as crypto from 'crypto';
@@ -221,7 +221,7 @@ export class TotpService {
     return false;
   }
 
-  async disable(userId: string, password: string, code: string) {
+  async disable(userId: string, code: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       include: { totpSecret: true },
@@ -229,13 +229,6 @@ export class TotpService {
 
     if (!user || !user.totpSecret?.isEnabled) {
       throw new BadRequestException('2FA is not enabled');
-    }
-
-    // Verify password
-    const bcrypt = await import('bcryptjs');
-    const validPassword = await bcrypt.compare(password, user.password);
-    if (!validPassword) {
-      throw new UnauthorizedException('Invalid password');
     }
 
     // Verify TOTP code

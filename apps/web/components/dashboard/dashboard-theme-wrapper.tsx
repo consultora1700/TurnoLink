@@ -55,7 +55,7 @@ export function DashboardThemeWrapper({ children }: { children: ReactNode }) {
         'min-h-screen bg-fixed transition-colors duration-300',
         theme === 'dark'
           ? 'bg-gradient-to-br from-neutral-950 via-neutral-950 to-neutral-900'
-          : 'bg-gradient-to-br from-slate-50 via-white to-pink-50/30'
+          : 'bg-gradient-to-br from-slate-50 via-white to-teal-50/30'
       )}>
         {/* Subtle decorative elements */}
         <div className="fixed inset-0 overflow-hidden pointer-events-none">

@@ -66,6 +66,25 @@ export function useAuth(): AuthContextValue {
 // =============================================================================
 
 export function Providers({ children }: { children: React.ReactNode }) {
+  // Scroll focused inputs into view on mobile when keyboard opens
+  useEffect(() => {
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    if (!isMobile) return;
+
+    const handleFocusIn = (e: FocusEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') {
+        // Delay to wait for keyboard to appear
+        setTimeout(() => {
+          target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 300);
+      }
+    };
+
+    document.addEventListener('focusin', handleFocusIn);
+    return () => document.removeEventListener('focusin', handleFocusIn);
+  }, []);
+
   const [queryClient] = useState(
     () =>
       new QueryClient({

@@ -9,6 +9,7 @@ interface JwtPayload {
   email: string;
   role: string;
   tenantId: string | null;
+  tenantType?: string;
 }
 
 @Injectable()
@@ -29,6 +30,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (!user) {
       throw new UnauthorizedException('Invalid token');
     }
-    return user;
+    return {
+      ...user,
+      tenantType: payload.tenantType || 'BUSINESS',
+    };
   }
 }

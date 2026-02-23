@@ -53,6 +53,7 @@ export default function SeguridadPage() {
   const [verificationCode, setVerificationCode] = useState('');
   const [disableCode, setDisableCode] = useState('');
   const [backupCodes, setBackupCodes] = useState<string[]>([]);
+  const [pendingBackupCodes, setPendingBackupCodes] = useState<string[]>([]); // Códigos guardados del setup
   const [qrCodeUrl, setQrCodeUrl] = useState('');
   const [secret, setSecret] = useState('');
   const [loading, setLoading] = useState(true);
@@ -84,6 +85,7 @@ export default function SeguridadPage() {
       const response = await api.setup2FA();
       setQrCodeUrl(response.qrCode);
       setSecret(response.secret);
+      setPendingBackupCodes(response.backupCodes || []); // Guardar los códigos del setup
       setShowSetupDialog(true);
       setSetupStep('qr');
     } catch (err) {
@@ -102,7 +104,8 @@ export default function SeguridadPage() {
     try {
       const response = await api.verify2FA(verificationCode);
       if (response.success) {
-        setBackupCodes(response.backupCodes || []);
+        // Usar los códigos guardados del setup (el verify no los devuelve)
+        setBackupCodes(pendingBackupCodes);
         setSetupStep('backup');
       } else {
         setError('Código incorrecto. Intenta de nuevo.');
@@ -186,35 +189,34 @@ export default function SeguridadPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 p-8 text-white">
+      <div className="relative overflow-hidden rounded-xl sm:rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 p-4 sm:p-6 md:p-8 text-white">
         <div className="absolute inset-0 bg-grid opacity-10" />
-        <div className="absolute -top-24 -right-24 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
-        <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
+        <div className="absolute -top-24 -right-24 w-48 sm:w-64 h-48 sm:h-64 bg-white/10 rounded-full blur-3xl" />
+        <div className="absolute -bottom-24 -left-24 w-48 sm:w-64 h-48 sm:h-64 bg-white/10 rounded-full blur-3xl" />
 
-        <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="h-12 w-12 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center">
-                <Shield className="h-6 w-6" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold">Seguridad</h1>
-                <p className="text-white/80">
-                  Protege tu cuenta con medidas de seguridad adicionales
-                </p>
-              </div>
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center flex-shrink-0">
+              <Shield className="h-5 w-5 sm:h-6 sm:w-6" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-2xl sm:text-3xl font-bold">Seguridad</h1>
+              <p className="text-white/80 text-sm sm:text-base truncate sm:whitespace-normal">
+                Protege tu cuenta con medidas adicionales
+              </p>
             </div>
           </div>
 
-          <Badge className={`text-sm py-2 px-4 ${is2FAEnabled ? 'bg-white text-emerald-700' : 'bg-white/20 text-white'}`}>
+          <Badge className={`text-xs sm:text-sm py-1.5 sm:py-2 px-3 sm:px-4 w-fit ${is2FAEnabled ? 'bg-white text-emerald-700' : 'bg-white/20 text-white'}`}>
             {is2FAEnabled ? (
               <>
-                <ShieldCheck className="mr-2 h-4 w-4" />
-                Cuenta Protegida
+                <ShieldCheck className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Cuenta Protegida</span>
+                <span className="sm:hidden">Protegida</span>
               </>
             ) : (
               <>
-                <ShieldAlert className="mr-2 h-4 w-4" />
+                <ShieldAlert className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 Sin 2FA
               </>
             )}
@@ -222,7 +224,7 @@ export default function SeguridadPage() {
         </div>
 
         {/* Security Score */}
-        <div className="relative grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-white/20">
+        <div className="relative grid grid-cols-2 gap-2 sm:gap-4 mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-white/20">
           <div className="text-center">
             <div className={`text-3xl font-bold ${is2FAEnabled ? 'text-white' : 'text-amber-300'}`}>
               {is2FAEnabled ? '100%' : '50%'}
@@ -479,12 +481,21 @@ export default function SeguridadPage() {
                     <Input
                       value={verificationCode}
                       onChange={(e) => {
-                        setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6));
+                        const newCode = e.target.value.replace(/\D/g, '').slice(0, 6);
+                        setVerificationCode(newCode);
                         setError(null);
+                        // Auto-submit cuando se completan los 6 dígitos
+                        if (newCode.length === 6 && !processing) {
+                          setTimeout(() => {
+                            const verifyBtn = document.getElementById('verify-2fa-btn');
+                            verifyBtn?.click();
+                          }, 100);
+                        }
                       }}
                       placeholder="000000"
                       className="text-center text-3xl tracking-[0.5em] h-14 font-mono"
                       maxLength={6}
+                      autoFocus
                     />
                   </div>
                   {error && (
@@ -497,6 +508,7 @@ export default function SeguridadPage() {
                   Volver
                 </Button>
                 <Button
+                  id="verify-2fa-btn"
                   onClick={handleVerify}
                   disabled={verificationCode.length !== 6 || processing}
                   className="bg-gradient-to-r from-emerald-500 to-teal-500"
@@ -604,26 +616,36 @@ export default function SeguridadPage() {
               <Input
                 value={disableCode}
                 onChange={(e) => {
-                  setDisableCode(e.target.value.replace(/\D/g, '').slice(0, 6));
+                  const newCode = e.target.value.replace(/\D/g, '').slice(0, 6);
+                  setDisableCode(newCode);
                   setError(null);
+                  // Auto-submit cuando se completan los 6 dígitos
+                  if (newCode.length === 6 && !processing) {
+                    setTimeout(() => {
+                      const disableBtn = document.getElementById('disable-2fa-btn');
+                      disableBtn?.click();
+                    }, 100);
+                  }
                 }}
                 placeholder="000000"
                 className="text-center text-3xl tracking-[0.5em] h-14 font-mono"
                 maxLength={6}
+                autoFocus
               />
             </div>
             {error && (
               <p className="text-sm text-destructive text-center mt-3 p-3 bg-red-50 dark:bg-red-900/30 rounded-xl">{error}</p>
             )}
           </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setDisableCode('')}>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel onClick={() => setDisableCode('')} className="w-full sm:w-auto mt-0">
               Cancelar
             </AlertDialogCancel>
             <AlertDialogAction
+              id="disable-2fa-btn"
               onClick={handleDisable}
               disabled={disableCode.length !== 6 || processing}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="w-full sm:w-auto bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {processing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Desactivar

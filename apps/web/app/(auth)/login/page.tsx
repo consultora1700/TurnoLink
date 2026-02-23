@@ -56,9 +56,16 @@ function LoginForm() {
     <Card className="w-full max-w-md border-0 shadow-2xl bg-white/80 dark:bg-neutral-800/90 backdrop-blur-sm">
       <CardHeader className="text-center pb-2">
         <Link href="/" className="inline-flex items-center justify-center gap-2 mb-4">
-          <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary to-pink-600 flex items-center justify-center">
-            <Link2 className="h-6 w-6 text-white" />
-          </div>
+          <img
+            src="/claro2.png"
+            alt="TurnoLink"
+            className="h-28 w-auto dark:hidden"
+          />
+          <img
+            src="/oscuro2.png"
+            alt="TurnoLink"
+            className="h-28 w-auto hidden dark:block"
+          />
         </Link>
         <CardTitle className="text-2xl">Bienvenido de vuelta</CardTitle>
         <CardDescription>
@@ -110,7 +117,7 @@ function LoginForm() {
         <CardFooter className="flex flex-col gap-4">
           <Button
             type="submit"
-            className="w-full h-11 bg-gradient-to-r from-primary to-pink-600 hover:from-primary/90 hover:to-pink-600/90"
+            className="w-full h-11 bg-gradient-to-r from-primary to-teal-600 hover:from-primary/90 hover:to-teal-600/90"
             disabled={loading}
           >
             {loading ? (
@@ -139,9 +146,16 @@ function LoginFallback() {
     <Card className="w-full max-w-md border-0 shadow-2xl">
       <CardHeader className="text-center">
         <div className="inline-flex items-center justify-center gap-2 mb-4">
-          <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary to-pink-600 flex items-center justify-center">
-            <Link2 className="h-6 w-6 text-white" />
-          </div>
+          <img
+            src="/claro2.png"
+            alt="TurnoLink"
+            className="h-28 w-auto dark:hidden"
+          />
+          <img
+            src="/oscuro2.png"
+            alt="TurnoLink"
+            className="h-28 w-auto hidden dark:block"
+          />
         </div>
         <CardTitle className="text-2xl">Bienvenido de vuelta</CardTitle>
         <CardDescription>
@@ -161,16 +175,17 @@ export default function LoginPage() {
       {/* Left side - Branding */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 relative overflow-hidden">
         <div className="absolute inset-0 bg-grid opacity-10" />
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-transparent to-pink-500/20" />
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-transparent to-teal-500/20" />
         <div className="absolute -top-40 -left-40 w-80 h-80 bg-primary/30 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 -right-40 w-80 h-80 bg-pink-500/30 rounded-full blur-3xl" />
+        <div className="absolute -bottom-40 -right-40 w-80 h-80 bg-teal-500/30 rounded-full blur-3xl" />
 
         <div className="relative z-10 flex flex-col justify-center px-12 xl:px-20">
           <div className="flex items-center gap-3 mb-8">
-            <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-primary to-pink-600 flex items-center justify-center">
-              <Link2 className="h-7 w-7 text-white" />
-            </div>
-            <span className="text-3xl font-bold text-white">TurnoLink</span>
+            <img
+              src="/oscuro2.png"
+              alt="TurnoLink"
+              className="h-28 w-auto"
+            />
           </div>
 
           <h1 className="text-4xl xl:text-5xl font-bold text-white mb-4">
@@ -210,9 +225,9 @@ export default function LoginPage() {
       </div>
 
       {/* Right side - Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-pink-50/30 dark:from-neutral-900 dark:via-neutral-900 dark:to-neutral-800 px-4 py-8 relative">
+      <div className="w-full lg:w-1/2 flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-teal-50/30 dark:from-neutral-900 dark:via-neutral-900 dark:to-neutral-800 px-4 py-8 relative">
         <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 dark:bg-primary/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-pink-500/5 dark:bg-pink-500/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-teal-500/5 dark:bg-teal-500/10 rounded-full blur-3xl" />
 
         <Suspense fallback={<LoginFallback />}>
           <LoginForm />

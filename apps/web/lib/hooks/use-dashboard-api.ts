@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
 import { createApiClient } from '@/lib/api';
 
@@ -327,7 +327,7 @@ class DashboardApiClient {
     }
   }
 
-  async setup2FA(): Promise<{ qrCode: string; secret: string }> {
+  async setup2FA(): Promise<{ qrCode: string; secret: string; backupCodes: string[] }> {
     return this.fetch('/auth/2fa/setup', { method: 'POST' });
   }
 
@@ -348,17 +348,59 @@ class DashboardApiClient {
   async getBackupCodes(): Promise<{ codes: string[] }> {
     return this.fetch('/auth/2fa/backup-codes');
   }
+
+  // Mercado Pago
+  async getMercadoPagoStatus(): Promise<{
+    isConnected: boolean;
+    isSandbox: boolean;
+    connectedAt: string | null;
+    userId: string | null;
+  }> {
+    const response = await this.fetch<{ success: boolean; data: any }>('/mercadopago/status');
+    return response.data;
+  }
+
+  async getMercadoPagoOAuthUrl(totpCode: string, isSandbox: boolean = false): Promise<string> {
+    const response = await this.fetch<{ success: boolean; data: { url: string } }>('/mercadopago/oauth/url', {
+      method: 'POST',
+      body: JSON.stringify({ isSandbox, totpCode }),
+    });
+    return response.data.url;
+  }
+
+  async disconnectMercadoPago(totpCode: string): Promise<void> {
+    await this.fetch('/mercadopago/disconnect', {
+      method: 'POST',
+      body: JSON.stringify({ totpCode }),
+    });
+  }
+
+  async updateDepositSettings(settings: {
+    requireDeposit?: boolean;
+    depositPercentage?: number;
+    depositMode?: 'simulated' | 'mercadopago';
+  }): Promise<any> {
+    return this.fetch('/tenants/current/deposit-settings', {
+      method: 'PUT',
+      body: JSON.stringify(settings),
+    });
+  }
+
+  // Tenant
+  async getTenant(): Promise<any> {
+    return this.fetch('/tenants/current');
+  }
 }
 
 // Hook to get authenticated API client
 export function useDashboardApi() {
   const { data: session } = useSession();
+  const accessToken = session?.accessToken as string | undefined;
 
-  if (!session?.accessToken) {
-    return null;
-  }
-
-  return new DashboardApiClient(session.accessToken as string);
+  return useMemo(() => {
+    if (!accessToken) return null;
+    return new DashboardApiClient(accessToken);
+  }, [accessToken]);
 }
 
 // Products hooks

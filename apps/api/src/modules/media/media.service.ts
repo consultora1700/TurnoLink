@@ -9,12 +9,14 @@ import * as fs from 'fs/promises';
 @Injectable()
 export class MediaService {
   private readonly uploadDir: string;
-  private readonly maxFileSize = 5 * 1024 * 1024; // 5MB
+  private readonly maxFileSize = 10 * 1024 * 1024; // 10MB for mobile
   private readonly allowedMimeTypes = [
     'image/jpeg',
     'image/png',
     'image/webp',
     'image/gif',
+    'image/heic',
+    'image/heif',
   ];
 
   constructor(
@@ -108,31 +110,38 @@ export class MediaService {
     });
   }
 
+  /**
+   * Delete media with atomic tenant isolation.
+   * Uses interactive transaction to ensure the record belongs to tenant before deleting.
+   */
   async delete(tenantId: string, id: string) {
-    const media = await this.prisma.media.findFirst({
-      where: { id, tenantId },
+    return this.prisma.$transaction(async (tx) => {
+      // Verify ownership atomically
+      const media = await tx.media.findFirst({
+        where: { id, tenantId },
+      });
+
+      if (!media) {
+        throw new BadRequestException('Media not found');
+      }
+
+      // Delete file from disk
+      const filePath = path.join(
+        this.uploadDir,
+        tenantId,
+        media.folder || 'general',
+        media.filename,
+      );
+
+      try {
+        await fs.unlink(filePath);
+      } catch {
+        // File might not exist - continue with database deletion
+      }
+
+      // Delete from database - ownership already verified
+      return tx.media.delete({ where: { id } });
     });
-
-    if (!media) {
-      throw new BadRequestException('Media not found');
-    }
-
-    // Delete file from disk
-    const filePath = path.join(
-      this.uploadDir,
-      tenantId,
-      media.folder || 'general',
-      media.filename,
-    );
-
-    try {
-      await fs.unlink(filePath);
-    } catch {
-      // File might not exist
-    }
-
-    // Delete from database
-    return this.prisma.media.delete({ where: { id } });
   }
 
   // For S3 upload (production)

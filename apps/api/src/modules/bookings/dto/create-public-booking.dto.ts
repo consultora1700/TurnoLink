@@ -15,6 +15,11 @@ export class CreatePublicBookingDto {
   @IsNotEmpty()
   serviceId: string;
 
+  @ApiPropertyOptional({ description: 'ID de la sucursal' })
+  @IsOptional()
+  @IsUUID()
+  branchId?: string;
+
   @ApiPropertyOptional({ description: 'ID del empleado preferido' })
   @IsOptional()
   @IsUUID()

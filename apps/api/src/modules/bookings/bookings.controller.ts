@@ -32,7 +32,8 @@ export class BookingsController {
     @CurrentUser() user: User,
     @Body() createBookingDto: CreateBookingDto,
   ) {
-    return this.bookingsService.create(user.tenantId!, createBookingDto);
+    // skipAdvanceCheck=true: dashboard users can create bookings at any time (no min advance hours)
+    return this.bookingsService.create(user.tenantId!, createBookingDto, undefined, true);
   }
 
   @Get()
@@ -62,6 +63,12 @@ export class BookingsController {
     return this.bookingsService.getTodayBookings(user.tenantId!);
   }
 
+  @Get('recent')
+  @ApiOperation({ summary: 'Get recent bookings for notifications' })
+  async getRecent(@CurrentUser() user: User) {
+    return this.bookingsService.getRecentBookings(user.tenantId!);
+  }
+
   @Get('availability')
   @ApiOperation({ summary: 'Get availability for a date' })
   async getAvailability(
@@ -70,6 +77,16 @@ export class BookingsController {
     @Query('serviceId') serviceId?: string,
   ) {
     return this.bookingsService.getAvailability(user.tenantId!, date, serviceId);
+  }
+
+  @Get('daily-availability')
+  @ApiOperation({ summary: 'Get daily availability for a date range' })
+  async getDailyAvailability(
+    @CurrentUser() user: User,
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+  ) {
+    return this.bookingsService.getDailyAvailability(user.tenantId!, startDate, endDate);
   }
 
   @Get(':id')

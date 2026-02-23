@@ -17,24 +17,35 @@ import {
   CheckCircle2,
   AlertCircle,
   Link2,
-  Sparkles,
   CreditCard,
   Percent,
   ImageIcon,
   Palette,
   Moon,
   Sun,
+  HelpCircle,
+  Bell,
+  Smartphone,
+  User,
+  Sliders,
+  Clock,
+  Calendar,
+  Timer,
 } from 'lucide-react';
+import { RestartTourButton } from '@/components/onboarding/onboarding-tour';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { createApiClient } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { ImageUpload } from '@/components/ui/image-upload';
 import { BackgroundStylePreview, BACKGROUND_STYLE_OPTIONS, BackgroundStyle } from '@/components/ui/background-styles';
+import { HeroStylePreview } from '@/components/booking/hero-style-preview';
+import { HERO_STYLE_OPTIONS, HeroStyleName } from '@/lib/hero-styles';
+import { ColorPickerSection } from '@/components/ui/color-picker';
 import Link from 'next/link';
 
 interface TenantSettings {
@@ -46,6 +57,15 @@ interface TenantSettings {
   accentColor?: string;
   enableDarkMode?: boolean;
   backgroundStyle?: BackgroundStyle;
+  notifyOwnerByEmail?: boolean;
+  notificationEmail?: string;
+  pushNewBooking?: boolean;
+  pushCancellation?: boolean;
+  pushReminder?: boolean;
+  bookingBuffer?: number;
+  minAdvanceBookingHours?: number;
+  maxAdvanceBookingDays?: number;
+  smartTimeSlots?: boolean;
 }
 
 interface Tenant {
@@ -71,6 +91,7 @@ export default function ConfiguracionPage() {
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
   const [formData, setFormData] = useState({
+    slug: '',
     name: '',
     description: '',
     phone: '',
@@ -86,12 +107,28 @@ export default function ConfiguracionPage() {
     depositPercentage: 30,
     depositMode: 'simulated' as 'simulated' | 'mercadopago',
   });
+  const [notificationSettings, setNotificationSettings] = useState({
+    notifyOwnerByEmail: true,
+    notificationEmail: '',
+  });
+  const [pushSettings, setPushSettings] = useState({
+    pushNewBooking: true,
+    pushCancellation: true,
+    pushReminder: true,
+  });
+  const [bookingTimeSettings, setBookingTimeSettings] = useState({
+    bookingBuffer: 0,
+    minAdvanceBookingHours: 1,
+    maxAdvanceBookingDays: 30,
+    smartTimeSlots: true,
+  });
   const [themeSettings, setThemeSettings] = useState({
-    primaryColor: '#D62971',
+    primaryColor: '#3F8697',
     secondaryColor: '#8B5CF6',
     accentColor: '#F59E0B',
     enableDarkMode: true,
     backgroundStyle: 'modern' as BackgroundStyle,
+    heroStyle: 'classic' as HeroStyleName,
   });
 
   useEffect(() => {
@@ -107,6 +144,7 @@ export default function ConfiguracionPage() {
     const data = await api.getTenant() as Tenant;
     setTenant(data);
     setFormData({
+      slug: data.slug || '',
       name: data.name || '',
       description: data.description || '',
       phone: data.phone || '',
@@ -127,12 +165,28 @@ export default function ConfiguracionPage() {
         depositPercentage: settings.depositPercentage ?? 30,
         depositMode: settings.depositMode ?? 'simulated',
       });
+      setNotificationSettings({
+        notifyOwnerByEmail: settings.notifyOwnerByEmail ?? true,
+        notificationEmail: settings.notificationEmail ?? '',
+      });
+      setPushSettings({
+        pushNewBooking: settings.pushNewBooking ?? true,
+        pushCancellation: settings.pushCancellation ?? true,
+        pushReminder: settings.pushReminder ?? true,
+      });
+      setBookingTimeSettings({
+        bookingBuffer: settings.bookingBuffer ?? 0,
+        minAdvanceBookingHours: settings.minAdvanceBookingHours ?? 1,
+        maxAdvanceBookingDays: settings.maxAdvanceBookingDays ?? 30,
+        smartTimeSlots: settings.smartTimeSlots ?? true,
+      });
       setThemeSettings({
-        primaryColor: settings.primaryColor ?? '#D62971',
+        primaryColor: settings.primaryColor ?? '#3F8697',
         secondaryColor: settings.secondaryColor ?? '#8B5CF6',
         accentColor: settings.accentColor ?? '#F59E0B',
         enableDarkMode: settings.enableDarkMode ?? true,
         backgroundStyle: (settings.backgroundStyle as BackgroundStyle) ?? 'modern',
+        heroStyle: (settings.heroStyle as HeroStyleName) ?? 'classic',
       });
     }
     setLoading(false);
@@ -144,13 +198,27 @@ export default function ConfiguracionPage() {
 
     try {
       const api = createApiClient(session.accessToken as string);
-      await api.updateTenant({
-        ...formData,
+      const { slug, ...restFormData } = formData;
+      const updateData: Record<string, unknown> = {
+        ...restFormData,
         settings: JSON.stringify({
           ...depositSettings,
+          ...notificationSettings,
+          ...pushSettings,
           ...themeSettings,
+          ...bookingTimeSettings,
         }),
-      });
+      };
+      // Only send slug if it changed
+      if (tenant && slug !== tenant.slug) {
+        updateData.slug = slug;
+      }
+      await api.updateTenant(updateData);
+
+      // Update local tenant state with new slug
+      if (tenant) {
+        setTenant({ ...tenant, ...restFormData, slug });
+      }
 
       toast({
         title: 'Configuración guardada',
@@ -167,7 +235,8 @@ export default function ConfiguracionPage() {
     }
   };
 
-  const publicUrl = tenant ? `${typeof window !== 'undefined' ? window.location.origin : ''}/${tenant.slug}` : '';
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+  const publicUrl = formData.slug ? `${baseUrl}/${formData.slug}` : '';
 
   const copyUrl = () => {
     navigator.clipboard.writeText(publicUrl);
@@ -198,20 +267,20 @@ export default function ConfiguracionPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-700 via-slate-800 to-slate-900 p-8 text-white">
+      <div className="relative overflow-hidden rounded-xl sm:rounded-2xl bg-gradient-to-r from-slate-700 via-slate-800 to-slate-900 p-4 sm:p-6 md:p-8 text-white">
         <div className="absolute inset-0 bg-grid opacity-10" />
-        <div className="absolute -top-24 -right-24 w-64 h-64 bg-white/5 rounded-full blur-3xl" />
-        <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-white/5 rounded-full blur-3xl" />
+        <div className="absolute -top-24 -right-24 w-48 sm:w-64 h-48 sm:h-64 bg-white/5 rounded-full blur-3xl" />
+        <div className="absolute -bottom-24 -left-24 w-48 sm:w-64 h-48 sm:h-64 bg-white/5 rounded-full blur-3xl" />
 
-        <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <div className="h-12 w-12 rounded-xl bg-white/10 backdrop-blur flex items-center justify-center">
-                <Settings className="h-6 w-6" />
+              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-white/10 backdrop-blur flex items-center justify-center flex-shrink-0">
+                <Settings className="h-5 w-5 sm:h-6 sm:w-6" />
               </div>
-              <div>
-                <h1 className="text-3xl font-bold">Configuración</h1>
-                <p className="text-white/70">
+              <div className="min-w-0">
+                <h1 className="text-2xl sm:text-3xl font-bold">Configuración</h1>
+                <p className="text-white/70 text-sm sm:text-base truncate">
                   Administra la información de tu negocio
                 </p>
               </div>
@@ -221,7 +290,7 @@ export default function ConfiguracionPage() {
           <Button
             onClick={handleSave}
             disabled={saving}
-            className="bg-white text-slate-900 hover:bg-white/90 shadow-lg"
+            className="bg-white text-slate-900 hover:bg-white/90 shadow-lg w-full sm:w-auto hidden sm:flex"
           >
             {saving ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -250,549 +319,814 @@ export default function ConfiguracionPage() {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Public URL */}
-        <Card className="border-0 shadow-soft lg:col-span-3 overflow-hidden">
-          <div className="h-1 bg-gradient-to-r from-emerald-500 to-teal-500" />
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center">
-                <Link2 className="h-4 w-4 text-white" />
-              </div>
-              Tu Página Pública
-            </CardTitle>
-            <CardDescription>
-              Comparte este link con tus clientes para que puedan reservar turnos y ver tu tienda
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="flex-1 relative">
-                <Input
-                  value={publicUrl}
-                  readOnly
-                  className="font-mono text-sm h-11 pr-24 bg-slate-50 dark:bg-neutral-800"
+      {/* Public URL — always visible */}
+      <Card data-tour="public-url" className="border-0 shadow-soft overflow-hidden">
+        <div className="h-1 bg-gradient-to-r from-emerald-500 to-teal-500" />
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2">
+            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center">
+              <Link2 className="h-4 w-4 text-white" />
+            </div>
+            Tu Página Pública
+          </CardTitle>
+          <CardDescription>
+            Comparte este link con tus clientes para que puedan reservar turnos y ver tu tienda
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            <Label className="text-sm font-medium">URL de tu página</Label>
+            <div className="relative">
+              <div className="flex items-center h-11 rounded-lg border border-slate-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 focus-within:ring-2 focus-within:ring-emerald-500/30 focus-within:border-emerald-500 transition-all">
+                <span className="text-xs sm:text-sm text-muted-foreground pl-3 whitespace-nowrap select-none">
+                  <span className="hidden sm:inline">turnolink.mubitt.com/</span>
+                  <span className="sm:hidden">turnolink.../</span>
+                </span>
+                <input
+                  value={formData.slug}
+                  onChange={(e) => setFormData({ ...formData, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })}
+                  className="flex-1 h-full bg-transparent text-sm font-semibold outline-none pr-3 min-w-0"
+                  placeholder="mi-negocio"
+                  spellCheck={false}
                 />
-                <div className="absolute right-1 top-1 flex gap-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={copyUrl}
-                    className="h-9 px-3"
-                  >
-                    {copied ? (
-                      <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                    ) : (
-                      <Copy className="h-4 w-4" />
-                    )}
-                  </Button>
-                  <Link href={`/${tenant?.slug}`} target="_blank">
-                    <Button variant="ghost" size="sm" className="h-9 px-3">
-                      <ExternalLink className="h-4 w-4" />
-                    </Button>
-                  </Link>
-                </div>
               </div>
-              <Link href={`/${tenant?.slug}`} target="_blank">
-                <Button className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 h-11">
-                  <Sparkles className="mr-2 h-4 w-4" />
+            </div>
+            {formData.slug && tenant && formData.slug !== tenant.slug && (
+              <div className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
+                <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
+                <span>Al cambiar la URL, los links anteriores dejarán de funcionar.</span>
+              </div>
+            )}
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={copyUrl}
+                className="h-9"
+              >
+                {copied ? (
+                  <><CheckCircle2 className="h-4 w-4 mr-1.5 text-emerald-600" /> Copiado</>
+                ) : (
+                  <><Copy className="h-4 w-4 mr-1.5" /> Copiar URL</>
+                )}
+              </Button>
+              <Link href={`/${formData.slug || tenant?.slug}`} target="_blank">
+                <Button variant="outline" size="sm" className="h-9">
+                  <ExternalLink className="h-4 w-4 mr-1.5" />
                   Ver mi Página
                 </Button>
               </Link>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </CardContent>
+      </Card>
 
-        {/* Business Info */}
-        <Card className="border-0 shadow-soft lg:col-span-2 overflow-hidden">
-          <div className="h-1 bg-gradient-to-r from-blue-500 to-indigo-500" />
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center">
-                <Building2 className="h-4 w-4 text-white" />
-              </div>
-              Información del Negocio
-            </CardTitle>
-            <CardDescription>
-              Datos básicos que se mostrarán en tu página
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="name" className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-muted-foreground" />
-                  Nombre del negocio
-                </Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
-                  className="h-11"
-                  placeholder="Mi Negocio"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="phone" className="flex items-center gap-2">
-                  <Phone className="h-4 w-4 text-muted-foreground" />
-                  Teléfono
-                </Label>
-                <Input
-                  id="phone"
-                  value={formData.phone}
-                  onChange={(e) =>
-                    setFormData({ ...formData, phone: e.target.value })
-                  }
-                  placeholder="+54 11 1234-5678"
-                  className="h-11"
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="description" className="flex items-center gap-2">
-                <Globe className="h-4 w-4 text-muted-foreground" />
-                Descripción
-              </Label>
-              <Input
-                id="description"
-                value={formData.description}
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
-                }
-                placeholder="Describe tu negocio en una línea..."
-                className="h-11"
-              />
-            </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="email" className="flex items-center gap-2">
-                  <Mail className="h-4 w-4 text-muted-foreground" />
-                  Email
-                </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) =>
-                    setFormData({ ...formData, email: e.target.value })
-                  }
-                  placeholder="contacto@tunegocio.com"
-                  className="h-11"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="instagram" className="flex items-center gap-2">
-                  <Instagram className="h-4 w-4 text-muted-foreground" />
-                  Instagram
-                </Label>
-                <Input
-                  id="instagram"
-                  value={formData.instagram}
-                  onChange={(e) =>
-                    setFormData({ ...formData, instagram: e.target.value })
-                  }
-                  placeholder="@tunegocio"
-                  className="h-11"
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Tabs */}
+      <Tabs defaultValue="perfil" className="space-y-6">
+        <TabsList className="w-full grid grid-cols-3 h-12">
+          <TabsTrigger value="perfil" className="gap-1.5 text-xs sm:text-sm data-[state=active]:shadow-md">
+            <User className="h-4 w-4" />
+            <span>Perfil</span>
+          </TabsTrigger>
+          <TabsTrigger value="operacion" className="gap-1.5 text-xs sm:text-sm data-[state=active]:shadow-md">
+            <Sliders className="h-4 w-4" />
+            <span className="hidden sm:inline">Reservas y Avisos</span>
+            <span className="sm:hidden">Ajustes</span>
+          </TabsTrigger>
+          <TabsTrigger value="apariencia" className="gap-1.5 text-xs sm:text-sm data-[state=active]:shadow-md">
+            <Palette className="h-4 w-4" />
+            <span>Apariencia</span>
+          </TabsTrigger>
+        </TabsList>
 
-        {/* Images Section */}
-        <Card className="border-0 shadow-soft overflow-hidden">
-          <div className="h-1 bg-gradient-to-r from-purple-500 to-pink-500" />
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-                <ImageIcon className="h-4 w-4 text-white" />
-              </div>
-              Imágenes
-            </CardTitle>
-            <CardDescription>
-              Logo y portada de tu página pública
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-2">
-              <Label>Logo del negocio</Label>
-              <ImageUpload
-                value={formData.logo}
-                onChange={(url) => setFormData({ ...formData, logo: url })}
-                onUpload={async (file) => {
-                  if (!session?.accessToken) throw new Error('No autenticado');
-                  const api = createApiClient(session.accessToken as string);
-                  return api.uploadMedia(file, 'logos');
-                }}
-                aspectRatio="square"
-                placeholder="Subir logo"
-              />
-              <p className="text-xs text-muted-foreground">
-                Recomendado: imagen cuadrada, mínimo 200x200px
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Imagen de portada</Label>
-              <ImageUpload
-                value={formData.coverImage}
-                onChange={(url) => setFormData({ ...formData, coverImage: url })}
-                onUpload={async (file) => {
-                  if (!session?.accessToken) throw new Error('No autenticado');
-                  const api = createApiClient(session.accessToken as string);
-                  return api.uploadMedia(file, 'covers');
-                }}
-                aspectRatio="banner"
-                placeholder="Subir portada"
-              />
-              <p className="text-xs text-muted-foreground">
-                Recomendado: imagen horizontal 3:1, mínimo 1200x400px
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Location */}
-        <Card className="border-0 shadow-soft overflow-hidden">
-          <div className="h-1 bg-gradient-to-r from-amber-500 to-orange-500" />
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
-                <MapPin className="h-4 w-4 text-white" />
-              </div>
-              Ubicación
-            </CardTitle>
-            <CardDescription>
-              Dirección de tu negocio
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="address">Dirección</Label>
-              <Input
-                id="address"
-                value={formData.address}
-                onChange={(e) =>
-                  setFormData({ ...formData, address: e.target.value })
-                }
-                placeholder="Av. Corrientes 1234"
-                className="h-11"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="city">Ciudad</Label>
-              <Input
-                id="city"
-                value={formData.city}
-                onChange={(e) =>
-                  setFormData({ ...formData, city: e.target.value })
-                }
-                placeholder="Buenos Aires"
-                className="h-11"
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Deposit/Seña Settings */}
-        <Card className="border-0 shadow-soft lg:col-span-2 overflow-hidden">
-          <div className="h-1 bg-gradient-to-r from-green-500 to-emerald-500" />
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center">
-                <CreditCard className="h-4 w-4 text-white" />
-              </div>
-              Seña / Depósito
-            </CardTitle>
-            <CardDescription>
-              Configura si requieres un pago adelantado para confirmar los turnos
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label htmlFor="requireDeposit" className="text-base">Requerir seña</Label>
-                <p className="text-sm text-muted-foreground">
-                  Los clientes deberán pagar un porcentaje del servicio para confirmar el turno
-                </p>
-              </div>
-              <Switch
-                id="requireDeposit"
-                checked={depositSettings.requireDeposit}
-                onCheckedChange={(checked) =>
-                  setDepositSettings({ ...depositSettings, requireDeposit: checked })
-                }
-              />
-            </div>
-
-            {depositSettings.requireDeposit && (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="depositPercentage" className="flex items-center gap-2">
-                    <Percent className="h-4 w-4 text-muted-foreground" />
-                    Porcentaje de seña
-                  </Label>
-                  <div className="flex items-center gap-3">
-                    <Input
-                      id="depositPercentage"
-                      type="number"
-                      min="1"
-                      max="100"
-                      value={depositSettings.depositPercentage}
-                      onChange={(e) =>
-                        setDepositSettings({
-                          ...depositSettings,
-                          depositPercentage: Math.min(100, Math.max(1, parseInt(e.target.value) || 30)),
-                        })
-                      }
-                      className="h-11 w-24"
-                    />
-                    <span className="text-muted-foreground">% del precio del servicio</span>
+        {/* ─────────────────────────────────────────────────── */}
+        {/* TAB 1: PERFIL                                      */}
+        {/* ─────────────────────────────────────────────────── */}
+        <TabsContent value="perfil">
+          <div className="grid gap-6 lg:grid-cols-3">
+            {/* Business Info */}
+            <Card data-tour="business-info" className="border-0 shadow-soft lg:col-span-2 overflow-hidden">
+              <div className="h-1 bg-gradient-to-r from-blue-500 to-indigo-500" />
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center">
+                    <Building2 className="h-4 w-4 text-white" />
                   </div>
+                  Información del Negocio
+                </CardTitle>
+                <CardDescription>
+                  Datos básicos que se mostrarán en tu página
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="name" className="flex items-center gap-2">
+                      <Building2 className="h-4 w-4 text-muted-foreground" />
+                      Nombre del negocio
+                    </Label>
+                    <Input
+                      id="name"
+                      value={formData.name}
+                      onChange={(e) =>
+                        setFormData({ ...formData, name: e.target.value })
+                      }
+                      className="h-11"
+                      placeholder="Mi Negocio"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="phone" className="flex items-center gap-2">
+                      <Phone className="h-4 w-4 text-muted-foreground" />
+                      WhatsApp / Teléfono
+                    </Label>
+                    <Input
+                      id="phone"
+                      value={formData.phone}
+                      onChange={(e) =>
+                        setFormData({ ...formData, phone: e.target.value })
+                      }
+                      placeholder="+54 9 11 1234-5678"
+                      className="h-11"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Incluye código de país para WhatsApp. Ej: +54 9 11 para Argentina
+                    </p>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="description" className="flex items-center gap-2">
+                    <Globe className="h-4 w-4 text-muted-foreground" />
+                    Descripción
+                  </Label>
+                  <Input
+                    id="description"
+                    value={formData.description}
+                    onChange={(e) =>
+                      setFormData({ ...formData, description: e.target.value })
+                    }
+                    placeholder="Describe tu negocio en una línea..."
+                    className="h-11"
+                  />
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="email" className="flex items-center gap-2">
+                      <Mail className="h-4 w-4 text-muted-foreground" />
+                      Email
+                    </Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) =>
+                        setFormData({ ...formData, email: e.target.value })
+                      }
+                      placeholder="contacto@tunegocio.com"
+                      className="h-11"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="instagram" className="flex items-center gap-2">
+                      <Instagram className="h-4 w-4 text-muted-foreground" />
+                      Instagram
+                    </Label>
+                    <Input
+                      id="instagram"
+                      value={formData.instagram}
+                      onChange={(e) =>
+                        setFormData({ ...formData, instagram: e.target.value })
+                      }
+                      placeholder="@tunegocio"
+                      className="h-11"
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Images Section */}
+            <Card className="border-0 shadow-soft overflow-hidden">
+              <div className="h-1 bg-gradient-to-r from-purple-500 to-teal-500" />
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-purple-500 to-teal-500 flex items-center justify-center">
+                    <ImageIcon className="h-4 w-4 text-white" />
+                  </div>
+                  Imágenes
+                </CardTitle>
+                <CardDescription>
+                  Logo y portada de tu página pública
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-2">
+                  <Label>Logo del negocio</Label>
+                  <ImageUpload
+                    value={formData.logo}
+                    onChange={(url) => setFormData({ ...formData, logo: url })}
+                    onUpload={async (file) => {
+                      if (!session?.accessToken) throw new Error('No autenticado');
+                      const api = createApiClient(session.accessToken as string);
+                      return api.uploadMedia(file, 'logos');
+                    }}
+                    aspectRatio="square"
+                    placeholder="Subir logo"
+                  />
                   <p className="text-xs text-muted-foreground">
-                    Ejemplo: Si un servicio cuesta $10.000 y la seña es 30%, el cliente paga $3.000 al reservar
+                    Recomendado: imagen cuadrada, mínimo 200x200px
                   </p>
                 </div>
 
-                <div className="rounded-lg border bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-800 p-4">
-                  <div className="flex items-start gap-3">
-                    <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-medium text-amber-800 dark:text-amber-300">Modo Demo Activo</p>
-                      <p className="text-sm text-amber-700 dark:text-amber-400">
-                        Actualmente los pagos están en modo simulado para demostración.
-                        Los clientes podrán &quot;pagar&quot; sin usar dinero real.
+                <div className="space-y-2">
+                  <Label>Imagen de portada</Label>
+                  <ImageUpload
+                    value={formData.coverImage}
+                    onChange={(url) => setFormData({ ...formData, coverImage: url })}
+                    onUpload={async (file) => {
+                      if (!session?.accessToken) throw new Error('No autenticado');
+                      const api = createApiClient(session.accessToken as string);
+                      return api.uploadMedia(file, 'covers');
+                    }}
+                    aspectRatio="banner"
+                    placeholder="Subir portada"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Recomendado: imagen horizontal 3:1, mínimo 1200x400px
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Location */}
+            <Card className="border-0 shadow-soft lg:col-span-2 overflow-hidden">
+              <div className="h-1 bg-gradient-to-r from-amber-500 to-orange-500" />
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
+                    <MapPin className="h-4 w-4 text-white" />
+                  </div>
+                  Ubicación
+                </CardTitle>
+                <CardDescription>
+                  Dirección de tu negocio
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="address">Dirección</Label>
+                    <Input
+                      id="address"
+                      value={formData.address}
+                      onChange={(e) =>
+                        setFormData({ ...formData, address: e.target.value })
+                      }
+                      placeholder="Av. Corrientes 1234"
+                      className="h-11"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="city">Ciudad</Label>
+                    <Input
+                      id="city"
+                      value={formData.city}
+                      onChange={(e) =>
+                        setFormData({ ...formData, city: e.target.value })
+                      }
+                      placeholder="Buenos Aires"
+                      className="h-11"
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Tips */}
+            <Card className="border-0 shadow-soft lg:col-span-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 border-blue-100 dark:border-blue-800">
+              <CardContent className="py-6">
+                <div className="flex items-start gap-4">
+                  <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center flex-shrink-0">
+                    <AlertCircle className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-blue-900 dark:text-blue-200 mb-1">Consejos para tu perfil</h3>
+                    <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
+                      <li>• Usa un nombre de negocio claro y fácil de recordar</li>
+                      <li>• Agrega una descripción atractiva que destaque tus servicios</li>
+                      <li>• Incluye tu teléfono e Instagram para que tus clientes te contacten</li>
+                      <li>• Mantén tu dirección actualizada para que te encuentren fácilmente</li>
+                    </ul>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* ─────────────────────────────────────────────────── */}
+        {/* TAB 2: RESERVAS Y AVISOS                           */}
+        {/* ─────────────────────────────────────────────────── */}
+        <TabsContent value="operacion">
+          <div className="grid gap-6 lg:grid-cols-2">
+            {/* Deposit/Seña Settings */}
+            <Card className="border-0 shadow-soft overflow-hidden">
+              <div className="h-1 bg-gradient-to-r from-green-500 to-emerald-500" />
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center">
+                    <CreditCard className="h-4 w-4 text-white" />
+                  </div>
+                  Seña / Depósito
+                </CardTitle>
+                <CardDescription>
+                  Configura si requieres un pago adelantado para confirmar los turnos
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="space-y-0.5 min-w-0">
+                    <Label htmlFor="requireDeposit" className="text-base">Requerir seña</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Los clientes deberán pagar un porcentaje del servicio para confirmar el turno
+                    </p>
+                  </div>
+                  <Switch
+                    id="requireDeposit"
+                    className="flex-shrink-0"
+                    checked={depositSettings.requireDeposit}
+                    onCheckedChange={(checked) =>
+                      setDepositSettings({ ...depositSettings, requireDeposit: checked })
+                    }
+                  />
+                </div>
+
+                {depositSettings.requireDeposit && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="depositPercentage" className="flex items-center gap-2">
+                        <Percent className="h-4 w-4 text-muted-foreground" />
+                        Porcentaje de seña
+                      </Label>
+                      <div className="flex items-center gap-3">
+                        <Input
+                          id="depositPercentage"
+                          type="number"
+                          min="1"
+                          max="100"
+                          value={depositSettings.depositPercentage}
+                          onChange={(e) =>
+                            setDepositSettings({
+                              ...depositSettings,
+                              depositPercentage: Math.min(100, Math.max(1, parseInt(e.target.value) || 30)),
+                            })
+                          }
+                          className="h-11 w-24"
+                        />
+                        <span className="text-muted-foreground">% del precio del servicio</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Ejemplo: Si un servicio cuesta $10.000 y la seña es 30%, el cliente paga $3.000 al reservar
+                      </p>
+                    </div>
+
+                    <div className="rounded-lg border bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-800 p-4">
+                      <div className="flex items-start gap-3">
+                        <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-amber-800 dark:text-amber-300">Modo Demo Activo</p>
+                          <p className="text-sm text-amber-700 dark:text-amber-400">
+                            Actualmente los pagos están en modo simulado para demostración.
+                            Los clientes podrán &quot;pagar&quot; sin usar dinero real.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Email Notifications */}
+            <Card className="border-0 shadow-soft overflow-hidden">
+              <div className="h-1 bg-gradient-to-r from-sky-500 to-cyan-500" />
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-sky-500 to-cyan-500 flex items-center justify-center">
+                    <Mail className="h-4 w-4 text-white" />
+                  </div>
+                  Notificaciones por Email
+                </CardTitle>
+                <CardDescription>
+                  Recibe avisos por correo electrónico
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="space-y-0.5 min-w-0">
+                    <Label htmlFor="notifyOwnerByEmail" className="text-base">Email por nueva reserva</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Recibir un email cada vez que un cliente reserve un turno
+                    </p>
+                  </div>
+                  <Switch
+                    id="notifyOwnerByEmail"
+                    className="flex-shrink-0"
+                    checked={notificationSettings.notifyOwnerByEmail}
+                    onCheckedChange={(checked) =>
+                      setNotificationSettings({ ...notificationSettings, notifyOwnerByEmail: checked })
+                    }
+                  />
+                </div>
+
+                {notificationSettings.notifyOwnerByEmail && (
+                  <div className="space-y-2">
+                    <Label htmlFor="notificationEmail" className="flex items-center gap-2">
+                      <Mail className="h-4 w-4 text-muted-foreground" />
+                      Email para notificaciones
+                    </Label>
+                    <Input
+                      id="notificationEmail"
+                      type="email"
+                      value={notificationSettings.notificationEmail}
+                      onChange={(e) =>
+                        setNotificationSettings({ ...notificationSettings, notificationEmail: e.target.value })
+                      }
+                      placeholder={formData.email || 'tu@email.com'}
+                      className="h-11"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Si lo dejás vacío, se usará el email del negocio ({formData.email || 'no configurado'}) o el de tu cuenta
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Push Notifications */}
+            <Card className="border-0 shadow-soft lg:col-span-2 overflow-hidden">
+              <div className="h-1 bg-gradient-to-r from-violet-500 to-purple-500" />
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center">
+                    <Smartphone className="h-4 w-4 text-white" />
+                  </div>
+                  Notificaciones Push
+                </CardTitle>
+                <CardDescription>
+                  Elige qué eventos te notifican en tu celular
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="flex items-center justify-between p-3 sm:p-4 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-100 dark:border-blue-800/50">
+                    <div className="space-y-0.5 min-w-0 mr-3">
+                      <Label htmlFor="pushNewBooking" className="text-sm font-semibold">Nuevas reservas</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Cuando un cliente reserva
+                      </p>
+                    </div>
+                    <Switch
+                      id="pushNewBooking"
+                      className="flex-shrink-0"
+                      checked={pushSettings.pushNewBooking}
+                      onCheckedChange={(checked) =>
+                        setPushSettings({ ...pushSettings, pushNewBooking: checked })
+                      }
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 sm:p-4 rounded-xl bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/20 border border-red-100 dark:border-red-800/50">
+                    <div className="space-y-0.5 min-w-0 mr-3">
+                      <Label htmlFor="pushCancellation" className="text-sm font-semibold">Cancelaciones</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Cuando un cliente cancela
+                      </p>
+                    </div>
+                    <Switch
+                      id="pushCancellation"
+                      className="flex-shrink-0"
+                      checked={pushSettings.pushCancellation}
+                      onCheckedChange={(checked) =>
+                        setPushSettings({ ...pushSettings, pushCancellation: checked })
+                      }
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 sm:p-4 rounded-xl bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 border border-amber-100 dark:border-amber-800/50">
+                    <div className="space-y-0.5 min-w-0 mr-3">
+                      <Label htmlFor="pushReminder" className="text-sm font-semibold">Recordatorios</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Antes de cada turno del día
+                      </p>
+                    </div>
+                    <Switch
+                      id="pushReminder"
+                      className="flex-shrink-0"
+                      checked={pushSettings.pushReminder}
+                      onCheckedChange={(checked) =>
+                        setPushSettings({ ...pushSettings, pushReminder: checked })
+                      }
+                    />
+                  </div>
+                </div>
+
+                <div className="rounded-lg border bg-slate-50 dark:bg-neutral-800/50 border-slate-200 dark:border-neutral-700 p-3 mt-4">
+                  <p className="text-xs text-muted-foreground">
+                    Las push se activan desde el panel principal. Si no las activaste, estos ajustes no tendrán efecto.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Booking Time Settings */}
+            <Card className="border-0 shadow-soft lg:col-span-2 overflow-hidden">
+              <div className="h-1 bg-gradient-to-r from-teal-500 to-cyan-500" />
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-500 flex items-center justify-center">
+                    <Timer className="h-4 w-4 text-white" />
+                  </div>
+                  Tiempos de Reserva
+                </CardTitle>
+                <CardDescription>
+                  Configura los tiempos entre turnos y las restricciones de reserva
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div className="space-y-2 p-3 sm:p-4 rounded-xl bg-gradient-to-br from-teal-50 to-cyan-50 dark:from-teal-900/20 dark:to-cyan-900/20 border border-teal-100 dark:border-teal-800/50">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Timer className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+                      <Label htmlFor="bookingBuffer" className="text-sm font-semibold">Tiempo entre turnos</Label>
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-2">
+                      Minutos de descanso entre un turno y el siguiente
+                    </p>
+                    <select
+                      id="bookingBuffer"
+                      value={bookingTimeSettings.bookingBuffer}
+                      onChange={(e) =>
+                        setBookingTimeSettings({ ...bookingTimeSettings, bookingBuffer: Number(e.target.value) })
+                      }
+                      className="w-full h-10 px-3 rounded-lg border bg-background text-sm"
+                    >
+                      <option value={0}>Sin tiempo entre turnos</option>
+                      <option value={5}>5 minutos</option>
+                      <option value={10}>10 minutos</option>
+                      <option value={15}>15 minutos</option>
+                      <option value={20}>20 minutos</option>
+                      <option value={30}>30 minutos</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-2 p-3 sm:p-4 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-100 dark:border-blue-800/50">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      <Label htmlFor="minAdvance" className="text-sm font-semibold">Anticipación mínima</Label>
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-2">
+                      Horas de anticipación para reservar desde la página pública
+                    </p>
+                    <select
+                      id="minAdvance"
+                      value={bookingTimeSettings.minAdvanceBookingHours}
+                      onChange={(e) =>
+                        setBookingTimeSettings({ ...bookingTimeSettings, minAdvanceBookingHours: Number(e.target.value) })
+                      }
+                      className="w-full h-10 px-3 rounded-lg border bg-background text-sm"
+                    >
+                      <option value={0}>Sin mínimo</option>
+                      <option value={1}>1 hora</option>
+                      <option value={2}>2 horas</option>
+                      <option value={3}>3 horas</option>
+                      <option value={6}>6 horas</option>
+                      <option value={12}>12 horas</option>
+                      <option value={24}>24 horas</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-2 p-3 sm:p-4 rounded-xl bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-900/20 dark:to-purple-900/20 border border-violet-100 dark:border-violet-800/50">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Calendar className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+                      <Label htmlFor="maxAdvance" className="text-sm font-semibold">Máximo a futuro</Label>
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-2">
+                      Cuántos días a futuro pueden reservar los clientes
+                    </p>
+                    <select
+                      id="maxAdvance"
+                      value={bookingTimeSettings.maxAdvanceBookingDays}
+                      onChange={(e) =>
+                        setBookingTimeSettings({ ...bookingTimeSettings, maxAdvanceBookingDays: Number(e.target.value) })
+                      }
+                      className="w-full h-10 px-3 rounded-lg border bg-background text-sm"
+                    >
+                      <option value={7}>7 días</option>
+                      <option value={14}>14 días</option>
+                      <option value={30}>30 días</option>
+                      <option value={60}>60 días</option>
+                      <option value={90}>90 días</option>
+                    </select>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Smart Time Slots */}
+            <Card className="border-0 shadow-soft lg:col-span-2 overflow-hidden">
+              <div className="h-1 bg-gradient-to-r from-indigo-500 to-blue-500" />
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-indigo-500 to-blue-500 flex items-center justify-center">
+                    <Clock className="h-4 w-4 text-white" />
+                  </div>
+                  Vista de Horarios
+                </CardTitle>
+                <CardDescription>
+                  Configura cómo se muestran los horarios disponibles en tu página pública
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between gap-4 p-3 sm:p-4 rounded-xl bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20 border border-indigo-100 dark:border-indigo-800/50">
+                  <div className="space-y-0.5 min-w-0">
+                    <Label htmlFor="smartTimeSlots" className="text-base">Horarios agrupados por franja</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Agrupa automáticamente los horarios en Mañana, Tarde y Noche cuando hay más de 12 turnos disponibles
+                    </p>
+                  </div>
+                  <Switch
+                    id="smartTimeSlots"
+                    className="flex-shrink-0"
+                    checked={bookingTimeSettings.smartTimeSlots}
+                    onCheckedChange={(checked) =>
+                      setBookingTimeSettings({ ...bookingTimeSettings, smartTimeSlots: checked })
+                    }
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* ─────────────────────────────────────────────────── */}
+        {/* TAB 3: APARIENCIA                                  */}
+        {/* ─────────────────────────────────────────────────── */}
+        <TabsContent value="apariencia">
+          <div className="grid gap-6">
+            {/* Dark Mode Toggle */}
+            <Card className="border-0 shadow-soft overflow-hidden">
+              <div className="h-1 bg-gradient-to-r from-teal-500 to-violet-500" />
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-teal-500 to-violet-500 flex items-center justify-center">
+                    <Palette className="h-4 w-4 text-white" />
+                  </div>
+                  Personalización Visual
+                </CardTitle>
+                <CardDescription>
+                  Configura los colores y tema de tu página pública de reservas
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Dark Mode Toggle */}
+                <div className="flex items-center justify-between gap-3 p-3 sm:p-4 rounded-xl bg-gradient-to-r from-slate-50 to-slate-100 dark:from-neutral-800 dark:to-neutral-900">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="hidden sm:flex h-10 w-10 rounded-lg bg-white dark:bg-neutral-700 shadow-sm items-center justify-center flex-shrink-0">
+                      {themeSettings.enableDarkMode ? (
+                        <Moon className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+                      ) : (
+                        <Sun className="h-5 w-5 text-amber-500 dark:text-amber-400" />
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <Label htmlFor="enableDarkMode" className="text-base font-medium">
+                        Permitir modo oscuro
+                      </Label>
+                      <p className="text-sm text-muted-foreground">
+                        Los visitantes podrán cambiar entre tema claro y oscuro
                       </p>
                     </div>
                   </div>
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Theme Settings for Public Page */}
-        <Card className="border-0 shadow-soft lg:col-span-3 overflow-hidden">
-          <div className="h-1 bg-gradient-to-r from-pink-500 to-violet-500" />
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-pink-500 to-violet-500 flex items-center justify-center">
-                <Palette className="h-4 w-4 text-white" />
-              </div>
-              Personalización Visual
-            </CardTitle>
-            <CardDescription>
-              Configura los colores y tema de tu página pública de reservas
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Dark Mode Toggle */}
-            <div className="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-slate-50 to-slate-100 dark:from-neutral-800 dark:to-neutral-900">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-white dark:bg-neutral-700 shadow-sm flex items-center justify-center">
-                  {themeSettings.enableDarkMode ? (
-                    <Moon className="h-5 w-5 text-violet-600 dark:text-violet-400" />
-                  ) : (
-                    <Sun className="h-5 w-5 text-amber-500 dark:text-amber-400" />
-                  )}
-                </div>
-                <div>
-                  <Label htmlFor="enableDarkMode" className="text-base font-medium">
-                    Permitir modo oscuro
-                  </Label>
-                  <p className="text-sm text-muted-foreground">
-                    Los visitantes podrán cambiar entre tema claro y oscuro
-                  </p>
-                </div>
-              </div>
-              <Switch
-                id="enableDarkMode"
-                checked={themeSettings.enableDarkMode}
-                onCheckedChange={(checked) =>
-                  setThemeSettings({ ...themeSettings, enableDarkMode: checked })
-                }
-              />
-            </div>
-
-            {/* Background Style Selector */}
-            <div className="space-y-4">
-              <div>
-                <Label className="text-base font-medium">Estilo de fondo</Label>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Elige el estilo visual del fondo de tu página pública
-                </p>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                {BACKGROUND_STYLE_OPTIONS.map((option) => (
-                  <BackgroundStylePreview
-                    key={option.value}
-                    style={option.value}
-                    selected={themeSettings.backgroundStyle === option.value}
-                    onClick={() => setThemeSettings({ ...themeSettings, backgroundStyle: option.value })}
-                    label={option.label}
-                    description={option.description}
+                  <Switch
+                    id="enableDarkMode"
+                    className="flex-shrink-0"
+                    checked={themeSettings.enableDarkMode}
+                    onCheckedChange={(checked) =>
+                      setThemeSettings({ ...themeSettings, enableDarkMode: checked })
+                    }
                   />
-                ))}
-              </div>
-            </div>
+                </div>
 
-            {/* Color Pickers */}
-            <div className="grid gap-6 md:grid-cols-3">
-              {/* Primary Color */}
-              <div className="space-y-3">
-                <Label className="text-sm font-medium">Color principal</Label>
-                <div className="flex items-center gap-3">
-                  <div className="relative">
-                    <input
-                      type="color"
-                      value={themeSettings.primaryColor}
-                      onChange={(e) =>
-                        setThemeSettings({ ...themeSettings, primaryColor: e.target.value })
-                      }
-                      className="w-12 h-12 rounded-lg cursor-pointer border-2 border-slate-200 overflow-hidden"
-                    />
+                {/* Hero Style Selector */}
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-base font-medium">Estilo del encabezado</Label>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Elige el estilo visual del encabezado de tu página pública. Cada estilo cambia la estructura, formas y tipografía del hero.
+                    </p>
                   </div>
-                  <div className="flex-1">
-                    <Input
-                      value={themeSettings.primaryColor}
-                      onChange={(e) =>
-                        setThemeSettings({ ...themeSettings, primaryColor: e.target.value })
-                      }
-                      placeholder="#D62971"
-                      className="h-10 font-mono text-sm"
-                    />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {HERO_STYLE_OPTIONS.map((option) => (
+                      <HeroStylePreview
+                        key={option.value}
+                        style={option.value}
+                        selected={themeSettings.heroStyle === option.value}
+                        onClick={() => setThemeSettings({ ...themeSettings, heroStyle: option.value })}
+                        label={option.label}
+                        description={option.description}
+                      />
+                    ))}
                   </div>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Botones, acentos y elementos destacados
-                </p>
-              </div>
 
-              {/* Secondary Color */}
-              <div className="space-y-3">
-                <Label className="text-sm font-medium">Color secundario</Label>
-                <div className="flex items-center gap-3">
-                  <div className="relative">
-                    <input
-                      type="color"
-                      value={themeSettings.secondaryColor}
-                      onChange={(e) =>
-                        setThemeSettings({ ...themeSettings, secondaryColor: e.target.value })
-                      }
-                      className="w-12 h-12 rounded-lg cursor-pointer border-2 border-slate-200 overflow-hidden"
-                    />
+                {/* Background Style Selector */}
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-base font-medium">Estilo de fondo</Label>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Elige el estilo visual del fondo de tu página pública
+                    </p>
                   </div>
-                  <div className="flex-1">
-                    <Input
-                      value={themeSettings.secondaryColor}
-                      onChange={(e) =>
-                        setThemeSettings({ ...themeSettings, secondaryColor: e.target.value })
-                      }
-                      placeholder="#8B5CF6"
-                      className="h-10 font-mono text-sm"
-                    />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                    {BACKGROUND_STYLE_OPTIONS.map((option) => (
+                      <BackgroundStylePreview
+                        key={option.value}
+                        style={option.value}
+                        selected={themeSettings.backgroundStyle === option.value}
+                        onClick={() => setThemeSettings({ ...themeSettings, backgroundStyle: option.value })}
+                        label={option.label}
+                        description={option.description}
+                      />
+                    ))}
                   </div>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Fondos secundarios y badges
-                </p>
-              </div>
 
-              {/* Accent Color */}
-              <div className="space-y-3">
-                <Label className="text-sm font-medium">Color de acento</Label>
-                <div className="flex items-center gap-3">
-                  <div className="relative">
-                    <input
-                      type="color"
-                      value={themeSettings.accentColor}
-                      onChange={(e) =>
-                        setThemeSettings({ ...themeSettings, accentColor: e.target.value })
-                      }
-                      className="w-12 h-12 rounded-lg cursor-pointer border-2 border-slate-200 overflow-hidden"
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <Input
-                      value={themeSettings.accentColor}
-                      onChange={(e) =>
-                        setThemeSettings({ ...themeSettings, accentColor: e.target.value })
-                      }
-                      placeholder="#F59E0B"
-                      className="h-10 font-mono text-sm"
-                    />
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Detalles y elementos especiales
-                </p>
-              </div>
-            </div>
-
-            {/* Preview */}
-            <div className="p-4 rounded-xl border bg-slate-50 dark:bg-neutral-800">
-              <p className="text-sm font-medium mb-3">Vista previa de colores</p>
-              <div className="flex items-center gap-3">
-                <div
-                  className="h-10 w-10 rounded-lg shadow-sm"
-                  style={{ backgroundColor: themeSettings.primaryColor }}
-                />
-                <div
-                  className="h-10 w-10 rounded-lg shadow-sm"
-                  style={{ backgroundColor: themeSettings.secondaryColor }}
-                />
-                <div
-                  className="h-10 w-10 rounded-lg shadow-sm"
-                  style={{ backgroundColor: themeSettings.accentColor }}
-                />
-                <span className="ml-3 text-sm text-muted-foreground">
-                  Así se verán los colores en tu página pública
-                </span>
-              </div>
-            </div>
-
-            {/* Reset to defaults */}
-            <div className="flex justify-end">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  setThemeSettings({
-                    primaryColor: '#D62971',
+                {/* Color Pickers with Preview */}
+                <ColorPickerSection
+                  primaryColor={themeSettings.primaryColor}
+                  secondaryColor={themeSettings.secondaryColor}
+                  accentColor={themeSettings.accentColor}
+                  onPrimaryChange={(color) => setThemeSettings({ ...themeSettings, primaryColor: color })}
+                  onSecondaryChange={(color) => setThemeSettings({ ...themeSettings, secondaryColor: color })}
+                  onAccentChange={(color) => setThemeSettings({ ...themeSettings, accentColor: color })}
+                  onReset={() => setThemeSettings({
+                    ...themeSettings,
+                    primaryColor: '#3F8697',
                     secondaryColor: '#8B5CF6',
                     accentColor: '#F59E0B',
-                    enableDarkMode: true,
-                    backgroundStyle: 'modern',
-                  })
-                }
-              >
-                Restaurar colores predeterminados
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+                  })}
+                />
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+      </Tabs>
 
-        {/* Tips */}
-        <Card className="border-0 shadow-soft lg:col-span-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 border-blue-100 dark:border-blue-800">
-          <CardContent className="py-6">
-            <div className="flex items-start gap-4">
-              <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center flex-shrink-0">
-                <AlertCircle className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-blue-900 dark:text-blue-200 mb-1">Consejos para tu perfil</h3>
-                <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
-                  <li>• Usa un nombre de negocio claro y fácil de recordar</li>
-                  <li>• Agrega una descripción atractiva que destaque tus servicios</li>
-                  <li>• Incluye tu teléfono e Instagram para que tus clientes te contacten</li>
-                  <li>• Mantén tu dirección actualizada para que te encuentren fácilmente</li>
-                </ul>
-              </div>
+      {/* Help & Tour — always visible */}
+      <Card className="border-0 shadow-soft overflow-hidden">
+        <div className="h-1 bg-gradient-to-r from-violet-500 to-purple-500" />
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center">
+              <HelpCircle className="h-4 w-4 text-white" />
             </div>
-          </CardContent>
-        </Card>
+            Ayuda
+          </CardTitle>
+          <CardDescription>
+            ¿Necesitas ayuda para usar TurnoLink?
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-900/20 dark:to-purple-900/20">
+            <div>
+              <p className="font-medium text-violet-900 dark:text-violet-200">Tour de bienvenida</p>
+              <p className="text-sm text-violet-700 dark:text-violet-400">
+                Vuelve a ver el tour paso a paso para aprender a usar la plataforma
+              </p>
+            </div>
+            <RestartTourButton />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Spacer for mobile floating button */}
+      <div className="h-16 sm:hidden" />
+
+      {/* Mobile floating save button */}
+      <div className="fixed bottom-0 left-0 right-0 p-3 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-lg border-t border-slate-200 dark:border-neutral-700 sm:hidden z-50 safe-area-bottom">
+        <Button
+          onClick={handleSave}
+          disabled={saving}
+          className="w-full h-12 bg-slate-900 dark:bg-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-white/90 shadow-lg text-base font-semibold"
+        >
+          {saving ? (
+            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+          ) : (
+            <Save className="mr-2 h-5 w-5" />
+          )}
+          Guardar Cambios
+        </Button>
       </div>
     </div>
   );

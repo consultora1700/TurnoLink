@@ -71,6 +71,54 @@ export class NotificationsService {
     }
   }
 
+  /**
+   * Send email notification to business owner when a new booking is created.
+   */
+  async sendNewBookingToOwner(booking: BookingWithDetails) {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: booking.tenantId },
+      select: { name: true, email: true, settings: true },
+    });
+
+    if (!tenant) return;
+
+    // Check notification preferences
+    let settings: Record<string, any> = {};
+    try {
+      settings = typeof tenant.settings === 'string'
+        ? JSON.parse(tenant.settings)
+        : tenant.settings;
+    } catch { /* use defaults */ }
+
+    // If explicitly disabled, skip
+    if (settings.notifyOwnerByEmail === false) return;
+
+    // Determine recipient: notificationEmail setting > tenant.email > owner user email
+    let recipientEmail = settings.notificationEmail || tenant.email;
+
+    if (!recipientEmail) {
+      // Fallback to owner user email
+      const owner = await this.prisma.user.findFirst({
+        where: { tenantId: booking.tenantId, role: 'OWNER' },
+        select: { email: true },
+      });
+      recipientEmail = owner?.email;
+    }
+
+    if (!recipientEmail) return;
+
+    const message = this.formatNewBookingForOwner(booking);
+
+    await this.sendNotification({
+      tenantId: booking.tenantId,
+      bookingId: booking.id,
+      type: 'BOOKING_NEW_OWNER',
+      channel: NotificationChannel.EMAIL,
+      recipient: recipientEmail,
+      content: message,
+    });
+  }
+
   async sendBookingReminder(booking: BookingWithDetails) {
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: booking.tenantId },
@@ -130,7 +178,12 @@ export class NotificationsService {
       if (data.channel === NotificationChannel.WHATSAPP) {
         await this.whatsAppService.send(data.recipient, data.content);
       } else if (data.channel === NotificationChannel.EMAIL) {
-        await this.emailService.send(data.recipient, 'Confirmación de turno', data.content);
+        const subject = data.type === 'BOOKING_NEW_OWNER'
+          ? 'Nuevo turno recibido'
+          : data.type === NotificationType.BOOKING_CANCELLED
+          ? 'Turno cancelado'
+          : 'Confirmación de turno';
+        await this.emailService.send(data.recipient, subject, data.content);
       }
 
       // Update status to sent
@@ -190,6 +243,31 @@ Tu turno en *${tenant.name}* ha sido confirmado.
 Te esperamos!
 
 _Este mensaje es automático. Por favor no responder._`;
+  }
+
+  private formatNewBookingForOwner(booking: BookingWithDetails): string {
+    const date = new Date(booking.date).toLocaleDateString('es-AR', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+
+    let customerInfo = `👤 *Cliente:* ${booking.customer.name}\n📱 *Teléfono:* ${booking.customer.phone}`;
+    if (booking.customer.email) {
+      customerInfo += `\n✉️ *Email:* ${booking.customer.email}`;
+    }
+
+    return `📋 *Nuevo turno recibido*
+
+${customerInfo}
+
+📅 *Fecha:* ${date}
+🕐 *Hora:* ${booking.startTime}
+💇 *Servicio:* ${booking.service.name}
+⏱ *Duración:* ${booking.service.duration} minutos
+
+_Ingresá a TurnoLink para ver los detalles._`;
   }
 
   private formatBookingReminder(booking: BookingWithDetails, businessName: string): string {

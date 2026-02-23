@@ -13,6 +13,7 @@ import {
   Briefcase,
   User,
   ImageIcon,
+  Sparkles,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -46,7 +47,7 @@ const colorVariants = [
   { gradient: 'from-blue-500 to-indigo-500', bg: 'bg-blue-100 dark:bg-blue-900/40', text: 'text-blue-600 dark:text-blue-400' },
   { gradient: 'from-emerald-500 to-teal-500', bg: 'bg-emerald-100 dark:bg-emerald-900/40', text: 'text-emerald-600 dark:text-emerald-400' },
   { gradient: 'from-amber-500 to-orange-500', bg: 'bg-amber-100 dark:bg-amber-900/40', text: 'text-amber-600 dark:text-amber-400' },
-  { gradient: 'from-pink-500 to-rose-500', bg: 'bg-pink-100 dark:bg-pink-900/40', text: 'text-pink-600 dark:text-pink-400' },
+  { gradient: 'from-teal-500 to-teal-500', bg: 'bg-teal-100 dark:bg-teal-900/40', text: 'text-teal-600 dark:text-teal-400' },
   { gradient: 'from-cyan-500 to-sky-500', bg: 'bg-cyan-100 dark:bg-cyan-900/40', text: 'text-cyan-600 dark:text-cyan-400' },
 ];
 
@@ -180,22 +181,22 @@ export default function EmpleadosPage() {
   const activeCount = employees.filter(e => e.isActive).length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-tour="employees-section">
       {/* Header */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 p-8 text-white">
+      <div className="relative overflow-hidden rounded-xl sm:rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-teal-600 p-4 sm:p-6 md:p-8 text-white">
         <div className="absolute inset-0 bg-grid opacity-10" />
-        <div className="absolute -top-24 -right-24 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
-        <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
+        <div className="absolute -top-24 -right-24 w-48 sm:w-64 h-48 sm:h-64 bg-white/10 rounded-full blur-3xl" />
+        <div className="absolute -bottom-24 -left-24 w-48 sm:w-64 h-48 sm:h-64 bg-white/10 rounded-full blur-3xl" />
 
-        <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <div className="h-12 w-12 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center">
-                <Users className="h-6 w-6" />
+              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center flex-shrink-0">
+                <Users className="h-5 w-5 sm:h-6 sm:w-6" />
               </div>
-              <div>
-                <h1 className="text-3xl font-bold">Empleados</h1>
-                <p className="text-white/80">
+              <div className="min-w-0">
+                <h1 className="text-2xl sm:text-3xl font-bold">Empleados</h1>
+                <p className="text-white/80 text-sm sm:text-base">
                   Gestiona tu equipo de trabajo
                 </p>
               </div>
@@ -204,7 +205,7 @@ export default function EmpleadosPage() {
 
           <Button
             onClick={openCreateDialog}
-            className="bg-white text-indigo-600 hover:bg-white/90 shadow-lg"
+            className="bg-white text-indigo-600 hover:bg-white/90 shadow-lg w-full sm:w-auto"
           >
             <Plus className="mr-2 h-4 w-4" />
             Agregar Empleado
@@ -212,14 +213,20 @@ export default function EmpleadosPage() {
         </div>
 
         {/* Quick Stats */}
-        <div className="relative grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-white/20">
-          <div className="text-center">
-            <p className="text-3xl font-bold">{employees.length}</p>
-            <p className="text-white/70 text-sm">Total Empleados</p>
+        <div className="relative grid grid-cols-2 gap-2 sm:gap-4 mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-white/20">
+          <div className="flex flex-col items-center justify-center p-2 sm:p-3 rounded-lg bg-white/10 backdrop-blur-sm">
+            <div className="flex items-center gap-1 sm:gap-2">
+              <Users className="h-4 w-4 sm:h-5 sm:w-5 text-white/70 hidden sm:block" />
+              <p className="text-xl sm:text-2xl md:text-3xl font-bold">{employees.length}</p>
+            </div>
+            <p className="text-white/70 text-[10px] sm:text-xs md:text-sm">Total Empleados</p>
           </div>
-          <div className="text-center border-l border-white/20">
-            <p className="text-3xl font-bold">{activeCount}</p>
-            <p className="text-white/70 text-sm">Activos</p>
+          <div className="flex flex-col items-center justify-center p-2 sm:p-3 rounded-lg bg-white/10 backdrop-blur-sm">
+            <div className="flex items-center gap-1 sm:gap-2">
+              <Briefcase className="h-4 w-4 sm:h-5 sm:w-5 text-white/70 hidden sm:block" />
+              <p className="text-xl sm:text-2xl md:text-3xl font-bold">{activeCount}</p>
+            </div>
+            <p className="text-white/70 text-[10px] sm:text-xs md:text-sm">Activos</p>
           </div>
         </div>
       </div>
@@ -384,26 +391,41 @@ export default function EmpleadosPage() {
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="phone">Teléfono</Label>
-                <Input
-                  id="phone"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  placeholder="+54 11..."
-                />
+            <div className="space-y-1.5">
+              <Label htmlFor="phone">Teléfono</Label>
+              <Input
+                id="phone"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                placeholder="+54 11..."
+              />
+            </div>
+
+            {/* Email nudge banner — only when editing an employee without email */}
+            {editingEmployee && !editingEmployee.email && !formData.email && (
+              <div className="flex items-start gap-2.5 p-3 rounded-lg bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/50">
+                <Sparkles className="h-4 w-4 text-indigo-500 mt-0.5 flex-shrink-0" />
+                <p className="text-xs text-indigo-700 dark:text-indigo-300">
+                  Agrega un email para que reciba su perfil profesional y recordatorios de turnos
+                </p>
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  placeholder="email@ejemplo.com"
-                />
-              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <Label htmlFor="email" className="flex items-center gap-1.5">
+                <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+                Email
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                placeholder="email@ejemplo.com"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Le enviaremos su perfil profesional y recordatorios de turnos
+              </p>
             </div>
 
             <div className="space-y-1.5">

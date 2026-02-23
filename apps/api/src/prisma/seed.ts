@@ -305,6 +305,75 @@ async function main() {
 
   console.log('✅ Sample bookings created');
 
+  // Create Subscription Plans - Precios de Lanzamiento
+  // Después de 3 meses: Profesional $10,990, Negocio $16,990
+  const plans = [
+    {
+      name: 'Gratis',
+      slug: 'gratis',
+      description: 'Perfecto para empezar y probar TurnoLink',
+      priceMonthly: 0,
+      priceYearly: 0,
+      currency: 'ARS',
+      trialDays: 0, // No trial, es gratis siempre
+      maxBranches: 1,
+      maxEmployees: 2,
+      maxServices: 5,
+      maxBookingsMonth: 30,
+      maxCustomers: 50,
+      features: JSON.stringify(['whatsapp_confirmation', 'email_reminder', 'calendar', 'basic_reports']),
+      isPopular: false,
+      isActive: true,
+      order: 0,
+    },
+    {
+      name: 'Profesional',
+      slug: 'profesional',
+      description: 'Ideal para profesionales independientes',
+      priceMonthly: 8990, // Precio lanzamiento, luego $10,990
+      priceYearly: 89900,
+      currency: 'ARS',
+      trialDays: 14,
+      maxBranches: 1,
+      maxEmployees: 5,
+      maxServices: 20,
+      maxBookingsMonth: 150,
+      maxCustomers: 500,
+      features: JSON.stringify(['whatsapp_confirmation', 'email_reminder', 'calendar', 'advanced_reports', 'mercadopago', 'whatsapp_support']),
+      isPopular: true,
+      isActive: true,
+      order: 1,
+    },
+    {
+      name: 'Negocio',
+      slug: 'negocio',
+      description: 'Para negocios en crecimiento con equipo',
+      priceMonthly: 14990, // Precio lanzamiento, luego $16,990
+      priceYearly: 149900,
+      currency: 'ARS',
+      trialDays: 14,
+      maxBranches: 5,
+      maxEmployees: 15,
+      maxServices: null, // Ilimitados
+      maxBookingsMonth: null, // Ilimitados
+      maxCustomers: null, // Ilimitados
+      features: JSON.stringify(['whatsapp_confirmation', 'email_reminder', 'calendar', 'complete_reports', 'mercadopago', 'priority_support', 'multi_branch']),
+      isPopular: false,
+      isActive: true,
+      order: 2,
+    },
+  ];
+
+  for (const plan of plans) {
+    await prisma.subscriptionPlan.upsert({
+      where: { slug: plan.slug },
+      update: plan,
+      create: plan,
+    });
+  }
+
+  console.log('✅ Subscription plans created');
+
   // Also keep the old demo-barberia for backwards compatibility
   const oldTenant = await prisma.tenant.findUnique({
     where: { slug: 'demo-barberia' },

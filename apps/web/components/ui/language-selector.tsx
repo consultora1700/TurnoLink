@@ -12,13 +12,22 @@ interface LanguageSelectorProps {
   showName?: boolean;
 }
 
+// Default fallback locale
+const fallbackLocale = { code: 'es' as Locale, name: 'Spanish', nativeName: 'Español', flag: '🇪🇸' };
+
 export function LanguageSelector({
   variant = 'default',
   className,
   showFlag = true,
   showName = true,
 }: LanguageSelectorProps) {
-  const { locale, setLocale, locales, currentLocale } = useI18n();
+  const i18n = useI18n();
+
+  // Safe destructuring with fallbacks
+  const locale = i18n?.locale ?? 'es';
+  const setLocale = i18n?.setLocale ?? (() => {});
+  const locales = i18n?.locales ?? [fallbackLocale];
+  const currentLocale = i18n?.currentLocale ?? fallbackLocale;
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 

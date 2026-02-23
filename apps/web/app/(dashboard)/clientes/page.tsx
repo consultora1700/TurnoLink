@@ -20,6 +20,23 @@ import { Button } from '@/components/ui/button';
 import { createApiClient } from '@/lib/api';
 import { formatShortDate } from '@/lib/utils';
 
+/**
+ * Normalizes a phone number for WhatsApp.
+ * Handles Argentine numbers without country code.
+ */
+function normalizePhoneForWhatsApp(phone: string): string {
+  let cleaned = phone.replace(/\D/g, '');
+  if (cleaned.startsWith('0')) cleaned = cleaned.substring(1);
+  if (cleaned.length === 10 && !cleaned.startsWith('54')) {
+    cleaned = '549' + cleaned;
+  } else if (cleaned.length === 11 && cleaned.startsWith('15')) {
+    cleaned = '549' + cleaned.substring(2);
+  } else if (cleaned.length >= 12 && cleaned.startsWith('54') && !cleaned.startsWith('549')) {
+    cleaned = '549' + cleaned.substring(2);
+  }
+  return cleaned;
+}
+
 interface Customer {
   id: string;
   name: string;
@@ -34,7 +51,7 @@ const colorVariants = [
   { gradient: 'from-blue-500 to-indigo-500', bg: 'bg-blue-100 dark:bg-blue-900/40', text: 'text-blue-600 dark:text-blue-400' },
   { gradient: 'from-emerald-500 to-teal-500', bg: 'bg-emerald-100 dark:bg-emerald-900/40', text: 'text-emerald-600 dark:text-emerald-400' },
   { gradient: 'from-amber-500 to-orange-500', bg: 'bg-amber-100 dark:bg-amber-900/40', text: 'text-amber-600 dark:text-amber-400' },
-  { gradient: 'from-pink-500 to-rose-500', bg: 'bg-pink-100 dark:bg-pink-900/40', text: 'text-pink-600 dark:text-pink-400' },
+  { gradient: 'from-teal-500 to-teal-500', bg: 'bg-teal-100 dark:bg-teal-900/40', text: 'text-teal-600 dark:text-teal-400' },
   { gradient: 'from-cyan-500 to-sky-500', bg: 'bg-cyan-100 dark:bg-cyan-900/40', text: 'text-cyan-600 dark:text-cyan-400' },
 ];
 
@@ -76,40 +93,47 @@ export default function ClientesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-pink-600 via-rose-600 to-red-600 p-8 text-white">
+      <div className="relative overflow-hidden rounded-xl sm:rounded-2xl bg-gradient-to-r from-teal-600 via-teal-600 to-red-600 p-4 sm:p-6 md:p-8 text-white">
         <div className="absolute inset-0 bg-grid opacity-10" />
-        <div className="absolute -top-24 -right-24 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
-        <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
+        <div className="absolute -top-24 -right-24 w-48 sm:w-64 h-48 sm:h-64 bg-white/10 rounded-full blur-3xl" />
+        <div className="absolute -bottom-24 -left-24 w-48 sm:w-64 h-48 sm:h-64 bg-white/10 rounded-full blur-3xl" />
 
-        <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="h-12 w-12 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center">
-                <Users className="h-6 w-6" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold">Clientes</h1>
-                <p className="text-white/80">
-                  Lista de todos tus clientes
-                </p>
-              </div>
+        <div className="relative">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center flex-shrink-0">
+              <Users className="h-5 w-5 sm:h-6 sm:w-6" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-2xl sm:text-3xl font-bold">Clientes</h1>
+              <p className="text-white/80 text-sm sm:text-base">
+                Lista de todos tus clientes
+              </p>
             </div>
           </div>
         </div>
 
         {/* Quick Stats */}
-        <div className="relative grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-white/20">
-          <div className="text-center">
-            <p className="text-3xl font-bold">{totalCustomers}</p>
-            <p className="text-white/70 text-sm">Total Clientes</p>
+        <div className="relative grid grid-cols-3 gap-2 sm:gap-4 mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-white/20">
+          <div className="flex flex-col items-center justify-center p-2 sm:p-3 rounded-lg bg-white/10 backdrop-blur-sm">
+            <div className="flex items-center gap-1 sm:gap-2">
+              <Users className="h-4 w-4 sm:h-5 sm:w-5 text-white/70 hidden sm:block" />
+              <p className="text-xl sm:text-2xl md:text-3xl font-bold">{totalCustomers}</p>
+            </div>
+            <p className="text-white/70 text-[10px] sm:text-xs md:text-sm">Total Clientes</p>
           </div>
-          <div className="text-center border-x border-white/20">
-            <p className="text-3xl font-bold">{totalBookings}</p>
-            <p className="text-white/70 text-sm">Total Turnos</p>
+          <div className="flex flex-col items-center justify-center p-2 sm:p-3 rounded-lg bg-white/10 backdrop-blur-sm">
+            <div className="flex items-center gap-1 sm:gap-2">
+              <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-white/70 hidden sm:block" />
+              <p className="text-xl sm:text-2xl md:text-3xl font-bold">{totalBookings}</p>
+            </div>
+            <p className="text-white/70 text-[10px] sm:text-xs md:text-sm">Total Turnos</p>
           </div>
-          <div className="text-center">
-            <p className="text-3xl font-bold">{avgBookings}</p>
-            <p className="text-white/70 text-sm">Turnos/Cliente</p>
+          <div className="flex flex-col items-center justify-center p-2 sm:p-3 rounded-lg bg-white/10 backdrop-blur-sm">
+            <div className="flex items-center gap-1 sm:gap-2">
+              <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-white/70 hidden sm:block" />
+              <p className="text-xl sm:text-2xl md:text-3xl font-bold">{avgBookings}</p>
+            </div>
+            <p className="text-white/70 text-[10px] sm:text-xs md:text-sm">Turnos/Cliente</p>
           </div>
         </div>
       </div>
@@ -132,16 +156,16 @@ export default function ClientesPage() {
       {loading ? (
         <div className="flex flex-col items-center justify-center py-16 gap-4">
           <div className="relative">
-            <div className="h-16 w-16 rounded-full border-4 border-pink-100 dark:border-pink-900" />
-            <div className="absolute inset-0 h-16 w-16 rounded-full border-4 border-transparent border-t-pink-600 dark:border-t-pink-400 animate-spin" />
+            <div className="h-16 w-16 rounded-full border-4 border-teal-100 dark:border-teal-900" />
+            <div className="absolute inset-0 h-16 w-16 rounded-full border-4 border-transparent border-t-teal-600 dark:border-t-teal-400 animate-spin" />
           </div>
           <p className="text-muted-foreground">Cargando clientes...</p>
         </div>
       ) : customers.length === 0 ? (
         <Card className="border-0 shadow-soft">
           <CardContent className="py-16 text-center">
-            <div className="h-16 w-16 rounded-full bg-pink-100 dark:bg-pink-900/40 flex items-center justify-center mx-auto mb-4">
-              <Users className="h-8 w-8 text-pink-600 dark:text-pink-400" />
+            <div className="h-16 w-16 rounded-full bg-teal-100 dark:bg-teal-900/40 flex items-center justify-center mx-auto mb-4">
+              <Users className="h-8 w-8 text-teal-600 dark:text-teal-400" />
             </div>
             <h3 className="font-semibold text-lg mb-2">
               {search ? 'No se encontraron clientes' : 'No tienes clientes aún'}
@@ -225,7 +249,7 @@ export default function ClientesPage() {
                       variant="outline"
                       size="sm"
                       className="flex-1 h-9"
-                      onClick={() => window.open(`https://wa.me/${customer.phone.replace(/\D/g, '')}`, '_blank')}
+                      onClick={() => window.open(`https://wa.me/${normalizePhoneForWhatsApp(customer.phone)}`, '_blank')}
                     >
                       <MessageSquare className="h-4 w-4 mr-1 text-green-600" />
                       WhatsApp

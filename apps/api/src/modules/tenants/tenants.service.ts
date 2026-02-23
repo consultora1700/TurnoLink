@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 import { CreateTenantDto } from './dto/create-tenant.dto';
@@ -22,16 +22,24 @@ const DEFAULT_SETTINGS = {
   requireDeposit: false,
   depositPercentage: 30, // % del precio del servicio
   depositMode: 'simulated', // 'simulated' | 'mercadopago'
+  // Daily booking settings
+  bookingMode: 'HOURLY', // 'HOURLY' | 'DAILY'
+  dailyCheckInTime: '14:00',
+  dailyCheckOutTime: '10:00',
+  dailyMinNights: 1,
+  dailyMaxNights: 30,
+  dailyClosedDays: [] as number[], // Days of week with no check-in (0=Sunday)
 };
 
 @Injectable()
 export class TenantsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(createTenantDto: CreateTenantDto) {
+  async create(createTenantDto: CreateTenantDto, type: string = 'BUSINESS') {
     return this.prisma.tenant.create({
       data: {
         ...createTenantDto,
+        type,
         settings: JSON.stringify(DEFAULT_SETTINGS),
       },
     });
@@ -98,27 +106,54 @@ export class TenantsService {
         accentColor: settings.accentColor,
         enableDarkMode: settings.enableDarkMode ?? true,
         backgroundStyle: settings.backgroundStyle ?? 'modern',
+        heroStyle: settings.heroStyle ?? 'classic',
         maxAdvanceBookingDays: settings.maxAdvanceBookingDays,
         minAdvanceBookingHours: settings.minAdvanceBookingHours,
         requireDeposit: settings.requireDeposit ?? false,
         depositPercentage: settings.depositPercentage ?? 30,
         depositMode: settings.depositMode ?? 'simulated',
+        smartTimeSlots: settings.smartTimeSlots ?? true,
+        bookingMode: settings.bookingMode ?? 'HOURLY',
+        dailyCheckInTime: settings.dailyCheckInTime ?? '14:00',
+        dailyCheckOutTime: settings.dailyCheckOutTime ?? '10:00',
+        dailyMinNights: settings.dailyMinNights ?? 1,
+        dailyMaxNights: settings.dailyMaxNights ?? 30,
       },
-      services: tenant.services.map((service) => ({
-        id: service.id,
-        name: service.name,
-        description: service.description,
-        price: settings.showPrices ? Number(service.price) : null,
-        duration: service.duration,
-        image: service.image,
-        categoryId: service.categoryId,
-      })),
+      services: tenant.services.map((service) => {
+        let parsedImages: string[] = [];
+        try { parsedImages = service.images ? JSON.parse(service.images) : []; } catch { parsedImages = []; }
+        let parsedVariations = [];
+        try { parsedVariations = service.variations ? JSON.parse(service.variations) : []; } catch { parsedVariations = []; }
+        return {
+          id: service.id,
+          name: service.name,
+          description: service.description,
+          price: settings.showPrices ? Number(service.price) : null,
+          duration: service.duration,
+          image: service.image,
+          images: parsedImages,
+          imageDisplayMode: service.imageDisplayMode || 'cover',
+          includes: service.includes,
+          categoryId: service.categoryId,
+          variations: parsedVariations,
+        };
+      }),
       categories: tenant.categories,
     };
   }
 
   async update(id: string, updateTenantDto: UpdateTenantDto) {
     await this.findById(id);
+
+    // Validate slug uniqueness if changing
+    if (updateTenantDto.slug) {
+      const existing = await this.prisma.tenant.findUnique({
+        where: { slug: updateTenantDto.slug },
+      });
+      if (existing && existing.id !== id) {
+        throw new ConflictException('Esa URL ya está en uso. Elegí otra.');
+      }
+    }
 
     const { settings, ...rest } = updateTenantDto;
     const data: Prisma.TenantUpdateInput = { ...rest };

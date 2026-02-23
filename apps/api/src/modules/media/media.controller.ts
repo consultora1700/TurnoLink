@@ -29,7 +29,7 @@ export class MediaController {
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(
     FileInterceptor('file', {
-      limits: { fileSize: 5 * 1024 * 1024 },
+      limits: { fileSize: 10 * 1024 * 1024 }, // 10MB for mobile
     }),
   )
   async upload(

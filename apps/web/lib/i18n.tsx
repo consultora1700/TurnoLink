@@ -172,17 +172,24 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 // Hooks
 // =============================================================================
 
-export function useI18n() {
+// Fallback context for when provider is not available (SSR/hydration)
+const fallbackContext: I18nContextValue = {
+  locale: 'es',
+  setLocale: () => {},
+  t: (key: string) => key,
+  locales,
+  currentLocale: locales[0],
+};
+
+export function useI18n(): I18nContextValue {
   const context = useContext(I18nContext);
-  if (!context) {
-    throw new Error('useI18n must be used within I18nProvider');
-  }
-  return context;
+  // Return fallback instead of throwing to prevent hydration errors
+  return context ?? fallbackContext;
 }
 
 export function useTranslation() {
-  const { t, locale } = useI18n();
-  return { t, locale };
+  const context = useI18n();
+  return { t: context.t, locale: context.locale };
 }
 
 // =============================================================================

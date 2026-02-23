@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Full bleed solid teal background -->
+  <rect width="512" height="512" fill="#3F8697"/>
+
+  <!-- Subtle lighter overlay top-left for depth -->
+  <rect width="512" height="512" fill="#4A9DAF" opacity="0.3"/>
+  <rect x="0" y="256" width="512" height="256" fill="#2D6A78" opacity="0.2"/>
+
+  <!-- Calendar body — within maskable safe zone (80% center = 51-461) -->
+  <rect x="120" y="176" width="272" height="230" rx="22" fill="white"/>
+
+  <!-- Calendar rings -->
+  <rect x="190" y="142" width="22" height="60" rx="11" fill="white"/>
+  <rect x="300" y="142" width="22" height="60" rx="11" fill="white"/>
+
+  <!-- Header accent bar -->
+  <rect x="120" y="176" width="272" height="52" rx="22" fill="#3F8697" opacity="0.12"/>
+  <rect x="120" y="206" width="272" height="22" fill="#3F8697" opacity="0.12"/>
+
+  <!-- Checkmark -->
+  <polyline
+    points="212,336 250,378 326,282"
+    fill="none"
+    stroke="#3F8697"
+    stroke-width="30"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+</svg>

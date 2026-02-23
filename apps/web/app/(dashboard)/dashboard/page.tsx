@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
-import { format } from 'date-fns';
+import { useRouter } from 'next/navigation';
+import { format, formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
   Calendar,
@@ -12,12 +13,13 @@ import {
   ArrowRight,
   Sparkles,
   Scissors,
+  Activity,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { createApiClient } from '@/lib/api';
-import { getStatusLabel, getStatusBadgeVariant, cn } from '@/lib/utils';
+import { getStatusLabel, getStatusBadgeVariant, cn, parseBookingDate } from '@/lib/utils';
 import Link from 'next/link';
 
 interface Stats {
@@ -34,6 +36,7 @@ interface Booking {
   date: string;
   startTime: string;
   status: string;
+  createdAt?: string;
   service: { name: string };
   customer: { name: string; phone: string };
 }
@@ -47,10 +50,22 @@ interface Customer {
 
 export default function DashboardPage() {
   const { data: session } = useSession();
+  const router = useRouter();
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const tenantType = session?.user?.tenantType;
+  const isNonBusiness = tenantType === 'PROFESSIONAL';
+
+  // Redirect non-business users (safety net — middleware handles the fast redirect)
   useEffect(() => {
+    if (tenantType === 'PROFESSIONAL') {
+      router.replace('/mi-perfil');
+    }
+  }, [tenantType, router]);
+
+  useEffect(() => {
+    if (isNonBusiness) return;
     if (session?.accessToken) {
       const api = createApiClient(session.accessToken as string);
       api.getStats()
@@ -64,9 +79,10 @@ export default function DashboardPage() {
           setLoading(false);
         });
     }
-  }, [session]);
+  }, [session, isNonBusiness]);
 
-  if (loading) {
+  // Don't render business content for non-business users
+  if (isNonBusiness || loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
@@ -84,34 +100,35 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       {/* Header with greeting */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-primary via-primary/90 to-pink-600 p-6 text-white shadow-lg">
+      <div className="relative overflow-hidden rounded-xl sm:rounded-2xl bg-gradient-to-r from-primary via-primary/90 to-teal-600 p-4 sm:p-6 text-white shadow-lg">
         <div className="absolute inset-0 bg-grid opacity-10" />
-        <div className="absolute -top-24 -right-24 w-48 h-48 bg-white/10 rounded-full blur-2xl" />
-        <div className="absolute -bottom-12 -left-12 w-36 h-36 bg-white/10 rounded-full blur-xl" />
+        <div className="absolute -top-24 -right-24 w-36 sm:w-48 h-36 sm:h-48 bg-white/10 rounded-full blur-2xl" />
+        <div className="absolute -bottom-12 -left-12 w-28 sm:w-36 h-28 sm:h-36 bg-white/10 rounded-full blur-xl" />
 
         <div className="relative">
           <div className="flex items-center gap-2 mb-1">
-            <Sparkles className="h-5 w-5" />
-            <span className="text-sm font-medium text-white/80">
+            <Sparkles className="h-4 w-4 sm:h-5 sm:w-5" />
+            <span className="text-xs sm:text-sm font-medium text-white/80 truncate">
               {format(new Date(), "EEEE d 'de' MMMM, yyyy", { locale: es })}
             </span>
           </div>
-          <h1 className="text-2xl md:text-3xl font-bold">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">
             {greeting()}, {session?.user?.name?.split(' ')[0] || 'Usuario'}
           </h1>
-          <p className="mt-1 text-white/80">
+          <p className="mt-1 text-white/80 text-sm sm:text-base">
             Aquí está el resumen de tu negocio para hoy
           </p>
         </div>
       </div>
 
-      {/* Turnero Stats */}
-      <div>
+
+      {/* Resumen de Turnos */}
+      <div data-tour="dashboard-stats">
         <div className="flex items-center gap-2 mb-4">
           <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
             <Calendar className="h-4 w-4 text-primary" />
           </div>
-          <h2 className="text-lg font-semibold">Turnero</h2>
+          <h2 className="text-lg font-semibold">Resumen de Turnos</h2>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -208,11 +225,21 @@ export default function DashboardPage() {
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-medium">
-                        {format(new Date(booking.date), 'dd/MM')} - {booking.startTime}
+                        {format(parseBookingDate(booking.date), 'dd/MM')} - {booking.startTime}
                       </p>
-                      <Badge variant={getStatusBadgeVariant(booking.status)} className="mt-1">
-                        {getStatusLabel(booking.status)}
-                      </Badge>
+                      <div className="flex items-center justify-end gap-2 mt-1">
+                        <Badge variant={getStatusBadgeVariant(booking.status)}>
+                          {getStatusLabel(booking.status)}
+                        </Badge>
+                      </div>
+                      {booking.createdAt && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {formatDistanceToNow(new Date(booking.createdAt), {
+                            addSuffix: true,
+                            locale: es
+                          })}
+                        </p>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -297,8 +324,8 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Quick Actions */}
-      <div className="grid gap-4 md:grid-cols-3">
+      {/* Quick Actions - Hidden on mobile since they're in bottom nav */}
+      <div className="hidden sm:grid gap-4 md:grid-cols-3">
         <Link href="/turnos">
           <Card className="group cursor-pointer border-2 border-blue-200 dark:border-blue-800 hover:border-blue-400 dark:hover:border-blue-600 bg-blue-50/30 dark:bg-blue-900/20 hover:bg-blue-50 dark:hover:bg-blue-900/40 transition-all">
             <CardContent className="flex items-center gap-4 p-6">

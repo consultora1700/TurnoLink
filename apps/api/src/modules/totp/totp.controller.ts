@@ -33,7 +33,7 @@ export class TotpController {
 
   @Post('disable')
   async disable(@CurrentUser() user: User, @Body() dto: DisableTotpDto) {
-    return this.totpService.disable(user.id, dto.password, dto.code);
+    return this.totpService.disable(user.id, dto.code);
   }
 
   @Get('backup-codes/count')

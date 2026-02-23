@@ -68,4 +68,23 @@ export class EmployeesController {
   ) {
     return this.employeesService.reorder(tenantId, body.employeeIds);
   }
+
+  @Get(':id/services')
+  @ApiOperation({ summary: 'Obtener servicios de un empleado' })
+  getEmployeeServices(
+    @CurrentTenant('id') tenantId: string,
+    @Param('id') id: string,
+  ) {
+    return this.employeesService.getEmployeeServices(tenantId, id);
+  }
+
+  @Put(':id/services')
+  @ApiOperation({ summary: 'Actualizar servicios de un empleado (bulk)' })
+  updateEmployeeServices(
+    @CurrentTenant('id') tenantId: string,
+    @Param('id') id: string,
+    @Body() body: { serviceIds: string[] },
+  ) {
+    return this.employeesService.updateEmployeeServices(tenantId, id, body.serviceIds);
+  }
 }

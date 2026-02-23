@@ -4,6 +4,9 @@ import { authOptions } from '@/lib/auth';
 import { DashboardSidebar } from '@/components/dashboard/sidebar';
 import { DashboardHeader } from '@/components/dashboard/header';
 import { DashboardThemeWrapper } from '@/components/dashboard/dashboard-theme-wrapper';
+import { OnboardingWrapper } from '@/components/onboarding/onboarding-wrapper';
+import { PushNotificationPrompt } from '@/components/dashboard/push-notification-prompt';
+import { SmartReminder } from '@/components/dashboard/smart-reminder';
 
 export default async function DashboardLayout({
   children,
@@ -19,10 +22,15 @@ export default async function DashboardLayout({
   return (
     <DashboardThemeWrapper>
       <DashboardSidebar />
-      <div className="lg:pl-64 relative">
+      <div className="lg:pl-64 relative min-h-screen min-h-[100dvh]">
         <DashboardHeader user={session.user} />
-        <main className="p-4 lg:p-6 pb-24 lg:pb-6">{children}</main>
+        <main className="p-3 sm:p-4 lg:p-6 pb-28 lg:pb-6">
+          <SmartReminder />
+          {children}
+        </main>
       </div>
+      <OnboardingWrapper />
+      <PushNotificationPrompt />
     </DashboardThemeWrapper>
   );
 }

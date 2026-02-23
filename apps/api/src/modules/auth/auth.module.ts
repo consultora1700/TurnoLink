@@ -7,6 +7,8 @@ import { AuthService } from './auth.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { UsersModule } from '../users/users.module';
 import { TenantsModule } from '../tenants/tenants.module';
+import { EmailVerificationModule } from '../email-verification/email-verification.module';
+import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 
 @Module({
   imports: [
@@ -23,6 +25,8 @@ import { TenantsModule } from '../tenants/tenants.module';
     }),
     UsersModule,
     TenantsModule,
+    EmailVerificationModule,
+    SubscriptionsModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],

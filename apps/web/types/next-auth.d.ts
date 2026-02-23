@@ -10,6 +10,7 @@ declare module 'next-auth' {
       name: string;
       role: string;
       tenantId: string | null;
+      tenantType: string;
     };
   }
 
@@ -19,6 +20,7 @@ declare module 'next-auth' {
     name: string;
     role: string;
     tenantId: string | null;
+    tenantType: string;
     accessToken: string;
     refreshToken: string;
   }
@@ -29,6 +31,7 @@ declare module 'next-auth/jwt' {
     id: string;
     role: string;
     tenantId: string | null;
+    tenantType: string;
     accessToken: string;
     refreshToken: string;
     accessTokenExpires?: number;

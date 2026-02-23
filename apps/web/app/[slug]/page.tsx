@@ -8,10 +8,28 @@ interface Props {
 
 export async function generateMetadata({ params }: Props) {
   try {
-    const tenant = await publicApi.getTenant(params.slug) as { name: string; description: string };
+    const tenant = await publicApi.getTenant(params.slug) as {
+      name: string;
+      description: string | null;
+      logo: string | null;
+      coverImage: string | null;
+    };
+    const title = `${tenant.name} - Reservar Turno`;
+    const description = tenant.description || `Reserva tu turno en ${tenant.name}`;
+
     return {
-      title: `${tenant.name} - Reservar Turno`,
-      description: tenant.description || `Reserva tu turno en ${tenant.name}`,
+      title,
+      description,
+      openGraph: {
+        title,
+        description,
+        type: 'website',
+      },
+      twitter: {
+        card: 'summary',
+        title,
+        description,
+      },
     };
   } catch {
     return {

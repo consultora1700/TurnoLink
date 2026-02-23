@@ -6,10 +6,27 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatPrice(price: number, currency = 'ARS'): string {
+  // Validar que el precio sea un número válido y razonable
+  const safePrice = typeof price === 'number' && isFinite(price) && price >= 0 && price < 1e12
+    ? price
+    : 0;
+
   return new Intl.NumberFormat('es-AR', {
     style: 'currency',
     currency,
-  }).format(price);
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(safePrice);
+}
+
+/**
+ * Safely parse a booking/event date to avoid timezone shift.
+ * Extracts the YYYY-MM-DD portion and creates noon local time,
+ * ensuring the displayed day is always correct regardless of browser timezone.
+ */
+export function parseBookingDate(date: string | Date): Date {
+  const str = typeof date === 'string' ? date : date.toISOString();
+  return new Date(str.split('T')[0] + 'T12:00:00');
 }
 
 export function formatDate(date: Date | string): string {
@@ -18,7 +35,7 @@ export function formatDate(date: Date | string): string {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
-  }).format(new Date(date));
+  }).format(parseBookingDate(date));
 }
 
 export function formatShortDate(date: Date | string): string {
@@ -26,7 +43,16 @@ export function formatShortDate(date: Date | string): string {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
-  }).format(new Date(date));
+  }).format(parseBookingDate(date));
+}
+
+export function formatDuration(minutes: number): string {
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  const remaining = minutes % 60;
+  const h = hours === 1 ? 'h' : 'hs';
+  if (remaining === 0) return `${hours} ${h}`;
+  return `${hours} ${h} ${remaining} min`;
 }
 
 export function formatTime(time: string): string {
