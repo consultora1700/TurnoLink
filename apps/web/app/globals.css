@@ -2289,3 +2289,829 @@ input:-webkit-autofill:focus {
     transform: none;
   }
 }
+
+/* ========================================
+   LANDING V2 — Framer-Accurate Dark Theme
+   Matches: https://landin.framer.website/
+   ======================================== */
+
+/* ── Glow button (Framer CTA style) ── */
+.lv2-glow-btn {
+  box-shadow:
+    rgba(63, 134, 151, 0.55) 0px 8px 40px 0px,
+    rgba(255, 255, 255, 0) 0px 0px 10px 1px inset,
+    rgba(63, 134, 151, 0.18) 0px 0px 0px 1px;
+  transition: all 0.35s ease;
+}
+.lv2-glow-btn:hover {
+  box-shadow:
+    rgba(63, 134, 151, 0.8) 0px 16px 60px 0px,
+    rgba(255, 255, 255, 0.2) 0px 0px 14px 1px inset,
+    rgba(63, 134, 151, 0.4) 0px 0px 0px 1px;
+  transform: translateY(-2px);
+}
+
+/* ── Card — #080808 bg, 20px radius, blue glow top line ALWAYS visible ── */
+.lv2-card {
+  background: #080808;
+  border-radius: 20px;
+  position: relative;
+  transition: all 0.4s ease;
+}
+.lv2-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 15%;
+  right: 15%;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(63,134,151,0) 0%, rgba(63,134,151,0.5) 50%, rgba(63,134,151,0) 100%);
+  z-index: 1;
+}
+.lv2-card:hover::before {
+  background: linear-gradient(90deg, rgba(63,134,151,0) 0%, rgba(63,134,151,0.8) 50%, rgba(63,134,151,0) 100%);
+}
+.lv2-card:hover {
+  transform: translateY(-3px);
+  box-shadow: rgba(63,134,151,0.12) 0px 12px 40px -10px;
+}
+
+/* ── Feature card — Framer gradient (white/gray subtle, NOT blue) ── */
+.lv2-feature-card {
+  background: linear-gradient(0deg, rgba(255,255,255,0.05) 0%, rgba(153,153,153,0.06) 100%);
+  border: 1px solid rgba(255,255,255,0.04);
+  border-radius: 20px;
+  padding: 6px;
+  transition: all 0.4s ease;
+}
+.lv2-feature-card:hover {
+  background: linear-gradient(0deg, rgba(255,255,255,0.08) 0%, rgba(153,153,153,0.1) 100%);
+  border-color: rgba(255,255,255,0.08);
+}
+
+/* ── Icon container with blue glow shadow (Framer exact) ── */
+.lv2-icon-glow {
+  box-shadow: rgba(63,134,151,0.45) 2px 4px 24px;
+  background: linear-gradient(0deg, rgba(63,134,151,0.12) 0%, rgba(153,153,153,0.09) 100%);
+}
+
+/* ── Stage / Section label pill (Framer gradient pill) ── */
+.lv2-stage-label {
+  background: linear-gradient(0deg, rgba(63,134,151,0.1) 0%, rgba(153,153,153,0.1) 100%);
+  border-radius: 10px;
+  padding: 6px 14px;
+}
+
+/* ── Glass button ── */
+.lv2-glass {
+  background: rgba(255,255,255,0.08);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.08);
+  transition: all 0.3s ease;
+}
+.lv2-glass:hover {
+  background: rgba(255,255,255,0.14);
+  border-color: rgba(255,255,255,0.18);
+  transform: translateY(-1px);
+}
+
+/* ── Pill tag with dot (Framer section label) ── */
+.lv2-pill::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgb(63, 134, 151);
+  margin-right: 8px;
+  box-shadow: 0 0 8px rgba(63,134,151,0.7);
+}
+
+/* ── Blue line divider ── */
+.lv2-blue-line {
+  height: 1px;
+  background: linear-gradient(90deg, rgba(63,134,151,0) 0%, rgba(63,134,151,0.6) 50%, rgba(63,134,151,0) 100%);
+}
+
+/* ── Glass line (horizontal shimmer) ── */
+.lv2-glass-line {
+  height: 1px;
+  background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0) 100%);
+}
+
+/* ── Section scroll reveal ── */
+.lv2-section {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 0.9s cubic-bezier(0.25, 0.46, 0.45, 0.94), transform 0.9s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+.lv2-section.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Individual card stagger reveal ── */
+@keyframes lv2-card-in {
+  from {
+    opacity: 0;
+    filter: blur(4px);
+    transform: translateY(30px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0) scale(1);
+  }
+}
+.lv2-card-stagger {
+  opacity: 0;
+}
+.lv2-card-stagger.revealed {
+  animation: lv2-card-in 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+/* ── Word reveal (Framer word-by-word appear) ── */
+@keyframes lv2-word-reveal {
+  from { opacity: 0; filter: blur(10px); transform: translateY(14px); }
+  to { opacity: 1; filter: blur(0); transform: translateY(0); }
+}
+.lv2-word {
+  display: inline-block;
+  opacity: 0;
+}
+.lv2-word.revealed {
+  animation: lv2-word-reveal 0.5s ease forwards;
+}
+
+/* ── Hero image reveal ── */
+@keyframes lv2-hero-img {
+  from { opacity: 0; transform: translateY(60px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.lv2-hero-img {
+  animation: lv2-hero-img 1s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.4s forwards;
+  opacity: 0;
+}
+
+/* ── Image scroll reveal ── */
+@keyframes lv2-img-reveal {
+  from { opacity: 0; transform: translateY(40px) scale(0.96); filter: blur(3px); }
+  to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+}
+.lv2-img-section {
+  opacity: 0;
+}
+.lv2-img-section.revealed {
+  animation: lv2-img-reveal 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+/* ── Marquee ── */
+@keyframes lv2-marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.lv2-marquee {
+  animation: lv2-marquee 25s linear infinite;
+}
+.lv2-marquee:hover {
+  animation-play-state: paused;
+}
+
+/* ── Testimonial auto-scroll ── */
+@keyframes lv2-testimonial-scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.lv2-testimonial-track {
+  animation: lv2-testimonial-scroll 40s linear infinite;
+}
+.lv2-testimonial-track:hover {
+  animation-play-state: paused;
+}
+
+/* ── Product mockup frame (Framer rounded 19px inside 30px wrapper) ── */
+.lv2-mockup-frame {
+  border-radius: 19px;
+  overflow: hidden;
+  box-shadow:
+    rgba(63,134,151,0.2) 0px 10px 60px 0px,
+    rgba(0,0,0,0.6) 0px 20px 60px -10px;
+  border: 1px solid rgba(255,255,255,0.06);
+  transition: all 0.5s ease;
+}
+.lv2-mockup-frame:hover {
+  box-shadow:
+    rgba(63,134,151,0.35) 0px 15px 80px 0px,
+    rgba(0,0,0,0.5) 0px 25px 70px -10px;
+  transform: translateY(-4px);
+}
+
+/* ── Mockup outer wrapper (Framer card-in-card: 30px outer, 10px padding, #080808) ── */
+.lv2-mockup-wrapper {
+  background: #080808;
+  border-radius: 30px;
+  padding: 10px;
+}
+
+/* ── Image with fade-to-black bottom ── */
+.lv2-img-fade::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 40%;
+  background: linear-gradient(rgba(0,0,0,0) 0%, rgb(0,0,0) 100%);
+  pointer-events: none;
+}
+
+/* ── FAQ accordion items (Framer: #080808, 20px radius, 30px padding) ── */
+.lv2-faq-item {
+  background: #080808;
+  border-radius: 20px;
+  padding: 24px 30px;
+  cursor: pointer;
+  transition: all 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+.lv2-faq-item:hover {
+  background: #0e0e0e;
+}
+.lv2-faq-item.open {
+  background: #080808;
+}
+.lv2-faq-icon {
+  width: 20px;
+  height: 20px;
+  position: relative;
+  flex-shrink: 0;
+}
+.lv2-faq-icon::before,
+.lv2-faq-icon::after {
+  content: '';
+  position: absolute;
+  background: rgba(255,255,255,0.5);
+  transition: all 0.35s ease;
+}
+.lv2-faq-icon::before {
+  width: 14px;
+  height: 1.5px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+.lv2-faq-icon::after {
+  width: 1.5px;
+  height: 14px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+.lv2-faq-item.open .lv2-faq-icon::after {
+  transform: translate(-50%, -50%) rotate(90deg);
+  opacity: 0;
+}
+
+/* ── Pricing popular glow ── */
+.lv2-pricing-popular {
+  box-shadow:
+    rgba(63,134,151,0.4) 0px 8px 40px 0px,
+    rgba(255,255,255,0.05) 0px 10px 10px -1px inset;
+  border: 1px solid rgba(63,134,151,0.25) !important;
+}
+
+/* ── Navbar blur (Framer: 91px height, blur(10px)) ── */
+.lv2-nav-blur {
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  background: rgba(0,0,0,0.6);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+/* ── CTA section — Framer blue gradient card ── */
+.lv2-cta-card {
+  background:
+    radial-gradient(ellipse at 30% 50%, rgba(63,134,151,0.3) 0%, transparent 60%),
+    radial-gradient(ellipse at 70% 30%, rgba(63,134,151,0.25) 0%, transparent 50%),
+    linear-gradient(180deg, rgba(29,60,68,0.4) 0%, rgba(10,21,24,0.6) 100%);
+  border-radius: 20px;
+  border: 1px solid rgba(63,134,151,0.2);
+}
+
+/* ── Floating glow orb ── */
+@keyframes lv2-float-glow {
+  0%, 100% { transform: translateY(0) scale(1); opacity: 0.25; }
+  50% { transform: translateY(-25px) scale(1.15); opacity: 0.5; }
+}
+.lv2-glow-orb {
+  animation: lv2-float-glow 7s ease-in-out infinite;
+}
+
+/* ── Section image with decorative glow ── */
+.lv2-section-img-glow {
+  position: relative;
+}
+.lv2-section-img-glow::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80%;
+  height: 80%;
+  background: radial-gradient(ellipse, rgba(63,134,151,0.18) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* ── Stat counter animation ── */
+@keyframes lv2-count-in {
+  from { opacity: 0; transform: scale(0.8); }
+  to { opacity: 1; transform: scale(1); }
+}
+.lv2-stat {
+  opacity: 0;
+}
+.lv2-stat.revealed {
+  animation: lv2-count-in 0.5s ease forwards;
+}
+
+/* ── Arrow hover effect on cards ── */
+.lv2-arrow-hover .lv2-arrow-icon {
+  opacity: 0;
+  transform: translateX(-8px);
+  transition: all 0.3s ease;
+}
+.lv2-arrow-hover:hover .lv2-arrow-icon {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* ── Floating badge animation ── */
+@keyframes lv2-badge-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+.lv2-badge-float {
+  animation: lv2-badge-float 3s ease-in-out infinite;
+}
+
+/* ── Image zoom on hover ── */
+.lv2-img-zoom {
+  overflow: hidden;
+  border-radius: 19px;
+}
+.lv2-img-zoom img {
+  transition: transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+.lv2-img-zoom:hover img {
+  transform: scale(1.04);
+}
+
+/* ── Testimonial card (Framer: 20px radius, 30px padding, 384px) ── */
+.lv2-testimonial-card {
+  background: #080808;
+  border-radius: 20px;
+  padding: 30px;
+  width: 384px;
+  flex-shrink: 0;
+  position: relative;
+  transition: all 0.3s ease;
+}
+.lv2-testimonial-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 15%;
+  right: 15%;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(63,134,151,0) 0%, rgba(63,134,151,0.4) 50%, rgba(63,134,151,0) 100%);
+}
+
+/* ── Portfolio / Use-case card image overlay on hover ── */
+.lv2-card-img-hover {
+  position: relative;
+  overflow: hidden;
+}
+.lv2-card-img-hover .lv2-hover-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+.lv2-card-img-hover:hover .lv2-hover-overlay {
+  opacity: 1;
+}
+
+/* ── Sticky scroll section — Framer "How We Work?" pattern ── */
+/* Row: left cards scroll, right image stays sticky */
+.lv2-sticky-row {
+  display: flex;
+  gap: 80px;
+  align-items: flex-start;
+}
+.lv2-sticky-cards-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.lv2-sticky-img-col {
+  position: sticky;
+  top: 100px;
+  flex-shrink: 0;
+  width: 44%;
+}
+
+/* Feature card with dark blue gradient bg (Framer stage card style) */
+.lv2-func-card {
+  background:
+    radial-gradient(ellipse at 30% 0%, rgba(63,134,151,0.15) 0%, transparent 60%),
+    linear-gradient(180deg, rgba(18,38,44,0.3) 0%, rgba(10,21,24,0.5) 100%);
+  border: 1px solid rgba(63,134,151,0.1);
+  border-radius: 20px;
+  padding: 36px 40px;
+  transition: all 0.4s ease;
+  position: relative;
+  overflow: hidden;
+}
+.lv2-func-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(63,134,151,0) 0%, rgba(63,134,151,0.45) 50%, rgba(63,134,151,0) 100%);
+}
+.lv2-func-card:hover {
+  border-color: rgba(63,134,151,0.25);
+  background:
+    radial-gradient(ellipse at 30% 0%, rgba(63,134,151,0.22) 0%, transparent 60%),
+    linear-gradient(180deg, rgba(18,38,44,0.38) 0%, rgba(10,21,24,0.6) 100%);
+  transform: translateY(-2px);
+}
+.lv2-func-card.active {
+  border-color: rgba(63,134,151,0.3);
+  background:
+    radial-gradient(ellipse at 30% 0%, rgba(63,134,151,0.25) 0%, transparent 60%),
+    linear-gradient(180deg, rgba(18,38,44,0.4) 0%, rgba(10,21,24,0.65) 100%);
+  box-shadow: rgba(63,134,151,0.15) 0px 8px 30px -5px;
+}
+
+/* Sticky image crossfade wrapper */
+.lv2-sticky-img-wrap {
+  position: relative;
+  border-radius: 20px;
+  overflow: hidden;
+  aspect-ratio: 1 / 1;
+  background: #080808;
+}
+.lv2-sticky-img-wrap img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  border-radius: 20px;
+}
+.lv2-sticky-img-wrap img.active-img {
+  opacity: 1;
+}
+
+/* Responsive: stack on mobile */
+@media (max-width: 1023px) {
+  .lv2-sticky-row {
+    flex-direction: column;
+    gap: 40px;
+  }
+  .lv2-sticky-img-col {
+    position: relative;
+    top: 0;
+    width: 100%;
+    order: -1;
+  }
+  .lv2-func-card {
+    padding: 28px 24px;
+  }
+}
+
+/* ── Responsive H2 size (Framer: 54px on desktop) ── */
+@media (min-width: 1024px) {
+  .lv2-h2 {
+    font-size: 54px !important;
+    line-height: 50px !important;
+    letter-spacing: -1.9px !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   LV2 TALENT — Category carousel + Profile cards
+   ═══════════════════════════════════════════════════════ */
+
+/* ── Category carousel: horizontal scroll with snap ── */
+.lv2-cat-carousel {
+  display: flex;
+  gap: 20px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  padding: 8px 0 20px;
+  scrollbar-width: none;
+}
+.lv2-cat-carousel::-webkit-scrollbar { display: none; }
+
+.lv2-cat-carousel-item {
+  scroll-snap-align: start;
+  flex-shrink: 0;
+  width: 280px;
+  opacity: 0;
+  transform: translateX(80px) rotateY(-8deg);
+  transition: opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.lv2-cat-carousel-item.in-view {
+  opacity: 1;
+  transform: translateX(0) rotateY(0deg);
+}
+/* Stagger delay via CSS custom property */
+.lv2-cat-carousel-item:nth-child(1) { transition-delay: 0ms; }
+.lv2-cat-carousel-item:nth-child(2) { transition-delay: 60ms; }
+.lv2-cat-carousel-item:nth-child(3) { transition-delay: 120ms; }
+.lv2-cat-carousel-item:nth-child(4) { transition-delay: 180ms; }
+.lv2-cat-carousel-item:nth-child(5) { transition-delay: 240ms; }
+.lv2-cat-carousel-item:nth-child(6) { transition-delay: 300ms; }
+.lv2-cat-carousel-item:nth-child(7) { transition-delay: 360ms; }
+.lv2-cat-carousel-item:nth-child(8) { transition-delay: 420ms; }
+.lv2-cat-carousel-item:nth-child(9) { transition-delay: 480ms; }
+.lv2-cat-carousel-item:nth-child(10) { transition-delay: 540ms; }
+.lv2-cat-carousel-item:nth-child(11) { transition-delay: 600ms; }
+.lv2-cat-carousel-item:nth-child(12) { transition-delay: 660ms; }
+
+/* Carousel fade edges */
+.lv2-cat-carousel-wrap {
+  position: relative;
+}
+.lv2-cat-carousel-wrap::before,
+.lv2-cat-carousel-wrap::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 60px;
+  z-index: 2;
+  pointer-events: none;
+}
+.lv2-cat-carousel-wrap::before {
+  left: 0;
+  background: linear-gradient(to right, black, transparent);
+}
+.lv2-cat-carousel-wrap::after {
+  right: 0;
+  background: linear-gradient(to left, black, transparent);
+}
+
+/* ── Profile cards for talent landing ── */
+.lv2-profile-card {
+  background: #080808;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.06);
+  padding: 24px;
+  transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  position: relative;
+  overflow: hidden;
+}
+.lv2-profile-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 15%;
+  right: 15%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(63,134,151,0.3) 50%, transparent 100%);
+}
+.lv2-profile-card:hover {
+  border-color: rgba(63,134,151,0.25);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(63,134,151,0.12);
+}
+
+/* Profile card slide-in from bottom */
+.lv2-profile-reveal {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.lv2-profile-reveal.in-view {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Profile skill pill */
+.lv2-skill-pill {
+  font-size: 12px;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  background: rgba(63,134,151,0.12);
+  color: rgba(63,134,151,0.9);
+  border: 1px solid rgba(63,134,151,0.15);
+  white-space: nowrap;
+}
+
+/* Profile avatar glow ring on hover */
+.lv2-profile-card:hover .lv2-avatar-ring {
+  box-shadow: 0 0 20px rgba(63,134,151,0.35);
+}
+.lv2-avatar-ring {
+  transition: box-shadow 0.4s ease;
+}
+
+/* ── Carousel navigation arrows ── */
+.lv2-carousel-nav {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+.lv2-carousel-nav:hover {
+  background: rgba(63,134,151,0.2);
+  border-color: rgba(63,134,151,0.3);
+  color: white;
+}
+.lv2-carousel-nav:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* ── Showcase Section — Phone Frames & Pills ── */
+
+.lv2-phone-frame {
+  position: relative;
+  border-radius: 28px;
+  border: 2px solid rgba(255,255,255,0.08);
+  background: #0A0A0A;
+  padding: 8px;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.04),
+    0 20px 60px rgba(0,0,0,0.5),
+    0 0 40px rgba(63,134,151,0.06);
+  overflow: hidden;
+  transition: box-shadow 0.4s ease, transform 0.4s ease;
+}
+.lv2-phone-frame:hover {
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.08),
+    0 25px 70px rgba(0,0,0,0.6),
+    0 0 60px rgba(63,134,151,0.1);
+  transform: translateY(-4px);
+}
+
+.lv2-phone-screen {
+  border-radius: 20px;
+  overflow: hidden;
+  background: #111;
+}
+
+.lv2-showcase-pill {
+  padding: 8px 18px;
+  border-radius: 9999px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.5);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.lv2-showcase-pill:hover {
+  background: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.8);
+  border-color: rgba(255,255,255,0.12);
+}
+.lv2-showcase-pill.active {
+  background: rgba(63,134,151,0.15);
+  border-color: rgba(63,134,151,0.4);
+  color: white;
+  box-shadow: 0 0 20px rgba(63,134,151,0.15);
+}
+
+.lv2-showcase-cards-enter {
+  animation: lv2-showcase-fade-in 0.35s ease both;
+}
+@keyframes lv2-showcase-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Phone screen mini-service rows */
+.lv2-mini-service {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  transition: background 0.2s ease;
+}
+.lv2-mini-service:last-child {
+  border-bottom: none;
+}
+
+/* Showcase pills horizontal scroll on mobile */
+@media (max-width: 640px) {
+  .lv2-showcase-pills-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    padding-bottom: 4px;
+  }
+  .lv2-showcase-pills-wrap::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* ── ProductShowcase — Naipe (card deck swap) ── */
+
+/* Each image face in the naipe stack */
+.lv2-naipe-face {
+  will-change: transform, opacity;
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+/* Front — on top, full size */
+.lv2-naipe-front {
+  z-index: 2;
+  transform: scale(1) translate(0, 0);
+  opacity: 1;
+}
+
+/* Back — peeking behind like a card deck */
+.lv2-naipe-back {
+  z-index: 1;
+  transform: scale(0.95) translate(4px, 8px);
+  opacity: 0.3;
+}
+
+/* Hero dual-layer faces */
+.lv2-hero-face {
+  will-change: transform, opacity;
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.lv2-hero-front {
+  z-index: 2;
+  transform: scale(1);
+  opacity: 1;
+}
+.lv2-hero-back {
+  z-index: 1;
+  transform: scale(0.97) translateY(8px);
+  opacity: 0.25;
+}
+
+/* Clickable card hover */
+.lv2-showcase-card {
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.lv2-showcase-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(63,134,151,0.1);
+}
+
+/* Set indicator dots */
+.lv2-set-dots { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 24px; }
+.lv2-set-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: rgba(255,255,255,0.15); transition: all 0.25s ease; cursor: pointer;
+}
+.lv2-set-dot:hover { background: rgba(255,255,255,0.35); }
+.lv2-set-dot.active { background: #3F8697; width: 24px; border-radius: 4px; }

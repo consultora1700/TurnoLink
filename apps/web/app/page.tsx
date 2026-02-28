@@ -467,9 +467,9 @@ export default function HomePage() {
 
               {/* Legal + Language in one row */}
               <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                <a href="#" className="hover:text-foreground transition-colors">Privacidad</a>
+                <Link href="/privacidad" className="hover:text-foreground transition-colors">Privacidad</Link>
                 <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
-                <a href="#" className="hover:text-foreground transition-colors">Términos</a>
+                <Link href="/terminos" className="hover:text-foreground transition-colors">Términos</Link>
                 <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
                 <LanguageSelector variant="minimal" />
               </div>
@@ -510,8 +510,8 @@ export default function HomePage() {
 
               {/* Right: Legal + Language */}
               <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                <a href="#" className="hover:text-foreground transition-colors">Privacidad</a>
-                <a href="#" className="hover:text-foreground transition-colors">Términos</a>
+                <Link href="/privacidad" className="hover:text-foreground transition-colors">Privacidad</Link>
+                <Link href="/terminos" className="hover:text-foreground transition-colors">Términos</Link>
                 <LanguageSelector variant="minimal" />
               </div>
             </div>
