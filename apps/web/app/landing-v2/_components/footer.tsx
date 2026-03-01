@@ -38,6 +38,9 @@ export function Footer() {
               <Link href="/landing-v2/talento" className="block text-sm text-white/40 hover:text-white/70 transition-colors duration-300">
                 Talento profesional
               </Link>
+              <Link href="/landing-v2/integrar" className="block text-sm text-white/40 hover:text-white/70 transition-colors duration-300">
+                Widget embebible
+              </Link>
               <Link href="/register" className="block text-sm text-white/40 hover:text-white/70 transition-colors duration-300">
                 Crear cuenta
               </Link>

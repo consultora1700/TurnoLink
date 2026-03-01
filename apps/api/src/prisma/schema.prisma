@@ -91,9 +91,31 @@ model Tenant {
   // Talent Proposals
   talentProposals      TalentProposal[]
 
+  // API Keys
+  apiKeys              ApiKey[]
+
   @@index([slug])
   @@index([status])
   @@map("tenants")
+}
+
+// ============ API KEYS ============
+
+model ApiKey {
+  id        String    @id @default(uuid())
+  tenantId  String
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name      String    @default("Default")
+  key       String    @unique
+  prefix    String
+  isActive  Boolean   @default(true)
+  lastUsed  DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([tenantId])
+  @@index([key])
+  @@map("api_keys")
 }
 
 // ============ BRANCHES (SUCURSALES) ============

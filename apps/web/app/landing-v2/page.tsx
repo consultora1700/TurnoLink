@@ -27,8 +27,7 @@ import {
   Bell,
   Sparkles,
   Dumbbell,
-  Pen,
-  PawPrint,
+  Wrench,
   MapPin,
   type LucideIcon,
 } from 'lucide-react';
@@ -977,9 +976,12 @@ interface ShowcaseIndustry {
 }
 
 const SHOWCASE_DATA: ShowcaseIndustry[] = [
+  // ── 1. Peluquerías & Barberías ─────────────────────────────────────
+  // TAM #1: Toda ciudad tiene decenas. Alta frecuencia de reserva (mensual).
+  // Merge de las dos categorías previas — un salón unisex + una barbería.
   {
-    id: 'peluquerias',
-    label: 'Peluquerías',
+    id: 'peluquerias-barberias',
+    label: 'Peluquerías & Barberías',
     icon: Scissors,
     businesses: [
       {
@@ -998,28 +1000,6 @@ const SHOWCASE_DATA: ShowcaseIndustry[] = [
         ],
       },
       {
-        slug: 'demo-estetica',
-        name: 'Bella Estética',
-        shortDesc: 'Centro de belleza integral',
-        location: 'Belgrano',
-        rating: 4.9,
-        reviews: 98,
-        primaryColor: '#ec4899',
-        secondaryColor: '#f472b6',
-        services: [
-          { name: 'Limpieza Facial', price: '$10.500', duration: '60 min' },
-          { name: 'Depilación Piernas', price: '$8.500', duration: '45 min' },
-          { name: 'Manos Semipermanente', price: '$9.500', duration: '60 min' },
-        ],
-      },
-    ],
-  },
-  {
-    id: 'barberias',
-    label: 'Barberías',
-    icon: Scissors,
-    businesses: [
-      {
         slug: 'the-barber-club',
         name: 'The Barber Club',
         shortDesc: 'Barbería clásica masculina',
@@ -1034,26 +1014,13 @@ const SHOWCASE_DATA: ShowcaseIndustry[] = [
           { name: 'Combo Premium', price: '$12.000', duration: '75 min' },
         ],
       },
-      {
-        slug: 'barber-club',
-        name: 'Barber Club',
-        shortDesc: 'Barbería moderna & grooming',
-        location: 'Recoleta',
-        rating: 4.6,
-        reviews: 156,
-        primaryColor: '#1a1a2e',
-        secondaryColor: '#e94560',
-        services: [
-          { name: 'Corte Fade', price: '$5.500', duration: '40 min' },
-          { name: 'Barba Sculpting', price: '$4.000', duration: '25 min' },
-          { name: 'Black Mask', price: '$3.500', duration: '20 min' },
-        ],
-      },
     ],
   },
+  // ── 2. Estética & Belleza ──────────────────────────────────────────
+  // TAM alto: uñas, pestañas, depilación, maquillaje. Reserva frecuente (quincenal/mensual).
   {
     id: 'estetica',
-    label: 'Estética & Uñas',
+    label: 'Estética & Belleza',
     icon: Sparkles,
     businesses: [
       {
@@ -1088,9 +1055,11 @@ const SHOWCASE_DATA: ShowcaseIndustry[] = [
       },
     ],
   },
+  // ── 3. Spa & Bienestar ─────────────────────────────────────────────
+  // Mercado premium con ticket alto. Transmite confianza y profesionalismo.
   {
     id: 'spa',
-    label: 'Spa & Masajes',
+    label: 'Spa & Bienestar',
     icon: HeartPulse,
     businesses: [
       {
@@ -1125,10 +1094,12 @@ const SHOWCASE_DATA: ShowcaseIndustry[] = [
       },
     ],
   },
+  // ── 4. Salud & Consultorios ────────────────────────────────────────
+  // TAM enorme. Médicos, odontólogos, dermatólogos. Transmite seriedad profesional.
   {
     id: 'salud',
-    label: 'Salud',
-    icon: HeartPulse,
+    label: 'Salud & Consultorios',
+    icon: Building2,
     businesses: [
       {
         slug: 'dra-martinez-dermatologia',
@@ -1162,9 +1133,11 @@ const SHOWCASE_DATA: ShowcaseIndustry[] = [
       },
     ],
   },
+  // ── 5. Fitness & Canchas ───────────────────────────────────────────
+  // Sector en fuerte crecimiento (pádel boom). Alta recurrencia de reserva.
   {
     id: 'fitness',
-    label: 'Fitness & Deportes',
+    label: 'Fitness & Canchas',
     icon: Dumbbell,
     businesses: [
       {
@@ -1199,76 +1172,122 @@ const SHOWCASE_DATA: ShowcaseIndustry[] = [
       },
     ],
   },
+  // ── 6. Profesionales ───────────────────────────────────────────────
+  // Mercado MASIVO y sub-digitalizado: psicólogos, abogados, contadores, nutricionistas.
+  // Cada profesional independiente necesita gestionar agenda. Millones de profesionales en LATAM.
   {
-    id: 'tatuajes',
-    label: 'Tatuajes & Piercing',
-    icon: Pen,
+    id: 'profesionales',
+    label: 'Profesionales',
+    icon: Briefcase,
     businesses: [
       {
-        slug: 'ink-master-studio',
-        name: 'Ink Master Studio',
-        shortDesc: 'Tatuajes & micropigmentación',
-        location: 'San Telmo',
-        rating: 4.8,
-        reviews: 276,
-        primaryColor: '#b71c1c',
-        secondaryColor: '#ef5350',
+        slug: 'lic-gomez-psicologia',
+        name: 'Lic. Gómez',
+        shortDesc: 'Psicología clínica & terapia de pareja',
+        location: 'Belgrano',
+        rating: 4.9,
+        reviews: 94,
+        primaryColor: '#5b21b6',
+        secondaryColor: '#a78bfa',
         services: [
-          { name: 'Tatuaje Pequeño', price: '$15.000', duration: '60 min' },
-          { name: 'Tatuaje Mediano', price: '$30.000', duration: '120 min' },
-          { name: 'Piercing Oreja', price: '$8.000', duration: '20 min' },
+          { name: 'Sesión Individual', price: '$12.000', duration: '50 min' },
+          { name: 'Terapia de Pareja', price: '$18.000', duration: '75 min' },
+          { name: 'Evaluación Inicial', price: '$15.000', duration: '60 min' },
         ],
       },
       {
-        slug: 'fine-line-studio',
-        name: 'Fine Line Studio',
-        shortDesc: 'Fine line & micro realismo',
-        location: 'Villa Crespo',
-        rating: 4.9,
-        reviews: 142,
-        primaryColor: '#1A1A1A',
-        secondaryColor: '#6B7280',
+        slug: 'estudio-contable-rios',
+        name: 'Estudio Contable Ríos',
+        shortDesc: 'Contabilidad & asesoría fiscal',
+        location: 'Microcentro',
+        rating: 4.7,
+        reviews: 68,
+        primaryColor: '#0f766e',
+        secondaryColor: '#5eead4',
         services: [
-          { name: 'Fine Line Pequeño', price: '$20.000', duration: '60 min' },
-          { name: 'Botanical Fine Line', price: '$30.000', duration: '90 min' },
-          { name: 'Piercing Helix', price: '$12.000', duration: '20 min' },
+          { name: 'Consulta Impositiva', price: '$10.000', duration: '45 min' },
+          { name: 'Declaración Jurada', price: '$25.000', duration: '60 min' },
+          { name: 'Asesoría Monotributo', price: '$8.000', duration: '30 min' },
         ],
       },
     ],
   },
+  // ── 7. Hospedaje & Alquileres ──────────────────────────────────────
+  // Diferenciador clave: muestra el modo DIARIO de TurnoLink.
+  // Cabañas, apart-hotels, alquileres temporales — mercado enorme en turismo argentino.
   {
-    id: 'veterinaria',
-    label: 'Veterinaria',
-    icon: PawPrint,
+    id: 'hospedaje',
+    label: 'Hospedaje',
+    icon: BedDouble,
     businesses: [
       {
-        slug: 'happy-paws',
-        name: 'Happy Paws',
-        shortDesc: 'Peluquería canina & spa',
-        location: 'Belgrano',
-        rating: 4.7,
-        reviews: 198,
-        primaryColor: '#2e7d32',
-        secondaryColor: '#a5d6a7',
+        slug: 'cabanas-del-lago',
+        name: 'Cabañas del Lago',
+        shortDesc: 'Cabañas con vista al lago',
+        location: 'Villa La Angostura',
+        rating: 4.9,
+        reviews: 312,
+        primaryColor: '#1e3a5f',
+        secondaryColor: '#7dd3fc',
         services: [
-          { name: 'Baño Completo S', price: '$5.000', duration: '45 min' },
-          { name: 'Corte Breed', price: '$10.000', duration: '90 min' },
-          { name: 'Spa Canino Premium', price: '$15.000', duration: '90 min' },
+          { name: 'Cabaña Doble', price: '$45.000', duration: '1 noche' },
+          { name: 'Cabaña Familiar', price: '$65.000', duration: '1 noche' },
+          { name: 'Suite Premium', price: '$85.000', duration: '1 noche' },
         ],
       },
       {
-        slug: 'vetcare-centro',
-        name: 'VetCare Centro',
-        shortDesc: 'Centro veterinario integral',
-        location: 'Caballito',
-        rating: 4.9,
-        reviews: 215,
-        primaryColor: '#0D9488',
-        secondaryColor: '#0284C7',
+        slug: 'apart-hotel-centro',
+        name: 'Urban Apart Hotel',
+        shortDesc: 'Apart-hotel céntrico & moderno',
+        location: 'Córdoba Capital',
+        rating: 4.7,
+        reviews: 187,
+        primaryColor: '#b45309',
+        secondaryColor: '#fbbf24',
         services: [
-          { name: 'Consulta General', price: '$8.000', duration: '30 min' },
-          { name: 'Vacuna Antirrábica', price: '$5.000', duration: '15 min' },
-          { name: 'Ecografía Abdominal', price: '$10.000', duration: '30 min' },
+          { name: 'Studio', price: '$35.000', duration: '1 noche' },
+          { name: 'Depto 1 Ambiente', price: '$48.000', duration: '1 noche' },
+          { name: 'Depto 2 Ambientes', price: '$62.000', duration: '1 noche' },
+        ],
+      },
+    ],
+  },
+  // ── 8. Automotriz & Servicios ──────────────────────────────────────
+  // Demuestra versatilidad de la plataforma más allá de belleza y salud.
+  // Talleres, lavaderos, service — alta necesidad de agenda, bajo nivel de digitalización.
+  {
+    id: 'automotriz',
+    label: 'Automotriz & Servicios',
+    icon: Wrench,
+    businesses: [
+      {
+        slug: 'taller-martinez-hnos',
+        name: 'Taller Martínez Hnos.',
+        shortDesc: 'Mecánica integral & service oficial',
+        location: 'Avellaneda',
+        rating: 4.6,
+        reviews: 143,
+        primaryColor: '#dc2626',
+        secondaryColor: '#fca5a5',
+        services: [
+          { name: 'Service Completo', price: '$35.000', duration: '120 min' },
+          { name: 'Cambio de Aceite', price: '$15.000', duration: '30 min' },
+          { name: 'Diagnóstico General', price: '$8.000', duration: '45 min' },
+        ],
+      },
+      {
+        slug: 'wash-pro-lavadero',
+        name: 'WashPro Lavadero',
+        shortDesc: 'Lavadero express & detailing',
+        location: 'Vicente López',
+        rating: 4.8,
+        reviews: 256,
+        primaryColor: '#2563eb',
+        secondaryColor: '#93c5fd',
+        services: [
+          { name: 'Lavado Exterior', price: '$5.000', duration: '30 min' },
+          { name: 'Lavado Completo', price: '$9.000', duration: '60 min' },
+          { name: 'Detailing Premium', price: '$25.000', duration: '180 min' },
         ],
       },
     ],
@@ -1389,7 +1408,7 @@ function ShowcaseSection() {
               return (
                 <button
                   key={industry.id}
-                  className={`lv2-showcase-pill lv2-card-stagger ${activeIdx === idx ? 'active' : ''}`}
+                  className={`lv2-showcase-pill ${activeIdx === idx ? 'active' : ''}`}
                   onClick={() => handleTabChange(idx)}
                 >
                   <Icon size={15} />

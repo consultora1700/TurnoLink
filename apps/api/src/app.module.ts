@@ -27,6 +27,7 @@ import { PlatformModule } from './modules/platform/platform.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { PushModule } from './modules/push/push.module';
 import { ProfessionalProfilesModule } from './modules/professional-profiles/professional-profiles.module';
+import { ReportsModule } from './modules/reports/reports.module';
 import * as path from 'path';
 
 @Module({
@@ -114,6 +115,9 @@ import * as path from 'path';
 
     // Professional Profiles (Fase 2)
     ProfessionalProfilesModule,
+
+    // Reports & Analytics
+    ReportsModule,
 
     // Admin Panel
     AdminModule,

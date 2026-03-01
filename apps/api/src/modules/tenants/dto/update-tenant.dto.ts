@@ -3,6 +3,7 @@ import {
   IsOptional,
   IsString,
   IsBoolean,
+  IsArray,
   MaxLength,
   MinLength,
   Matches,
@@ -78,6 +79,27 @@ class TenantSettingsDto {
   @IsOptional()
   @IsBoolean()
   smartTimeSlots?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  embedEnabled?: boolean;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  embedAllowedDomains?: string[];
+
+  @IsOptional()
+  @IsString()
+  embedDisplayMode?: string;
+
+  @IsOptional()
+  @IsString()
+  embedButtonText?: string;
+
+  @IsOptional()
+  @IsString()
+  embedButtonColor?: string;
 }
 
 export class UpdateTenantDto {

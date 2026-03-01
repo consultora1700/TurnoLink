@@ -4,6 +4,7 @@ import type { NextRequest } from 'next/server';
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const isEmbedRoute = pathname.startsWith('/embed');
 
   // ─── Auth pages: redirect logged-in users to their dashboard ───
   if (pathname === '/login' || pathname === '/register') {
@@ -52,7 +53,7 @@ export async function middleware(request: NextRequest) {
     "media-src 'self' https: data: blob:",
     "object-src 'none'",
     "frame-src 'self' https://maps.google.com https://www.google.com https://www.mercadopago.com https://www.mercadopago.com.ar https:",
-    "frame-ancestors 'self'",
+    isEmbedRoute ? "frame-ancestors *" : "frame-ancestors 'self'",
   ];
 
   // Only add upgrade-insecure-requests in production
@@ -65,7 +66,9 @@ export async function middleware(request: NextRequest) {
   // Set security headers
   response.headers.set('Content-Security-Policy', cspHeader);
   response.headers.set('X-Content-Type-Options', 'nosniff');
-  response.headers.set('X-Frame-Options', 'SAMEORIGIN');
+  if (!isEmbedRoute) {
+    response.headers.set('X-Frame-Options', 'SAMEORIGIN');
+  }
   response.headers.set('X-XSS-Protection', '1; mode=block');
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
 

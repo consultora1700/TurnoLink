@@ -5,6 +5,7 @@ import { Check, RotateCcw, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from './button';
 import { Label } from './label';
+import { getContrastTextColor } from '@/lib/color-contrast';
 
 // Predefined color palettes
 const COLOR_PRESETS = {
@@ -233,15 +234,22 @@ export function ColorPickerSection({
         {/* Compact Preview */}
         <div className="space-y-3">
           {/* Header bar */}
-          <div
-            className="h-10 sm:h-12 rounded-xl flex items-center px-3 sm:px-4 gap-2"
-            style={{ backgroundColor: primaryColor }}
-          >
-            <div className="h-5 w-5 sm:h-6 sm:w-6 rounded-full bg-white/20" />
-            <div className="h-2 w-16 sm:w-24 rounded bg-white/30" />
-            <div className="flex-1" />
-            <div className="h-2 w-12 rounded bg-white/20" />
-          </div>
+          {(() => {
+            const isDark = getContrastTextColor(primaryColor) === 'light';
+            const dot = isDark ? 'bg-white/25' : 'bg-black/15';
+            const bar = isDark ? 'bg-white/35' : 'bg-black/20';
+            return (
+              <div
+                className="h-10 sm:h-12 rounded-xl flex items-center px-3 sm:px-4 gap-2"
+                style={{ backgroundColor: primaryColor }}
+              >
+                <div className={`h-5 w-5 sm:h-6 sm:w-6 rounded-full ${dot}`} />
+                <div className={`h-2 w-16 sm:w-24 rounded ${bar}`} />
+                <div className="flex-1" />
+                <div className={`h-2 w-12 rounded ${dot}`} />
+              </div>
+            );
+          })()}
 
           {/* Content row */}
           <div className="flex gap-2 sm:gap-3">
@@ -252,14 +260,14 @@ export function ColorPickerSection({
               />
               <div className="flex gap-2">
                 <button
-                  className="px-2 sm:px-3 py-1 rounded-lg text-white text-xs font-medium"
-                  style={{ backgroundColor: primaryColor }}
+                  className="px-2 sm:px-3 py-1 rounded-lg text-xs font-medium"
+                  style={{ backgroundColor: primaryColor, color: getContrastTextColor(primaryColor) === 'light' ? '#ffffff' : '#1e293b' }}
                 >
                   Reservar
                 </button>
                 <span
                   className="px-2 py-1 rounded-full text-xs font-medium"
-                  style={{ backgroundColor: accentColor + '20', color: accentColor }}
+                  style={{ backgroundColor: '#22C55E20', color: '#22C55E' }}
                 >
                   Nuevo
                 </span>

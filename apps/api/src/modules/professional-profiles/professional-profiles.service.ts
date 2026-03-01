@@ -508,7 +508,11 @@ export class ProfessionalProfilesService {
    * Browse visible professional profiles, excluding profiles from the requesting tenant's employees.
    */
   async browseProfiles(excludeTenantId: string, filters: BrowseProfilesDto) {
-    const { search, specialty, availability, openToWork, category, page = 1, limit = 20 } = filters;
+    const {
+      search, specialty, availability, openToWork, category,
+      zone, minExperience, skills, sortBy,
+      page = 1, limit = 20,
+    } = filters;
 
     // Get employee IDs belonging to the requesting tenant (to exclude own employees)
     const ownEmployeeIds = await this.prisma.employee.findMany({
@@ -581,11 +585,34 @@ export class ProfessionalProfilesService {
       where.openToWork = openToWork;
     }
 
+    // Zone filter: search inside preferredZones JSON string (case-insensitive)
+    if (zone) {
+      where.preferredZones = { contains: zone, mode: 'insensitive' };
+    }
+
+    // Minimum experience filter
+    if (minExperience !== undefined) {
+      where.yearsExperience = { gte: minExperience };
+    }
+
+    // Skills filter: search inside skills JSON string (case-insensitive)
+    if (skills) {
+      where.skills = { contains: skills, mode: 'insensitive' };
+    }
+
+    // Determine sort order
+    let orderBy: any = { lastActiveAt: 'desc' };
+    if (sortBy === 'experience') {
+      orderBy = [{ yearsExperience: 'desc' }, { lastActiveAt: 'desc' }];
+    } else if (sortBy === 'name') {
+      orderBy = { name: 'asc' };
+    }
+
     const [profiles, total] = await Promise.all([
       this.prisma.professionalProfile.findMany({
         where,
         include: { experiences: { orderBy: { startDate: 'desc' } } },
-        orderBy: { lastActiveAt: 'desc' },
+        orderBy,
         skip: (page - 1) * limit,
         take: limit,
       }),

@@ -131,7 +131,7 @@ export default function DashboardPage() {
           <h2 className="text-lg font-semibold">Resumen de Turnos</h2>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
           <Card className="border-0 shadow-md bg-gradient-to-br from-blue-500 to-blue-600 text-white overflow-hidden relative">
             <div className="absolute -top-8 -right-8 w-24 h-24 bg-white/10 rounded-full" />
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

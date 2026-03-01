@@ -462,6 +462,123 @@ export interface PublicTalentProfileDetail extends PublicTalentProfile {
 }
 
 // =============================================================================
+// Report Types
+// =============================================================================
+
+export interface ReportOverview {
+  totalBookings: number;
+  completedBookings: number;
+  cancelledBookings: number;
+  noShowBookings: number;
+  pendingBookings: number;
+  totalCustomers: number;
+  totalRevenue: number;
+  completionRate: number;
+  cancellationRate: number;
+  noShowRate: number;
+}
+
+export interface BookingsByStatus {
+  status: string;
+  count: number;
+}
+
+export interface BookingsByDay {
+  day: string;
+  dayIndex: number;
+  count: number;
+}
+
+export interface TopService {
+  serviceId: string;
+  name: string;
+  bookings: number;
+  revenue: number;
+}
+
+export interface TopCustomer {
+  customerId: string;
+  name: string;
+  phone: string;
+  bookings: number;
+  revenue: number;
+}
+
+export interface RevenueReport {
+  data: Array<{ date: string; revenue: number }>;
+  summary: { total: number; average: number; days: number };
+}
+
+export interface BookingTrend {
+  date: string;
+  total: number;
+  PENDING: number;
+  CONFIRMED: number;
+  COMPLETED: number;
+  CANCELLED: number;
+  NO_SHOW: number;
+}
+
+export interface PeakHoursReport {
+  matrix: number[][];
+  maxCount: number;
+}
+
+export interface CancellationTrend {
+  week: string;
+  total: number;
+  cancelled: number;
+  noShow: number;
+  cancellationRate: number;
+  noShowRate: number;
+}
+
+export interface CustomerRetention {
+  month: string;
+  newCustomers: number;
+  returningCustomers: number;
+}
+
+export interface EmployeePerformance {
+  employeeId: string | null;
+  name: string;
+  totalBookings: number;
+  completed: number;
+  cancelled: number;
+  noShow: number;
+  revenue: number;
+  completionRate: number;
+}
+
+export interface ServicePerformance {
+  serviceId: string;
+  name: string;
+  price: number;
+  totalBookings: number;
+  completedBookings: number;
+  revenue: number;
+  completionRate: number;
+}
+
+export interface BranchComparison {
+  branchId: string;
+  branchName: string;
+  totalBookings: number;
+  completedBookings: number;
+  cancelledBookings: number;
+  noShowBookings: number;
+  revenue: number;
+  completionRate: number;
+}
+
+export interface ReportParams {
+  period?: '7d' | '30d' | '90d' | 'custom';
+  startDate?: string;
+  endDate?: string;
+  branchId?: string;
+}
+
+// =============================================================================
 // API Error Class
 // =============================================================================
 
@@ -1205,6 +1322,10 @@ export function createApiClient(token: string) {
       availability?: string;
       openToWork?: boolean;
       category?: string;
+      zone?: string;
+      minExperience?: number;
+      skills?: string;
+      sortBy?: string;
       page?: number;
       limit?: number;
     }) => {
@@ -1271,6 +1392,85 @@ export function createApiClient(token: string) {
         method: 'POST',
         body: JSON.stringify(data),
       }),
+
+    // Reports
+    getReportOverview: () =>
+      authRequest<ReportOverview>('/reports/overview'),
+
+    getBookingsByStatus: () =>
+      authRequest<BookingsByStatus[]>('/reports/bookings-by-status'),
+
+    getBookingsByDay: () =>
+      authRequest<BookingsByDay[]>('/reports/bookings-by-day'),
+
+    getTopServices: () =>
+      authRequest<TopService[]>('/reports/top-services'),
+
+    getTopCustomers: () =>
+      authRequest<TopCustomer[]>('/reports/top-customers'),
+
+    getRevenue: (params?: ReportParams) => {
+      const query = params ? `?${new URLSearchParams(
+        Object.entries(params).filter(([, v]) => v !== undefined).map(([k, v]) => [k, String(v)])
+      ).toString()}` : '';
+      return authRequest<RevenueReport>(`/reports/revenue${query}`);
+    },
+
+    getBookingTrends: (params?: ReportParams) => {
+      const query = params ? `?${new URLSearchParams(
+        Object.entries(params).filter(([, v]) => v !== undefined).map(([k, v]) => [k, String(v)])
+      ).toString()}` : '';
+      return authRequest<BookingTrend[]>(`/reports/booking-trends${query}`);
+    },
+
+    getPeakHours: (params?: ReportParams) => {
+      const query = params ? `?${new URLSearchParams(
+        Object.entries(params).filter(([, v]) => v !== undefined).map(([k, v]) => [k, String(v)])
+      ).toString()}` : '';
+      return authRequest<PeakHoursReport>(`/reports/peak-hours${query}`);
+    },
+
+    getCancellationTrends: (params?: ReportParams) => {
+      const query = params ? `?${new URLSearchParams(
+        Object.entries(params).filter(([, v]) => v !== undefined).map(([k, v]) => [k, String(v)])
+      ).toString()}` : '';
+      return authRequest<CancellationTrend[]>(`/reports/cancellation-trends${query}`);
+    },
+
+    getCustomerRetention: (params?: ReportParams) => {
+      const query = params ? `?${new URLSearchParams(
+        Object.entries(params).filter(([, v]) => v !== undefined).map(([k, v]) => [k, String(v)])
+      ).toString()}` : '';
+      return authRequest<CustomerRetention[]>(`/reports/customer-retention${query}`);
+    },
+
+    getEmployeePerformance: (params?: ReportParams) => {
+      const query = params ? `?${new URLSearchParams(
+        Object.entries(params).filter(([, v]) => v !== undefined).map(([k, v]) => [k, String(v)])
+      ).toString()}` : '';
+      return authRequest<EmployeePerformance[]>(`/reports/employee-performance${query}`);
+    },
+
+    getServicePerformance: (params?: ReportParams) => {
+      const query = params ? `?${new URLSearchParams(
+        Object.entries(params).filter(([, v]) => v !== undefined).map(([k, v]) => [k, String(v)])
+      ).toString()}` : '';
+      return authRequest<ServicePerformance[]>(`/reports/service-performance${query}`);
+    },
+
+    getBranchComparison: (params?: ReportParams) => {
+      const query = params ? `?${new URLSearchParams(
+        Object.entries(params).filter(([, v]) => v !== undefined).map(([k, v]) => [k, String(v)])
+      ).toString()}` : '';
+      return authRequest<BranchComparison[]>(`/reports/branch-comparison${query}`);
+    },
+
+    exportReportsCsv: (params?: ReportParams) => {
+      const query = params ? `?${new URLSearchParams(
+        Object.entries(params).filter(([, v]) => v !== undefined).map(([k, v]) => [k, String(v)])
+      ).toString()}` : '';
+      return authRequest<string>(`/reports/export/csv${query}`);
+    },
 
     // Autogestion - Create booking directly from dashboard
     createBooking: (data: CreateBookingData) =>

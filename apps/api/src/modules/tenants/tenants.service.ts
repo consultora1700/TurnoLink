@@ -105,8 +105,10 @@ export class TenantsService {
         secondaryColor: settings.secondaryColor,
         accentColor: settings.accentColor,
         enableDarkMode: settings.enableDarkMode ?? true,
+        themeMode: settings.themeMode,
         backgroundStyle: settings.backgroundStyle ?? 'modern',
         heroStyle: settings.heroStyle ?? 'classic',
+        cardStyle: settings.cardStyle,
         maxAdvanceBookingDays: settings.maxAdvanceBookingDays,
         minAdvanceBookingHours: settings.minAdvanceBookingHours,
         requireDeposit: settings.requireDeposit ?? false,
@@ -118,6 +120,11 @@ export class TenantsService {
         dailyCheckOutTime: settings.dailyCheckOutTime ?? '10:00',
         dailyMinNights: settings.dailyMinNights ?? 1,
         dailyMaxNights: settings.dailyMaxNights ?? 30,
+        showProfilePhoto: settings.showProfilePhoto,
+        coverOverlayColor: settings.coverOverlayColor,
+        coverOverlayOpacity: settings.coverOverlayOpacity,
+        coverFadeEnabled: settings.coverFadeEnabled,
+        coverFadeColor: settings.coverFadeColor,
       },
       services: tenant.services.map((service) => {
         let parsedImages: string[] = [];

@@ -39,6 +39,9 @@ export function Navbar() {
           <Link href="/landing-v2/talento" className="text-sm text-white/60 hover:text-white transition-colors duration-300">
             Talento
           </Link>
+          <Link href="/landing-v2/integrar" className="text-sm text-white/60 hover:text-white transition-colors duration-300">
+            Integrar
+          </Link>
           <Link href="/landing-v2#industrias" className="text-sm text-white/60 hover:text-white transition-colors duration-300">
             Precios
           </Link>
@@ -68,6 +71,9 @@ export function Navbar() {
           </Link>
           <Link href="/landing-v2/talento" className="block text-white/70 hover:text-white" onClick={() => setOpen(false)}>
             Talento
+          </Link>
+          <Link href="/landing-v2/integrar" className="block text-white/70 hover:text-white" onClick={() => setOpen(false)}>
+            Integrar
           </Link>
           <Link href="/landing-v2#industrias" className="block text-white/70 hover:text-white" onClick={() => setOpen(false)}>
             Precios

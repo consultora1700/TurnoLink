@@ -37,6 +37,10 @@ import {
   UserCheck,
   Clock,
   Send,
+  SlidersHorizontal,
+  X,
+  ArrowUpDown,
+  Star,
 } from 'lucide-react';
 import { ProfileHeader } from '@/components/profile/profile-header';
 import { CATEGORY_CARD_ACCENTS } from '@/lib/profile-templates';
@@ -81,6 +85,13 @@ function TalentoContent() {
   const [openToWork, setOpenToWork] = useState(false);
   const [page, setPage] = useState(1);
 
+  // Advanced filters
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [zone, setZone] = useState('');
+  const [minExperience, setMinExperience] = useState('all');
+  const [skillsFilter, setSkillsFilter] = useState('');
+  const [sortBy, setSortBy] = useState('recent');
+
   // Detail dialog
   const [selectedProfile, setSelectedProfile] = useState<TalentProfile | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -111,6 +122,11 @@ function TalentoContent() {
       if (categoryParam && CATEGORY_SEARCH_TERMS[categoryParam]) {
         params.category = categoryParam;
       }
+      // Advanced filters
+      if (zone) params.zone = zone;
+      if (minExperience !== 'all') params.minExperience = parseInt(minExperience);
+      if (skillsFilter) params.skills = skillsFilter;
+      if (sortBy !== 'recent') params.sortBy = sortBy;
       const data = await api.browseTalent(params);
       setResult(data);
     } catch {
@@ -118,7 +134,7 @@ function TalentoContent() {
     } finally {
       setLoading(false);
     }
-  }, [session?.accessToken, page, search, availability, openToWork, categoryParam]);
+  }, [session?.accessToken, page, search, availability, openToWork, categoryParam, zone, minExperience, skillsFilter, sortBy]);
 
   useEffect(() => {
     loadProfiles();
@@ -134,6 +150,26 @@ function TalentoContent() {
     return () => clearTimeout(timer);
   }, [searchInput]);
 
+  // Debounce zone
+  const [zoneInput, setZoneInput] = useState('');
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setZone(zoneInput);
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [zoneInput]);
+
+  // Debounce skills
+  const [skillsInput, setSkillsInput] = useState('');
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSkillsFilter(skillsInput);
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [skillsInput]);
+
   const handleAvailabilityChange = (val: string) => {
     setAvailability(val);
     setPage(1);
@@ -141,6 +177,34 @@ function TalentoContent() {
 
   const handleOpenToWorkChange = (val: boolean) => {
     setOpenToWork(val);
+    setPage(1);
+  };
+
+  const handleMinExperienceChange = (val: string) => {
+    setMinExperience(val);
+    setPage(1);
+  };
+
+  const handleSortByChange = (val: string) => {
+    setSortBy(val);
+    setPage(1);
+  };
+
+  // Count active advanced filters
+  const advancedFilterCount = [
+    zone,
+    minExperience !== 'all',
+    skillsFilter,
+    sortBy !== 'recent',
+  ].filter(Boolean).length;
+
+  const clearAdvancedFilters = () => {
+    setZoneInput('');
+    setZone('');
+    setMinExperience('all');
+    setSkillsInput('');
+    setSkillsFilter('');
+    setSortBy('recent');
     setPage(1);
   };
 
@@ -258,7 +322,8 @@ function TalentoContent() {
 
       {/* Filters */}
       <Card>
-        <CardContent className="p-3 sm:p-4">
+        <CardContent className="p-3 sm:p-4 space-y-3">
+          {/* Row 1: Search + basic filters */}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -294,6 +359,107 @@ function TalentoContent() {
               </div>
             </div>
           </div>
+
+          {/* Advanced filters toggle */}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 px-3 text-xs font-medium"
+              onClick={() => setShowAdvanced(!showAdvanced)}
+            >
+              <SlidersHorizontal className="mr-1.5 h-3.5 w-3.5" />
+              Filtros avanzados
+              {advancedFilterCount > 0 && (
+                <span className="ml-1.5 inline-flex items-center justify-center h-5 w-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold">
+                  {advancedFilterCount}
+                </span>
+              )}
+            </Button>
+            {advancedFilterCount > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2 text-xs text-muted-foreground hover:text-destructive"
+                onClick={clearAdvancedFilters}
+              >
+                <X className="mr-1 h-3 w-3" />
+                Limpiar
+              </Button>
+            )}
+          </div>
+
+          {/* Advanced filters panel */}
+          {showAdvanced && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2 border-t">
+              {/* Zone/Location filter */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                  <MapPin className="h-3 w-3" />
+                  Zona / Ubicación
+                </Label>
+                <Input
+                  placeholder="Ej: Palermo, Lanús, CABA..."
+                  value={zoneInput}
+                  onChange={(e) => setZoneInput(e.target.value)}
+                  className="h-9 text-sm"
+                />
+              </div>
+
+              {/* Minimum experience */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                  <Briefcase className="h-3 w-3" />
+                  Experiencia mínima
+                </Label>
+                <Select value={minExperience} onValueChange={handleMinExperienceChange}>
+                  <SelectTrigger className="h-9 text-sm">
+                    <SelectValue placeholder="Cualquiera" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Cualquiera</SelectItem>
+                    <SelectItem value="1">1+ año</SelectItem>
+                    <SelectItem value="2">2+ años</SelectItem>
+                    <SelectItem value="3">3+ años</SelectItem>
+                    <SelectItem value="5">5+ años</SelectItem>
+                    <SelectItem value="10">10+ años</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Skills filter */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                  <Star className="h-3 w-3" />
+                  Habilidad
+                </Label>
+                <Input
+                  placeholder="Ej: colorimetría, corte..."
+                  value={skillsInput}
+                  onChange={(e) => setSkillsInput(e.target.value)}
+                  className="h-9 text-sm"
+                />
+              </div>
+
+              {/* Sort by */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                  <ArrowUpDown className="h-3 w-3" />
+                  Ordenar por
+                </Label>
+                <Select value={sortBy} onValueChange={handleSortByChange}>
+                  <SelectTrigger className="h-9 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="recent">Más recientes</SelectItem>
+                    <SelectItem value="experience">Mayor experiencia</SelectItem>
+                    <SelectItem value="name">Nombre (A-Z)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -408,6 +574,13 @@ function TalentoContent() {
                         <span className="flex items-center gap-1">
                           <Clock className="h-3 w-3" />
                           {availabilityLabel(profile.availability)}
+                        </span>
+                      )}
+                      {profile.preferredZones?.length > 0 && (
+                        <span className="flex items-center gap-1 truncate max-w-[150px]" title={profile.preferredZones.join(', ')}>
+                          <MapPin className="h-3 w-3 shrink-0" />
+                          {profile.preferredZones.slice(0, 2).join(', ')}
+                          {profile.preferredZones.length > 2 && ` +${profile.preferredZones.length - 2}`}
                         </span>
                       )}
                     </div>

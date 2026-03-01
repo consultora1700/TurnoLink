@@ -47,6 +47,7 @@ import { LocationCarousel } from './location-carousel';
 import { PublicHero } from './public-hero';
 import { PublicServiceCard } from './public-service-card';
 import { HeroStyleName, HERO_STYLES } from '@/lib/hero-styles';
+import { postTurnoLinkEvent } from './embed-booking-page';
 
 /**
  * Normalizes a phone number for WhatsApp.
@@ -125,11 +126,13 @@ interface Tenant {
     secondaryColor: string;
     accentColor?: string;
     enableDarkMode?: boolean;
+    themeMode?: 'light' | 'dark' | 'both';
     requireDeposit?: boolean;
     depositPercentage?: number;
     depositMode?: string;
     backgroundStyle?: BackgroundStyle;
     heroStyle?: HeroStyleName;
+    cardStyle?: HeroStyleName;
     maxAdvanceBookingDays?: number;
     minAdvanceBookingHours?: number;
     smartTimeSlots?: boolean;
@@ -138,12 +141,18 @@ interface Tenant {
     dailyCheckOutTime?: string;
     dailyMinNights?: number;
     dailyMaxNights?: number;
+    showProfilePhoto?: boolean;
+    coverOverlayColor?: string;
+    coverOverlayOpacity?: number;
+    coverFadeEnabled?: boolean;
+    coverFadeColor?: string;
   };
 }
 
 interface Props {
   tenant: unknown;
   slug: string;
+  isEmbed?: boolean;
 }
 
 interface BookingResponse {
@@ -158,7 +167,7 @@ interface BookingResponse {
 
 type Step = 'branch' | 'services' | 'datetime' | 'details' | 'payment' | 'confirmation';
 
-export function PublicBookingPage({ tenant: tenantData, slug }: Props) {
+export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }: Props) {
   const tenant = tenantData as Tenant;
   const [branches, setBranches] = useState<BranchPublic[]>([]);
   const [selectedBranch, setSelectedBranch] = useState<BranchPublic | null>(null);
@@ -198,6 +207,13 @@ export function PublicBookingPage({ tenant: tenantData, slug }: Props) {
     }
     return () => { document.body.style.overflow = ''; };
   }, [showServiceDetail]);
+
+  // Embed: notify parent of step changes
+  useEffect(() => {
+    if (isEmbed) {
+      postTurnoLinkEvent('turnolink:step_changed', { step });
+    }
+  }, [isEmbed, step]);
 
   // Reputation stats
   const [reputationStats, setReputationStats] = useState<{
@@ -359,6 +375,12 @@ export function PublicBookingPage({ tenant: tenantData, slug }: Props) {
   useEffect(() => {
     if (isSuccess && bookingResult) {
       const result = bookingResult as BookingResponse;
+      if (isEmbed) {
+        postTurnoLinkEvent('turnolink:booking_created', {
+          bookingId: result.id,
+          service: result.service?.name || '',
+        });
+      }
       if (result.requiresPayment && !result.depositPaid) {
         // Booking created but needs payment
         setPendingBooking(result);
@@ -367,15 +389,21 @@ export function PublicBookingPage({ tenant: tenantData, slug }: Props) {
       } else {
         // Booking confirmed (no deposit required or already paid)
         setStep('confirmation');
+        if (isEmbed) {
+          postTurnoLinkEvent('turnolink:booking_confirmed', { bookingId: result.id });
+        }
         toast({
           title: 'Reserva confirmada',
           description: 'Tu turno ha sido registrado exitosamente.',
         });
       }
     }
-  }, [isSuccess, bookingResult]);
+  }, [isSuccess, bookingResult, isEmbed]);
 
   useEffect(() => {
+    if (bookingError && isEmbed) {
+      postTurnoLinkEvent('turnolink:error', { message: bookingError });
+    }
     if (bookingError) {
       toast({
         title: 'Error al reservar',
@@ -693,12 +721,50 @@ export function PublicBookingPage({ tenant: tenantData, slug }: Props) {
       const result = await response.json();
 
       if (result.initPoint) {
-        // Redirect to Mercado Pago
-        window.location.href = result.initPoint;
+        if (isEmbed) {
+          // In embed mode: open MP in new tab + poll for payment status
+          postTurnoLinkEvent('turnolink:payment_started', { bookingId: pendingBooking.id });
+          window.open(result.initPoint, '_blank');
+          // Poll for payment completion
+          const pollInterval = setInterval(async () => {
+            try {
+              const statusRes = await fetch(
+                `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/public/bookings/${slug}/booking/${pendingBooking.id}`
+              );
+              if (statusRes.ok) {
+                const booking = await statusRes.json();
+                if (booking.depositPaid) {
+                  clearInterval(pollInterval);
+                  setProcessingPayment(false);
+                  postTurnoLinkEvent('turnolink:payment_completed', { bookingId: pendingBooking.id });
+                  postTurnoLinkEvent('turnolink:booking_confirmed', { bookingId: pendingBooking.id });
+                  setStep('confirmation');
+                  toast({
+                    title: 'Pago confirmado',
+                    description: 'Tu reserva ha sido confirmada exitosamente.',
+                  });
+                }
+              }
+            } catch {
+              // Silently continue polling
+            }
+          }, 3000);
+          // Stop polling after 10 minutes
+          setTimeout(() => {
+            clearInterval(pollInterval);
+            setProcessingPayment(false);
+          }, 600000);
+        } else {
+          // Normal mode: redirect to Mercado Pago
+          window.location.href = result.initPoint;
+        }
       } else {
         throw new Error('No se pudo obtener el enlace de pago');
       }
     } catch (error: any) {
+      if (isEmbed) {
+        postTurnoLinkEvent('turnolink:error', { message: error.message || 'Error al procesar el pago' });
+      }
       toast({
         title: 'Error',
         description: error.message || 'No se pudo procesar el pago. Intenta de nuevo.',
@@ -706,7 +772,7 @@ export function PublicBookingPage({ tenant: tenantData, slug }: Props) {
       });
       setProcessingPayment(false);
     }
-  }, [pendingBooking, slug]);
+  }, [pendingBooking, slug, isEmbed]);
 
   const handleReset = useCallback(() => {
     // Reset to appropriate starting step based on branches
@@ -744,13 +810,14 @@ export function PublicBookingPage({ tenant: tenantData, slug }: Props) {
       tenantSlug={slug}
       colors={themeColors}
       enableDarkMode={tenant.settings.enableDarkMode !== false}
+      themeMode={tenant.settings.themeMode}
     >
       <div className="min-h-screen transition-colors duration-300 relative overflow-x-hidden">
         {/* Background Style - fixed behind all content */}
         <BackgroundStyles style={tenant.settings.backgroundStyle || 'modern'} className="z-0" />
 
-        {/* Theme Toggle - Top Right */}
-        {tenant.settings.enableDarkMode !== false && (
+        {/* Theme Toggle - Top Right (hidden in embed, hidden if single-mode theme) */}
+        {!isEmbed && (tenant.settings.themeMode === 'both' || (!tenant.settings.themeMode && tenant.settings.enableDarkMode !== false)) && (
           <PublicThemeToggleFloating
             tenantSlug={slug}
             className="fixed top-4 right-4 bottom-auto h-10 w-10"
@@ -758,11 +825,38 @@ export function PublicBookingPage({ tenant: tenantData, slug }: Props) {
         )}
 
         {/* Hero Header */}
-        <PublicHero
-          tenant={tenant}
-          reputationStats={reputationStats}
-          heroStyle={(tenant.settings.heroStyle as HeroStyleName) || 'classic'}
-        />
+        {isEmbed ? (
+          <div className="relative z-10 px-4 sm:px-6 lg:px-8 pt-6 pb-4">
+            <div className="container mx-auto flex items-center gap-3">
+              {tenant.logo && (
+                <img
+                  src={tenant.logo}
+                  alt={tenant.name}
+                  className="h-10 w-10 rounded-lg object-cover"
+                />
+              )}
+              <div>
+                <h1 className="text-lg font-bold text-slate-900 dark:text-white">{tenant.name}</h1>
+                {tenant.description && (
+                  <p className="text-sm text-slate-500 dark:text-neutral-400 line-clamp-1">{tenant.description}</p>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <PublicHero
+            tenant={tenant}
+            reputationStats={reputationStats}
+            heroStyle={(tenant.settings.heroStyle as HeroStyleName) || 'classic'}
+            coverSettings={{
+              showProfilePhoto: tenant.settings.showProfilePhoto,
+              coverOverlayColor: tenant.settings.coverOverlayColor,
+              coverOverlayOpacity: tenant.settings.coverOverlayOpacity,
+              coverFadeEnabled: tenant.settings.coverFadeEnabled,
+              coverFadeColor: tenant.settings.coverFadeColor,
+            }}
+          />
+        )}
 
       {/* Progress Steps */}
       <div className="sticky top-0 z-40 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-lg border-b border-slate-200 dark:border-neutral-700 shadow-sm transition-colors">
@@ -960,7 +1054,7 @@ export function PublicBookingPage({ tenant: tenantData, slug }: Props) {
                   <PublicServiceCard
                     key={service.id}
                     service={service}
-                    heroStyle={(tenant.settings.heroStyle as HeroStyleName) || 'classic'}
+                    cardStyle={(tenant.settings.cardStyle as HeroStyleName) || (tenant.settings.heroStyle as HeroStyleName) || 'classic'}
                     showPrices={tenant.settings.showPrices}
                     index={index}
                     onSelect={(s) => {
@@ -1631,53 +1725,70 @@ export function PublicBookingPage({ tenant: tenantData, slug }: Props) {
         )}
       </main>
 
-      {/* Location Section with Carousel */}
-      <LocationCarousel
-        locations={
-          branches.length > 0
-            ? branches.map(b => ({
-                id: b.id,
-                name: b.name,
-                image: b.image,
-                address: b.address,
-                city: b.city,
-                phone: b.phone,
-                isMain: b.isMain,
-              }))
-            : tenant.address || tenant.city
-              ? [{
-                  id: 'tenant',
-                  name: tenant.name,
-                  image: null,
-                  address: tenant.address,
-                  city: tenant.city,
-                  phone: tenant.phone,
-                  isMain: true,
-                }]
-              : []
-        }
-        tenantName={tenant.name}
-      />
+      {/* Location Section with Carousel (hidden in embed) */}
+      {!isEmbed && (
+        <LocationCarousel
+          locations={
+            branches.length > 0
+              ? branches.map(b => ({
+                  id: b.id,
+                  name: b.name,
+                  image: b.image,
+                  address: b.address,
+                  city: b.city,
+                  phone: b.phone,
+                  isMain: b.isMain,
+                }))
+              : tenant.address || tenant.city
+                ? [{
+                    id: 'tenant',
+                    name: tenant.name,
+                    image: null,
+                    address: tenant.address,
+                    city: tenant.city,
+                    phone: tenant.phone,
+                    isMain: true,
+                  }]
+                : []
+          }
+          tenantName={tenant.name}
+        />
+      )}
 
       {/* Footer */}
-      <footer className="bg-slate-900 text-white mt-auto relative z-10">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-5">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-4 sm:gap-6 text-slate-400 text-xs">
-              <span className="inline-flex items-center gap-1.5"><Zap className="h-3.5 w-3.5" />Rápida</span>
-              <span className="inline-flex items-center gap-1.5"><Shield className="h-3.5 w-3.5" />Segura</span>
-              <span className="inline-flex items-center gap-1.5"><Star className="h-3.5 w-3.5" />Premium</span>
-            </div>
-            <div className="flex items-center gap-2 text-xs text-slate-500">
-              <span>Reservas por</span>
-              <a href="/" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
-                <img src="/oscuro2.png" alt="TurnoLink" className="h-8 w-auto" />
-              </a>
-              <span className="hidden sm:inline">· © {new Date().getFullYear()}</span>
+      {isEmbed ? (
+        <footer className="py-3 text-center relative z-10">
+          <a
+            href="https://app.turnolink.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-xs text-slate-400 dark:text-neutral-500 hover:text-slate-600 dark:hover:text-neutral-300 transition-colors"
+          >
+            Powered by
+            <img src="/oscuro2.png" alt="TurnoLink" className="h-5 w-auto dark:hidden" />
+            <img src="/logo-claro.png" alt="TurnoLink" className="h-5 w-auto hidden dark:inline" />
+          </a>
+        </footer>
+      ) : (
+        <footer className="bg-slate-900 text-white mt-auto relative z-10">
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-5">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-4 sm:gap-6 text-slate-400 text-xs">
+                <span className="inline-flex items-center gap-1.5"><Zap className="h-3.5 w-3.5" />Rápida</span>
+                <span className="inline-flex items-center gap-1.5"><Shield className="h-3.5 w-3.5" />Segura</span>
+                <span className="inline-flex items-center gap-1.5"><Star className="h-3.5 w-3.5" />Premium</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-slate-500">
+                <span>Reservas por</span>
+                <a href="/" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
+                  <img src="/oscuro2.png" alt="TurnoLink" className="h-8 w-auto" />
+                </a>
+                <span className="hidden sm:inline">· © {new Date().getFullYear()}</span>
+              </div>
             </div>
           </div>
-        </div>
-      </footer>
+        </footer>
+      )}
 
         {/* Service Detail Modal */}
         {showServiceDetail && serviceForDetail && (
@@ -1709,7 +1820,7 @@ export function PublicBookingPage({ tenant: tenantData, slug }: Props) {
               {/* Service Image / Gallery Carousel */}
               <ServiceImageCarousel
                 service={serviceForDetail}
-                heroStyle={(tenant.settings.heroStyle as HeroStyleName) || 'classic'}
+                heroStyle={(tenant.settings.cardStyle as HeroStyleName) || (tenant.settings.heroStyle as HeroStyleName) || 'classic'}
                 showPrices={tenant.settings.showPrices}
               />
 
@@ -1832,16 +1943,12 @@ export function PublicBookingPage({ tenant: tenantData, slug }: Props) {
                 {(() => {
                   const effective = getEffectivePriceAndDuration(serviceForDetail, selectedVariations);
                   const hs = (tenant.settings.heroStyle as HeroStyleName) || 'classic';
-                  const priceColors = (() => {
-                    switch (hs) {
-                      case 'bold': return { bg: 'bg-emerald-50 dark:bg-emerald-900/20', icon: 'text-emerald-600 dark:text-emerald-400', label: 'text-emerald-600 dark:text-emerald-500', value: 'text-emerald-700 dark:text-emerald-400' };
-                      case 'warm': return { bg: 'bg-amber-50 dark:bg-amber-900/20', icon: 'text-amber-600 dark:text-amber-400', label: 'text-amber-600 dark:text-amber-500', value: 'text-amber-700 dark:text-amber-400' };
-                      case 'energetic': return { bg: 'bg-orange-50 dark:bg-orange-900/20', icon: 'text-orange-600 dark:text-orange-400', label: 'text-orange-600 dark:text-orange-500', value: 'text-orange-700 dark:text-orange-400' };
-                      case 'clinical': return { bg: 'bg-teal-50 dark:bg-teal-900/20', icon: 'text-teal-600 dark:text-teal-400', label: 'text-teal-600 dark:text-teal-500', value: 'text-teal-700 dark:text-teal-400' };
-                      case 'corporate': return { bg: 'bg-blue-50 dark:bg-blue-900/20', icon: 'text-blue-600 dark:text-blue-400', label: 'text-blue-600 dark:text-blue-500', value: 'text-blue-700 dark:text-blue-400' };
-                      default: return { bg: 'bg-emerald-50 dark:bg-emerald-900/20', icon: 'text-emerald-600 dark:text-emerald-400', label: 'text-emerald-600 dark:text-emerald-500', value: 'text-emerald-700 dark:text-emerald-400' };
-                    }
-                  })();
+                  const priceColors = {
+                    bg: 'bg-[hsl(var(--tenant-primary-50))] dark:bg-[hsl(var(--tenant-primary-900)_/_0.2)]',
+                    icon: 'text-[hsl(var(--tenant-primary-600))] dark:text-[hsl(var(--tenant-primary-400))]',
+                    label: 'text-[hsl(var(--tenant-primary-600))] dark:text-[hsl(var(--tenant-primary-500))]',
+                    value: 'text-[hsl(var(--tenant-primary-700))] dark:text-[hsl(var(--tenant-primary-400))]',
+                  };
                   return (
                     <div className="grid grid-cols-2 gap-3 mb-6">
                       <div className="p-3 rounded-xl bg-slate-50 dark:bg-neutral-800/50 text-center">
@@ -1870,7 +1977,7 @@ export function PublicBookingPage({ tenant: tenantData, slug }: Props) {
                       handleServiceSelect(serviceForDetail);
                     }}
                     disabled={!allRequiredVariationsSelected(serviceForDetail, selectedVariations)}
-                    className={`w-full h-12 ${(HERO_STYLES[(tenant.settings.heroStyle as HeroStyleName) || 'classic'] || HERO_STYLES.classic).modalCtaBtnClasses} font-semibold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed`}
+                    className={`w-full h-12 ${(HERO_STYLES[(tenant.settings.cardStyle as HeroStyleName) || (tenant.settings.heroStyle as HeroStyleName) || 'classic'] || HERO_STYLES.classic).modalCtaBtnClasses} font-semibold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed`}
                   >
                     Reservar este servicio
                     <ArrowRight className="h-4 w-4 ml-2" />
@@ -1955,18 +2062,8 @@ function ServiceImageCarousel({
     touchStartRef.current = null;
   };
 
-  // Style-aware badge colors
-  const priceBadgeCls = (() => {
-    switch (heroStyle) {
-      case 'bold': return 'bg-amber-500 text-black font-black';
-      case 'warm': return 'bg-amber-500 text-white';
-      case 'energetic': return 'bg-orange-500 text-white';
-      case 'zen': return 'bg-emerald-500 text-white';
-      case 'clinical': return 'bg-teal-600 text-white';
-      case 'corporate': return 'bg-blue-600 text-white';
-      default: return 'bg-emerald-500 text-white';
-    }
-  })();
+  // Style-aware badge colors — now unified via CSS vars
+  const priceBadgeCls = 'bg-[hsl(var(--tenant-primary-500))] text-[var(--tenant-primary-contrast)]' + (heroStyle === 'bold' ? ' font-black' : '');
   const durationBadgeCls = (() => {
     switch (heroStyle) {
       case 'bold': case 'energetic': return 'bg-black/70 text-white border-0 shadow-md backdrop-blur-sm font-medium px-3 py-1';

@@ -1,9 +1,10 @@
 'use client';
 
-import { ReactNode, useEffect, useState, createContext, useContext } from 'react';
+import { ReactNode, useEffect, useState, useMemo, createContext, useContext } from 'react';
 import { Moon, Sun } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { getContrastTextColor } from '@/lib/color-contrast';
 
 type Theme = 'light' | 'dark';
 
@@ -17,6 +18,7 @@ interface PublicThemeContextType {
   theme: Theme;
   toggleTheme: () => void;
   colors: ThemeColors;
+  heroContrastMode: 'light' | 'dark';
 }
 
 const PublicThemeContext = createContext<PublicThemeContextType | null>(null);
@@ -34,10 +36,16 @@ interface PublicThemeWrapperProps {
   tenantSlug: string;
   colors?: ThemeColors;
   enableDarkMode?: boolean;
+  themeMode?: 'light' | 'dark' | 'both';
 }
 
+// Default colors — match the original hardcoded teal/violet/emerald
+const DEFAULT_PRIMARY = '#3F8697';   // teal-ish
+const DEFAULT_SECONDARY = '#8B5CF6'; // violet
+const DEFAULT_ACCENT = '#10B981';    // emerald
+
 // Convert hex to HSL values for CSS variables
-function hexToHSL(hex: string): { h: number; s: number; l: number } | null {
+export function hexToHSL(hex: string): { h: number; s: number; l: number } | null {
   // Remove # if present
   hex = hex.replace(/^#/, '');
 
@@ -85,7 +93,7 @@ function hexToHSL(hex: string): { h: number; s: number; l: number } | null {
 }
 
 // Generate color variations
-function generateColorVariations(hex: string): Record<string, string> {
+export function generateColorVariations(hex: string): Record<string, string> {
   const hsl = hexToHSL(hex);
   if (!hsl) return {};
 
@@ -111,9 +119,14 @@ export function PublicThemeWrapper({
   tenantSlug,
   colors = {},
   enableDarkMode = true,
+  themeMode,
 }: PublicThemeWrapperProps) {
+  // Resolve effective mode: themeMode takes precedence, fallback to enableDarkMode for backward compat
+  const effectiveMode = themeMode ?? (enableDarkMode ? 'both' : 'light');
+  const canToggle = effectiveMode === 'both';
+
   const STORAGE_KEY = `public-theme-${tenantSlug}`;
-  const [theme, setTheme] = useState<Theme>('light');
+  const [theme, setTheme] = useState<Theme>(effectiveMode === 'dark' ? 'dark' : 'light');
   const [mounted, setMounted] = useState(false);
 
   // Apply theme to <html> + colorScheme + localStorage — single source of truth
@@ -125,36 +138,40 @@ export function PublicThemeWrapper({
   };
 
   useEffect(() => {
-    let initial: Theme = 'light';
+    let initial: Theme;
 
-    const stored = localStorage.getItem(STORAGE_KEY) as Theme | null;
-    if (stored && enableDarkMode) {
-      initial = stored;
-    } else if (enableDarkMode) {
-      // Sync with system preference or existing <html> class
-      const htmlDark = document.documentElement.classList.contains('dark');
-      const systemDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches;
-      if (htmlDark || systemDark) {
-        initial = 'dark';
+    if (effectiveMode === 'dark') {
+      initial = 'dark';
+    } else if (effectiveMode === 'light') {
+      initial = 'light';
+    } else {
+      // 'both' — allow user preference
+      const stored = localStorage.getItem(STORAGE_KEY) as Theme | null;
+      if (stored) {
+        initial = stored;
+      } else {
+        const htmlDark = document.documentElement.classList.contains('dark');
+        const systemDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches;
+        initial = (htmlDark || systemDark) ? 'dark' : 'light';
       }
     }
 
     setTheme(initial);
     applyThemeToDOM(initial);
     setMounted(true);
-  }, [STORAGE_KEY, enableDarkMode]);
+  }, [STORAGE_KEY, effectiveMode]);
 
   useEffect(() => {
     if (mounted) {
       applyThemeToDOM(theme);
-      if (enableDarkMode) {
+      if (canToggle) {
         localStorage.setItem(STORAGE_KEY, theme);
       }
     }
-  }, [theme, mounted, STORAGE_KEY, enableDarkMode]);
+  }, [theme, mounted, STORAGE_KEY, canToggle]);
 
   const toggleTheme = () => {
-    if (enableDarkMode) {
+    if (canToggle) {
       setTheme(prev => (prev === 'light' ? 'dark' : 'light'));
     }
   };
@@ -167,48 +184,56 @@ export function PublicThemeWrapper({
     };
   }, []);
 
-  // Generate CSS variables from custom colors
+  // Generate CSS variables from custom colors (always, using defaults when not configured)
+  const effectivePrimary = colors.primaryColor || DEFAULT_PRIMARY;
+  const effectiveSecondary = colors.secondaryColor || DEFAULT_SECONDARY;
+  const effectiveAccent = colors.accentColor || DEFAULT_ACCENT;
+
+  // Determine whether text on the primary background should be light or dark
+  const heroContrastMode = useMemo(
+    () => getContrastTextColor(effectivePrimary),
+    [effectivePrimary],
+  );
+
   const customStyles: React.CSSProperties = {};
 
+  // Contrast color for text on primary backgrounds
+  (customStyles as Record<string, string>)['--tenant-primary-contrast'] =
+    heroContrastMode === 'light' ? 'white' : '#1e293b';
+
   // Primary color - main actions, buttons, links
-  if (colors.primaryColor) {
-    const primaryHSL = hexToHSL(colors.primaryColor);
-    if (primaryHSL) {
-      const variations = generateColorVariations(colors.primaryColor);
-      Object.entries(variations).forEach(([key, value]) => {
-        (customStyles as Record<string, string>)[`--tenant-primary-${key}`] = value;
-      });
-      (customStyles as Record<string, string>)['--primary'] = `${primaryHSL.h} ${primaryHSL.s}% ${primaryHSL.l}%`;
-      (customStyles as Record<string, string>)['--ring'] = `${primaryHSL.h} ${primaryHSL.s}% ${primaryHSL.l}%`;
-    }
+  const primaryHSL = hexToHSL(effectivePrimary);
+  if (primaryHSL) {
+    const variations = generateColorVariations(effectivePrimary);
+    Object.entries(variations).forEach(([key, value]) => {
+      (customStyles as Record<string, string>)[`--tenant-primary-${key}`] = value;
+    });
+    (customStyles as Record<string, string>)['--primary'] = `${primaryHSL.h} ${primaryHSL.s}% ${primaryHSL.l}%`;
+    (customStyles as Record<string, string>)['--ring'] = `${primaryHSL.h} ${primaryHSL.s}% ${primaryHSL.l}%`;
   }
 
   // Secondary color - secondary buttons, badges, backgrounds
-  if (colors.secondaryColor) {
-    const secondaryHSL = hexToHSL(colors.secondaryColor);
-    if (secondaryHSL) {
-      const variations = generateColorVariations(colors.secondaryColor);
-      Object.entries(variations).forEach(([key, value]) => {
-        (customStyles as Record<string, string>)[`--tenant-secondary-${key}`] = value;
-      });
-      (customStyles as Record<string, string>)['--secondary'] = `${secondaryHSL.h} ${secondaryHSL.s}% ${secondaryHSL.l}%`;
-    }
+  const secondaryHSL = hexToHSL(effectiveSecondary);
+  if (secondaryHSL) {
+    const variations = generateColorVariations(effectiveSecondary);
+    Object.entries(variations).forEach(([key, value]) => {
+      (customStyles as Record<string, string>)[`--tenant-secondary-${key}`] = value;
+    });
+    (customStyles as Record<string, string>)['--secondary'] = `${secondaryHSL.h} ${secondaryHSL.s}% ${secondaryHSL.l}%`;
   }
 
   // Accent color - highlights, special elements, notifications
-  if (colors.accentColor) {
-    const accentHSL = hexToHSL(colors.accentColor);
-    if (accentHSL) {
-      const variations = generateColorVariations(colors.accentColor);
-      Object.entries(variations).forEach(([key, value]) => {
-        (customStyles as Record<string, string>)[`--tenant-accent-${key}`] = value;
-      });
-      (customStyles as Record<string, string>)['--accent'] = `${accentHSL.h} ${accentHSL.s}% ${accentHSL.l}%`;
-    }
+  const accentHSL = hexToHSL(effectiveAccent);
+  if (accentHSL) {
+    const variations = generateColorVariations(effectiveAccent);
+    Object.entries(variations).forEach(([key, value]) => {
+      (customStyles as Record<string, string>)[`--tenant-accent-${key}`] = value;
+    });
+    (customStyles as Record<string, string>)['--accent'] = `${accentHSL.h} ${accentHSL.s}% ${accentHSL.l}%`;
   }
 
   return (
-    <PublicThemeContext.Provider value={{ theme, toggleTheme, colors }}>
+    <PublicThemeContext.Provider value={{ theme, toggleTheme, colors, heroContrastMode }}>
       <div
         className="min-h-screen transition-colors duration-300"
         style={customStyles}

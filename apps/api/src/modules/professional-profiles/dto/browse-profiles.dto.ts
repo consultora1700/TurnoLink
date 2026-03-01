@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsBoolean, IsInt, Min } from 'class-validator';
+import { IsOptional, IsString, IsBoolean, IsInt, Min, IsIn } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -28,6 +28,32 @@ export class BrowseProfilesDto {
   @Transform(({ value }) => value === 'true' || value === true)
   @IsBoolean()
   openToWork?: boolean;
+
+  @ApiPropertyOptional({ description: 'Filtrar por zona/ubicación (busca en preferredZones)' })
+  @IsOptional()
+  @IsString()
+  zone?: string;
+
+  @ApiPropertyOptional({ description: 'Experiencia mínima en años' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  minExperience?: number;
+
+  @ApiPropertyOptional({ description: 'Filtrar por habilidad (busca en skills)' })
+  @IsOptional()
+  @IsString()
+  skills?: string;
+
+  @ApiPropertyOptional({
+    description: 'Ordenar por: recent (más recientes), experience (más experiencia), name (nombre)',
+    default: 'recent',
+  })
+  @IsOptional()
+  @IsString()
+  @IsIn(['recent', 'experience', 'name'])
+  sortBy?: string;
 
   @ApiPropertyOptional({ description: 'Página', default: 1 })
   @IsOptional()

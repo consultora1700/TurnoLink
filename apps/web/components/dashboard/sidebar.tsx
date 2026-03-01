@@ -29,6 +29,8 @@ import {
   Send,
   Inbox,
   CalendarCheck,
+  BarChart3,
+  Code2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -58,6 +60,7 @@ const businessNavigationSections: NavSection[] = [
     title: 'General',
     items: [
       { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+      { name: 'Reportes', href: '/reportes', icon: BarChart3 },
     ],
     defaultExpanded: true,
   },
@@ -102,6 +105,7 @@ const businessNavigationSections: NavSection[] = [
       { name: 'Mi Suscripción', href: '/mi-suscripcion', icon: Crown },
       { name: 'Verificar Email', href: '/verificar-cuenta', icon: Mail },
       { name: 'Reseñas', href: '/resenas', icon: Star },
+      { name: 'Desarrolladores', href: '/integracion', icon: Code2 },
     ],
   },
 ];
@@ -283,7 +287,7 @@ function SidebarContent({
   return (
     <div className="flex flex-col h-full">
       {/* Logo */}
-      <div className="flex items-center h-16 px-4 border-b shrink-0">
+      <div className="flex items-center h-20 px-4 border-b border-border/50 shrink-0">
         <Link
           href={logoHref}
           className="flex items-center gap-2 hover:opacity-80 transition-opacity"
