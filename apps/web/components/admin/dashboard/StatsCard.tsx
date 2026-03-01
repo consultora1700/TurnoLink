@@ -135,7 +135,7 @@ export function StatsCard({
   return (
     <div
       className={cn(
-        'rounded-xl sm:rounded-2xl border bg-card p-3 sm:p-4 lg:p-6 shadow-sm transition-all duration-500',
+        'rounded-xl sm:rounded-2xl border bg-card p-3 sm:p-4 md:p-5 lg:p-6 shadow-sm transition-all duration-500',
         'hover:shadow-md hover:scale-[1.02] hover:border-primary/20',
         'active:scale-[0.98]',
         isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'

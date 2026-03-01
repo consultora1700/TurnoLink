@@ -251,7 +251,7 @@ function PlataformaSection() {
           </p>
         </div>
 
-        <div ref={cardsRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div ref={cardsRef} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
           {CAPABILITIES.map((c, i) => (
             <div
               key={i}
@@ -312,7 +312,7 @@ function ModosReservaSection() {
           </p>
         </div>
 
-        <div ref={cardsRef} className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <div ref={cardsRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {MODOS_RESERVA.map((m, i) => (
             <div
               key={i}
@@ -463,7 +463,7 @@ function ProductShowcase() {
   return (
     <section ref={sectionRef as React.RefObject<HTMLElement>} id="producto" className="lv2-section py-[100px] lg:py-[120px] px-5 lg:px-10">
       <div className="max-w-[1200px] mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-end mb-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8 items-end mb-16">
           <div className="text-center lg:text-left">
             <SectionTag text="Producto" />
             <SectionH2
@@ -1496,7 +1496,7 @@ function SocialProofSection() {
   return (
     <section ref={sectionRef as React.RefObject<HTMLElement>} className="lv2-section py-[100px] lg:py-[120px] px-5 lg:px-10">
       <div className="max-w-[1200px] mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-end mb-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8 items-end mb-16">
           <div className="text-center lg:text-left">
             <SectionTag text="Resultados" />
             <SectionH2
@@ -1511,7 +1511,7 @@ function SocialProofSection() {
           </div>
         </div>
 
-        <div ref={statsRef} className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-16">
+        <div ref={statsRef} className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-16">
           {stats.map((s, i) => (
             <div
               key={i}

@@ -44,7 +44,7 @@ export function OverviewKpis({ data }: { data: ReportOverview }) {
   ];
 
   return (
-    <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
       {kpis.map((kpi) => (
         <Card key={kpi.title} className={`border-0 shadow-md bg-gradient-to-br ${kpi.gradient} text-white overflow-hidden relative group`}>
           <div className="absolute -top-6 -right-6 w-20 h-20 bg-white/10 rounded-full transition-transform group-hover:scale-110" />

@@ -11,6 +11,7 @@ import {
   Users,
   Shield,
   BarChart3,
+  MapPin,
   Settings,
   ChevronLeft,
   ChevronRight,
@@ -68,6 +69,11 @@ const navItems: NavItem[] = [
     icon: BarChart3,
   },
   {
+    label: 'Mapa',
+    href: '/admin/mapa',
+    icon: MapPin,
+  },
+  {
     label: 'Configuracion',
     href: '/admin/configuracion',
     icon: Settings,
@@ -99,6 +105,7 @@ export function AdminSidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }:
           isActive
             ? 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm'
             : 'text-muted-foreground hover:text-foreground',
+          'md:justify-center md:px-2',
           isCollapsed && 'lg:justify-center lg:px-2',
           'animate-in fade-in slide-in-from-left-2'
         )}
@@ -108,12 +115,12 @@ export function AdminSidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }:
           'h-5 w-5 flex-shrink-0 transition-transform duration-200',
           isActive && 'scale-110'
         )} />
-        <span className={cn('flex-1', isCollapsed && 'lg:hidden')}>
+        <span className={cn('flex-1 md:hidden lg:inline', isCollapsed && 'lg:hidden')}>
           {item.label}
         </span>
         {item.badge !== undefined && item.badge > 0 && (
           <span className={cn(
-            'flex h-5 min-w-[20px] items-center justify-center rounded-full bg-destructive px-1.5 text-xs font-bold text-destructive-foreground',
+            'flex h-5 min-w-[20px] items-center justify-center rounded-full bg-destructive px-1.5 text-xs font-bold text-destructive-foreground md:hidden lg:flex',
             isCollapsed && 'lg:hidden'
           )}>
             {item.badge}
@@ -125,7 +132,7 @@ export function AdminSidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }:
     if (isCollapsed) {
       return (
         <Tooltip key={item.href} delayDuration={0}>
-          <TooltipTrigger asChild className="hidden lg:flex">
+          <TooltipTrigger asChild className="hidden md:flex">
             {linkContent}
           </TooltipTrigger>
           <TooltipContent side="right" className="font-medium">
@@ -143,7 +150,7 @@ export function AdminSidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }:
       {/* Mobile overlay */}
       <div
         className={cn(
-          'fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden transition-opacity duration-300',
+          'fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden transition-opacity duration-300',
           isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
         )}
         onClick={onClose}
@@ -153,8 +160,9 @@ export function AdminSidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }:
       <aside
         className={cn(
           'fixed left-0 top-0 z-50 h-screen border-r bg-card/95 backdrop-blur-md transition-all duration-300 ease-out',
-          'lg:translate-x-0',
+          'md:translate-x-0 lg:translate-x-0',
           isOpen ? 'translate-x-0' : '-translate-x-full',
+          'md:w-[70px]',
           isCollapsed ? 'lg:w-[70px]' : 'lg:w-[260px]',
           'w-[280px]'
         )}
@@ -173,7 +181,7 @@ export function AdminSidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }:
               <Shield className="h-5 w-5 text-primary-foreground" />
             </div>
             {(!isCollapsed || isOpen) && (
-              <div className="flex flex-col lg:hidden xl:flex animate-in fade-in slide-in-from-left-2">
+              <div className="flex flex-col md:hidden lg:hidden xl:flex animate-in fade-in slide-in-from-left-2">
                 <span className="font-bold text-lg leading-tight">TurnoLink</span>
                 <span className="text-xs text-muted-foreground">Panel Admin</span>
               </div>
@@ -190,7 +198,7 @@ export function AdminSidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }:
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 lg:hidden hover:bg-destructive/10 hover:text-destructive"
+            className="h-8 w-8 md:hidden hover:bg-destructive/10 hover:text-destructive"
             onClick={onClose}
           >
             <X className="h-5 w-5" />
@@ -231,6 +239,7 @@ export function AdminSidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }:
         {/* Footer */}
         <div className={cn(
           'absolute bottom-4 left-4 right-4 transition-opacity duration-300',
+          'md:opacity-0 md:pointer-events-none',
           isCollapsed ? 'lg:opacity-0 lg:pointer-events-none' : 'lg:opacity-100'
         )}>
           <div className="rounded-xl bg-muted/50 p-3 text-center">

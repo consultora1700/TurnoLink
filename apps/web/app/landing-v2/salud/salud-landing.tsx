@@ -305,7 +305,7 @@ function HeroSection() {
       />
 
       <div className="max-w-[1200px] mx-auto w-full relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           {/* Left: Copy */}
           <div>
             <div className="mb-8">
@@ -424,7 +424,7 @@ function MetricsStrip() {
       className="lv2-section py-14 border-y border-white/[0.04] bg-white/[0.01]"
     >
       <div className="max-w-[1200px] mx-auto px-5 lg:px-10">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-10 lg:gap-4">
           <div ref={c1.ref} className="text-center">
             <p className="text-3xl lg:text-[44px] font-normal text-white tracking-[-2px]">
               {c1.count}<span className="text-[#3B82F6]">%</span>
@@ -507,7 +507,7 @@ function BeforeAfterSection() {
           <SectionH2 line1="Un d&iacute;a en tu consultorio," line2="antes y despu&eacute;s." />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
           {/* ANTES */}
           <div className="lv2-card p-8 relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-red-500/[0.03] to-transparent pointer-events-none" />
@@ -657,7 +657,7 @@ function FeaturesSection() {
           <SectionH2 line1="Herramientas profesionales" line2="para tu pr&aacute;ctica." />
         </div>
 
-        <div ref={cardsRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div ref={cardsRef} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
           {FEATURES.map((feat, i) => {
             const Icon = feat.icon;
             return (

@@ -31,6 +31,7 @@ import {
   CalendarCheck,
   BarChart3,
   Code2,
+  Briefcase,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -85,6 +86,7 @@ const businessNavigationSections: NavSection[] = [
     items: [
       { name: 'Explorar talento', href: '/talento', icon: Search, exact: true },
       { name: 'Mis propuestas', href: '/talento/propuestas', icon: Send },
+      { name: 'Ofertas laborales', href: '/talento/ofertas', icon: Briefcase },
     ],
   },
   {
@@ -116,6 +118,8 @@ const professionalNavigationSections: NavSection[] = [
     items: [
       { name: 'Mi Perfil', href: '/mi-perfil', icon: UserCog },
       { name: 'Propuestas Recibidas', href: '/mi-perfil/propuestas', icon: Inbox },
+      { name: 'Ofertas laborales', href: '/mi-perfil/ofertas', icon: Briefcase },
+      { name: 'Mis postulaciones', href: '/mi-perfil/postulaciones', icon: Send },
     ],
     defaultExpanded: true,
   },
@@ -425,7 +429,7 @@ export function DashboardSidebar() {
       {/* Desktop Sidebar */}
       <aside
         data-tour="sidebar"
-        className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 lg:flex lg:w-64 lg:flex-col"
+        className="hidden md:fixed md:inset-y-0 md:left-0 md:z-40 md:flex md:w-64 md:flex-col lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 lg:flex lg:w-64 lg:flex-col"
       >
         <div className="flex flex-col flex-1 overflow-hidden bg-background border-r">
           <SidebarContent pathname={pathname} tenantSlug={tenantSlug} tenantType={tenantType} />
@@ -435,7 +439,7 @@ export function DashboardSidebar() {
       {/* Mobile Bottom Navigation */}
       <nav
         data-tour="mobile-nav"
-        className="lg:hidden fixed bottom-0 left-0 right-0 bg-background border-t z-40 safe-area-bottom"
+        className="md:hidden fixed bottom-0 left-0 right-0 bg-background border-t z-40 safe-area-bottom"
       >
         <div className={`grid ${mobileGridCols} h-16`}>
           {mobileNavItems.map((item) => {

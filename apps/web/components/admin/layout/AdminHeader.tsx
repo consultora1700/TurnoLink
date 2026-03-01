@@ -95,7 +95,7 @@ export function AdminHeader({ onMenuClick }: AdminHeaderProps) {
               <Button
                 variant="ghost"
                 size="icon"
-                className="lg:hidden h-9 w-9 hover:bg-primary/10"
+                className="md:hidden h-9 w-9 hover:bg-primary/10"
                 onClick={onMenuClick}
               >
                 <Menu className="h-5 w-5" />

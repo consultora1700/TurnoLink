@@ -77,7 +77,7 @@ export default function AdminDashboardPage() {
     return (
       <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-300">
         {/* Stats Cards Skeleton */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4">
           {[...Array(4)].map((_, i) => (
             <StatsCardSkeleton key={i} />
           ))}
@@ -90,7 +90,7 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* Charts Skeleton */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           <div className="lg:col-span-2">
             <ChartSkeleton />
           </div>
@@ -98,7 +98,7 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* Alerts and Tenants Skeleton */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           <Card>
             <CardHeader>
               <CardTitle>Alertas de Seguridad</CardTitle>
@@ -160,7 +160,7 @@ export default function AdminDashboardPage() {
       )}
 
       {/* Stats Cards - 2 columns on mobile, 4 on desktop */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4">
         <StatsCard
           title="MRR (Ingresos Mensuales)"
           mobileTitle="MRR"
@@ -230,7 +230,7 @@ export default function AdminDashboardPage() {
 
       {/* Charts Row - stack on mobile */}
       <div className={cn(
-        'grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6',
+        'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6',
         'animate-in fade-in slide-in-from-bottom-4 duration-500'
       )} style={{ animationDelay: '300ms' }}>
         {revenue && (
@@ -245,7 +245,7 @@ export default function AdminDashboardPage() {
 
       {/* Alerts and Recent Tenants - stack on mobile */}
       <div className={cn(
-        'grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6',
+        'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6',
         'animate-in fade-in slide-in-from-bottom-4 duration-500'
       )} style={{ animationDelay: '400ms' }}>
         <div className="lg:col-span-1">

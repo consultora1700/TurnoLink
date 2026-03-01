@@ -78,7 +78,7 @@ export function MobileExperience({ className }: MobileExperienceProps) {
       className={cn('py-20 md:py-32 bg-muted/30 overflow-hidden', className)}
     >
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+        <div className="grid md:grid-cols-2 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           {/* Content */}
           <div
             className={cn(

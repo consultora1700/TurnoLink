@@ -49,12 +49,12 @@ function LoadingSkeleton() {
   return (
     <div className="space-y-6">
       <SkeletonCard tall />
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
         <SkeletonCard />
         <SkeletonCard />
       </div>
       <SkeletonCard />
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
         <SkeletonCard />
         <SkeletonCard />
       </div>
@@ -157,7 +157,7 @@ export function AdvancedReportsSection({ api, hasComplete }: Props) {
               title="Operaciones"
               description="Patrones de reservas, horarios y cancelaciones"
             />
-            <div className="grid gap-6 lg:grid-cols-2">
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
               {trends && <BookingTrendsChart data={trends} />}
               {cancellations && <CancellationChart data={cancellations} />}
             </div>
@@ -172,7 +172,7 @@ export function AdvancedReportsSection({ api, hasComplete }: Props) {
               title="Equipo y Servicios"
               description="Rendimiento individual de empleados y servicios"
             />
-            <div className="grid gap-6 lg:grid-cols-2">
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
               {employees && <EmployeePerformanceChart data={employees} />}
               {services && <ServicePerformanceTable data={services} />}
             </div>

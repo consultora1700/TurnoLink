@@ -43,12 +43,12 @@ function SkeletonPage() {
           <div className="h-4 w-48 bg-muted/60 rounded mt-1" />
         </div>
       </div>
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
         {[1, 2, 3, 4].map((i) => (
           <div key={i} className="h-[120px] rounded-xl bg-muted" />
         ))}
       </div>
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
         <div className="h-[300px] rounded-xl bg-muted" />
         <div className="h-[300px] rounded-xl bg-muted" />
       </div>
@@ -157,13 +157,13 @@ export default function ReportesPage() {
       {overview && <OverviewKpis data={overview} />}
 
       {/* Basic charts row */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
         {byStatus && <BookingsByStatusChart data={byStatus} />}
         {byDay && <BookingsByDayChart data={byDay} />}
       </div>
 
       {/* Top lists row */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
         {topServices && <TopServicesList data={topServices} />}
         {topCustomers && <TopCustomersList data={topCustomers} />}
       </div>

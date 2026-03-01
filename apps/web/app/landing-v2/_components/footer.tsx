@@ -8,7 +8,7 @@ export function Footer() {
   return (
     <footer className="pt-[120px] pb-10 px-5 lg:px-10">
       <div className="max-w-[1200px] mx-auto">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 mb-14">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-10 mb-14">
           {/* Brand */}
           <div>
             <Link href="/landing-v2" className="flex items-center">

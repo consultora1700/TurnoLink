@@ -1176,7 +1176,7 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
               </div>
             ) : (
               /* Hourly Booking: Calendar + Time Slots */
-              <div ref={calendarSectionRef} className="scroll-mt-24 grid lg:grid-cols-2 gap-4 sm:gap-6">
+              <div ref={calendarSectionRef} className="scroll-mt-24 grid md:grid-cols-2 lg:grid-cols-2 gap-4 sm:gap-6">
                 {/* Calendar */}
                 <Card className="border border-slate-200 dark:border-neutral-700 shadow-sm bg-white dark:bg-neutral-800 overflow-hidden">
                   <CardContent className="p-4 sm:p-6">

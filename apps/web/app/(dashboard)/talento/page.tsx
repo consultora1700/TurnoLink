@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { ZoneAutocomplete } from '@/components/ui/zone-autocomplete';
 import {
   Select,
   SelectContent,
@@ -391,18 +392,17 @@ function TalentoContent() {
 
           {/* Advanced filters panel */}
           {showAdvanced && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2 border-t">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 pt-2 border-t">
               {/* Zone/Location filter */}
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                   <MapPin className="h-3 w-3" />
                   Zona / Ubicación
                 </Label>
-                <Input
-                  placeholder="Ej: Palermo, Lanús, CABA..."
-                  value={zoneInput}
-                  onChange={(e) => setZoneInput(e.target.value)}
-                  className="h-9 text-sm"
+                <ZoneAutocomplete
+                  values={zoneInput ? [zoneInput] : []}
+                  onChange={(zones) => setZoneInput(zones.length > 0 ? zones[zones.length - 1] : '')}
+                  placeholder="Buscar localidad..."
                 />
               </div>
 

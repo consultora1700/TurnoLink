@@ -181,8 +181,8 @@ function NotificationsBell() {
 export function DashboardHeader({ user }: Props) {
   return (
     <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-md border-b border-border/50">
-      <div className="flex h-20 items-center justify-between px-4 lg:px-6">
-        <div className="lg:hidden flex items-center">
+      <div className="flex h-20 items-center justify-between px-4 md:px-5 lg:px-6">
+        <div className="md:hidden flex items-center">
           <Link href="/dashboard">
             <img
               src="/claro2.png"

@@ -222,7 +222,7 @@ function HeroSection() {
       />
 
       <div className="max-w-[1200px] mx-auto w-full relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           {/* Left: Copy */}
           <div>
             <div className="mb-6">
@@ -427,7 +427,7 @@ function DemoSection() {
           })}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8 items-start">
           {/* Left: Live mockup */}
           <div>
             <div className="transition-all duration-500">

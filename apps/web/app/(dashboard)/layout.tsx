@@ -22,9 +22,9 @@ export default async function DashboardLayout({
   return (
     <DashboardThemeWrapper>
       <DashboardSidebar />
-      <div className="lg:pl-64 relative min-h-screen min-h-[100dvh]">
+      <div className="md:pl-64 lg:pl-64 relative min-h-screen min-h-[100dvh]">
         <DashboardHeader user={session.user} />
-        <main className="p-3 sm:p-4 lg:p-6 pb-28 lg:pb-6">
+        <main className="p-3 sm:p-4 md:p-5 md:pb-6 lg:p-6 pb-28 lg:pb-6">
           <SmartReminder />
           {children}
         </main>

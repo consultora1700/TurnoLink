@@ -1285,7 +1285,7 @@ function ConfiguracionContent() {
                       Define la apariencia visual del encabezado de tu página. Cada estilo cambia el fondo, la disposición, las formas y la tipografía.
                     </p>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                     {HERO_STYLE_OPTIONS.map((option) => (
                       <HeroStylePreview
                         key={option.value}
@@ -1321,7 +1321,7 @@ function ConfiguracionContent() {
                       Elige cómo se ven las tarjetas de tus servicios. Cada estilo cambia la forma, botones y disposición de la tarjeta.
                     </p>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                     {CARD_STYLE_OPTIONS.map((option) => (
                       option.value === '' ? (
                         <button
@@ -1387,7 +1387,7 @@ function ConfiguracionContent() {
                       Elige el estilo visual del fondo de tu página pública
                     </p>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                     {BACKGROUND_STYLE_OPTIONS.map((option) => (
                       <BackgroundStylePreview
                         key={option.value}

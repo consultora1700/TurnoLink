@@ -25,12 +25,12 @@ export default function AdminLayout({
           className={cn(
             'transition-all duration-300',
             // No padding on mobile, padding on desktop based on sidebar state
-            'lg:pl-[260px]',
+            'md:pl-[70px] lg:pl-[260px]',
             sidebarCollapsed && 'lg:pl-[70px]'
           )}
         >
           <AdminHeader onMenuClick={() => setSidebarOpen(true)} />
-          <main className="p-3 sm:p-4 lg:p-6">
+          <main className="p-3 sm:p-4 md:p-5 lg:p-6">
             {children}
           </main>
         </div>

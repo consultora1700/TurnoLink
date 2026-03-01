@@ -295,7 +295,7 @@ function FeaturedProfilesSection({ profiles, loading }: { profiles: PublicTalent
       className="lv2-section py-[100px] lg:py-[120px] px-5 lg:px-10"
     >
       <div className="max-w-[1200px] mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-end mb-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8 items-end mb-16">
           <div className="text-center lg:text-left">
             <SectionTag text="Perfiles destacados" />
             <SectionH2
@@ -510,7 +510,7 @@ function HowItWorksSection() {
           </p>
         </div>
 
-        <div ref={cardsRef} className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <div ref={cardsRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {STEPS.map((step, i) => (
             <div
               key={i}
@@ -592,7 +592,7 @@ function ForProfessionalsSection() {
       className="lv2-section py-[100px] lg:py-[120px] px-5 lg:px-10"
     >
       <div className="max-w-[1200px] mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-end mb-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8 items-end mb-16">
           <div className="text-center lg:text-left">
             <SectionTag text="Para profesionales" />
             <SectionH2
@@ -679,7 +679,7 @@ function SocialProofSection({ profileCount }: { profileCount: number }) {
           />
         </div>
 
-        <div ref={statsRef} className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-16">
+        <div ref={statsRef} className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-16">
           {stats.map((s, i) => (
             <div
               key={i}

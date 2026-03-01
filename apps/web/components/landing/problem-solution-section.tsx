@@ -66,7 +66,7 @@ export function ProblemSolutionSection() {
           </h2>
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-start max-w-6xl mx-auto">
+        <div className="grid md:grid-cols-2 lg:grid-cols-2 gap-8 lg:gap-16 items-start max-w-6xl mx-auto">
           {/* Problem Column */}
           <div
             className={`transition-all duration-700 delay-200 ${

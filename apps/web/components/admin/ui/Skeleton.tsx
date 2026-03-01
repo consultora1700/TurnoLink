@@ -19,7 +19,7 @@ export function Skeleton({ className }: SkeletonProps) {
 
 export function StatsCardSkeleton() {
   return (
-    <div className="rounded-xl sm:rounded-2xl border bg-card p-3 sm:p-4 lg:p-6">
+    <div className="rounded-xl sm:rounded-2xl border bg-card p-3 sm:p-4 md:p-5 lg:p-6">
       <div className="flex items-start justify-between gap-2">
         <div className="space-y-2 sm:space-y-3 flex-1">
           <Skeleton className="h-3 w-16 sm:w-24" />

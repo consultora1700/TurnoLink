@@ -475,7 +475,7 @@ export default function AyudaPage() {
               </div>
 
               {/* Quick Links */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-8 px-4 sm:px-0">
+              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-3 gap-3 mt-8 px-4 sm:px-0">
                 {QUICK_LINKS.map((link) => (
                   <a
                     key={link.label}
@@ -516,7 +516,7 @@ export default function AyudaPage() {
                 <ArrowRight className="h-4 w-4 ml-1" />
               </Button>
             </div>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {VIDEO_TUTORIALS.map((video) => (
                 <div
                   key={video.id}
