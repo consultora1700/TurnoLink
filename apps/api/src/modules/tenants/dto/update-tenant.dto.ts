@@ -174,4 +174,14 @@ export class UpdateTenantDto {
   @IsOptional()
   @IsString()
   settings?: string;
+
+  @ApiPropertyOptional({ example: 'employee_first' })
+  @IsOptional()
+  @IsString()
+  publicPageLayout?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  publicPageConfig?: string;
 }

@@ -4,26 +4,30 @@ import {
   Post,
   Put,
   Delete,
+  Patch,
   Body,
   Param,
   Query,
-  UseGuards,
+
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { CustomersService } from './customers.service';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { TenantGuard } from '../../common/guards/tenant.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { User } from '@prisma/client';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
+import { UpdateExtraInfoDto } from './dto/update-extra-info.dto';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import { ForbiddenException } from '@nestjs/common';
 
 @ApiTags('customers')
 @Controller('customers')
-@UseGuards(JwtAuthGuard, TenantGuard)
 @ApiBearerAuth()
 export class CustomersController {
-  constructor(private readonly customersService: CustomersService) {}
+  constructor(
+    private readonly customersService: CustomersService,
+    private readonly subscriptionsService: SubscriptionsService,
+  ) {}
 
   @Post()
   @ApiOperation({ summary: 'Create a new customer' })
@@ -31,6 +35,10 @@ export class CustomersController {
     @CurrentUser() user: User,
     @Body() createCustomerDto: CreateCustomerDto,
   ) {
+    const { hasReachedLimit, current, limit } = await this.subscriptionsService.checkLimit(user.tenantId!, 'customers');
+    if (hasReachedLimit) {
+      throw new ForbiddenException(`Límite de ${limit} clientes alcanzado (tenés ${current}). Mejorá tu plan para agregar más.`);
+    }
     return this.customersService.create(user.tenantId!, createCustomerDto);
   }
 
@@ -69,6 +77,16 @@ export class CustomersController {
     @Body() updateCustomerDto: UpdateCustomerDto,
   ) {
     return this.customersService.update(user.tenantId!, id, updateCustomerDto);
+  }
+
+  @Patch(':id/extra-info')
+  @ApiOperation({ summary: 'Update customer extra info section' })
+  async updateExtraInfo(
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+    @Body() dto: UpdateExtraInfoDto,
+  ) {
+    return this.customersService.updateExtraInfo(user.tenantId!, id, dto);
   }
 
   @Delete(':id')

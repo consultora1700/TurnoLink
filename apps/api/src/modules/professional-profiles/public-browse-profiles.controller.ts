@@ -26,6 +26,14 @@ export class PublicBrowseProfilesController {
   }
 
   @Public()
+  @Get(':id/profile')
+  @Throttle({ short: { ttl: 1000, limit: 5 }, medium: { ttl: 10000, limit: 30 } })
+  @ApiOperation({ summary: 'Perfil público completo de un profesional (CV)' })
+  async getFullPublicProfile(@Param('id') id: string) {
+    return this.profilesService.getFullPublicProfile(id);
+  }
+
+  @Public()
   @Get(':id')
   @Throttle({ short: { ttl: 1000, limit: 5 }, medium: { ttl: 10000, limit: 30 } })
   @ApiOperation({ summary: 'Ver detalle teaser de un perfil profesional (público)' })

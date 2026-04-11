@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { DM_Sans } from 'next/font/google';
-import { Navbar } from '../landing-v2/_components/navbar';
-import { Footer } from '../landing-v2/_components/footer';
+import { Navbar } from '../_landing/_components/navbar';
+import { Footer } from '../_landing/_components/footer';
 
 const dmSans = DM_Sans({
   subsets: ['latin'],
@@ -14,6 +14,9 @@ export const metadata: Metadata = {
   title: 'Política de Privacidad — TurnoLink',
   description:
     'Política de privacidad de TurnoLink. Cómo recopilamos, usamos, almacenamos y protegemos tus datos personales conforme a la Ley 25.326.',
+  alternates: {
+    canonical: 'https://turnolink.com.ar/privacidad',
+  },
 };
 
 export default function PrivacidadPage() {
@@ -44,7 +47,7 @@ export default function PrivacidadPage() {
             <span className="text-white/50">Privacidad</span>
           </h1>
           <p className="mt-4 text-white/30 text-sm">
-            &Uacute;ltima actualizaci&oacute;n: 25 de febrero de 2026
+            &Uacute;ltima actualizaci&oacute;n: 22 de marzo de 2026
           </p>
         </div>
       </section>
@@ -71,7 +74,7 @@ export default function PrivacidadPage() {
                 <MiniCard title="Raz&oacute;n social" text="Mubitt SAS" />
                 <MiniCard title="Plataforma" text="TurnoLink" />
                 <MiniCard title="Domicilio" text="Rep&uacute;blica Argentina" />
-                <MiniCard title="Contacto" text="soporte@turnolink.mubitt.com" />
+                <MiniCard title="Contacto" text="soporte@turnolink.com.ar" />
               </div>
               <P>
                 Cuando un Usuario Negocio carga datos de sus propios clientes, dicho Usuario act&uacute;a como <B>responsable del tratamiento</B>. TurnoLink act&uacute;a como <B>encargado del tratamiento</B>, procesando datos &uacute;nicamente para la prestaci&oacute;n del servicio.
@@ -111,6 +114,21 @@ export default function PrivacidadPage() {
                 <LI><B>Cookies de sesi&oacute;n:</B> Necesarias para autenticaci&oacute;n (ver secci&oacute;n 7).</LI>
               </UL>
 
+              <H3>3.5. Datos de cat&aacute;logo y comercio electr&oacute;nico</H3>
+              <P>
+                Cuando un Usuario Negocio activa las funcionalidades de <B>Modo Cat&aacute;logo</B> o <B>Modo Tienda (e-commerce)</B>, se recopilan adicionalmente:
+              </P>
+              <UL>
+                <LI><B>Productos:</B> Nombre, descripci&oacute;n, im&aacute;genes, precio, stock, categor&iacute;a, variantes (talle, color, etc.), estado de publicaci&oacute;n.</LI>
+                <LI><B>&Oacute;rdenes/Pedidos:</B> N&uacute;mero de orden, fecha, estado, items comprados, cantidades, precios unitarios, subtotal, descuentos, total, m&eacute;todo de pago y m&eacute;todo de env&iacute;o seleccionados.</LI>
+                <LI><B>Datos del comprador:</B> Nombre, email, tel&eacute;fono, DNI (opcional), direcci&oacute;n de env&iacute;o (si aplica), ciudad, c&oacute;digo postal.</LI>
+                <LI><B>Cupones y descuentos:</B> C&oacute;digo utilizado, tipo de descuento, monto, fecha de uso.</LI>
+                <LI><B>Historial de estados:</B> Registro de cambios de estado del pedido (creado, confirmado, enviado, entregado, cancelado) con fecha y hora.</LI>
+              </UL>
+              <P>
+                El Usuario Negocio es el &uacute;nico <B>responsable</B> de los datos que recopila de sus compradores a trav&eacute;s de la funcionalidad de cat&aacute;logo o tienda. TurnoLink act&uacute;a exclusivamente como <B>encargado del tratamiento</B>, procesando dichos datos &uacute;nicamente para la operaci&oacute;n t&eacute;cnica de la plataforma.
+              </P>
+
               <Highlight>
                 No recopilamos: n&uacute;meros de tarjetas de cr&eacute;dito (procesados por Mercado Pago), datos biom&eacute;tricos, historias cl&iacute;nicas, geolocalizaci&oacute;n en tiempo real, ni datos de menores de edad.
               </Highlight>
@@ -120,7 +138,7 @@ export default function PrivacidadPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FinalidadCard
                   title="Prestaci&oacute;n del servicio"
-                  items={['Crear y gestionar cuentas', 'Proveer funcionalidades de reservas y pagos', 'Procesar suscripciones y se&ntilde;as', 'Administrar perfiles profesionales']}
+                  items={['Crear y gestionar cuentas', 'Proveer funcionalidades de reservas y pagos', 'Procesar suscripciones y se&ntilde;as', 'Administrar perfiles profesionales', 'Operar cat&aacute;logos y tiendas online', 'Gestionar &oacute;rdenes, pedidos e inventario']}
                 />
                 <FinalidadCard
                   title="Comunicaciones"
@@ -180,7 +198,16 @@ export default function PrivacidadPage() {
                 <LI><B>P&aacute;gina de reservas:</B> Nombre del negocio, servicios, precios, horarios, profesionales, direcci&oacute;n, redes.</LI>
                 <LI><B>Perfiles profesionales:</B> Solo si el profesional activ&oacute; visibilidad con consentimiento expreso.</LI>
                 <LI><B>Rese&ntilde;as:</B> Nombre del cliente, valoraci&oacute;n y comentario.</LI>
+                <LI><B>Cat&aacute;logo/Tienda:</B> Productos publicados (nombre, descripci&oacute;n, im&aacute;genes, precios, disponibilidad) son visibles p&uacute;blicamente seg&uacute;n la configuraci&oacute;n del Usuario Negocio.</LI>
               </UL>
+
+              <H3>6.6. Datos de compradores en Modo Tienda</H3>
+              <P>
+                Cuando un comprador realiza un pedido en la tienda de un Usuario Negocio, sus datos (nombre, email, tel&eacute;fono, direcci&oacute;n de env&iacute;o) son compartidos con dicho Usuario Negocio para la gesti&oacute;n del pedido. El Usuario Negocio es el <B>responsable del tratamiento</B> de esos datos y debe cumplir con la Ley 25.326 y la Ley 24.240 de Defensa del Consumidor.
+              </P>
+              <P>
+                TurnoLink no utiliza los datos de compradores para fines propios m&aacute;s all&aacute; de la operaci&oacute;n t&eacute;cnica de la plataforma (procesamiento de pedidos, env&iacute;o de confirmaciones transaccionales, registro de auditor&iacute;a).
+              </P>
             </Section>
 
             <Section num="07" title="Cookies y Tecnolog&iacute;as Similares">
@@ -283,6 +310,21 @@ export default function PrivacidadPage() {
                       <td className="py-3 pr-4">Hasta solicitud de eliminaci&oacute;n</td>
                       <td className="py-3">Consentimiento del titular</td>
                     </tr>
+                    <tr className="border-b border-white/[0.04]">
+                      <td className="py-3 pr-4 text-white/50">&Oacute;rdenes y pedidos</td>
+                      <td className="py-3 pr-4">10 a&ntilde;os</td>
+                      <td className="py-3">Obligaci&oacute;n fiscal (Ley 11.683)</td>
+                    </tr>
+                    <tr className="border-b border-white/[0.04]">
+                      <td className="py-3 pr-4 text-white/50">Datos de compradores</td>
+                      <td className="py-3 pr-4">Mientras la tienda est&eacute; activa + 30 d&iacute;as</td>
+                      <td className="py-3">Gesti&oacute;n operativa del pedido</td>
+                    </tr>
+                    <tr className="border-b border-white/[0.04]">
+                      <td className="py-3 pr-4 text-white/50">Cat&aacute;logo de productos</td>
+                      <td className="py-3 pr-4">Mientras la cuenta est&eacute; activa</td>
+                      <td className="py-3">Prestaci&oacute;n del servicio</td>
+                    </tr>
                     <tr>
                       <td className="py-3 pr-4 text-white/50">Tokens de verificaci&oacute;n</td>
                       <td className="py-3 pr-4">24 horas</td>
@@ -312,7 +354,7 @@ export default function PrivacidadPage() {
 
               <H3>C&oacute;mo ejercer estos derechos</H3>
               <P>
-                Env&iacute;e un email a <B>soporte@turnolink.mubitt.com</B> con asunto &ldquo;Ejercicio de Derecho &mdash; [tipo]&rdquo;, indicando nombre completo, email registrado y descripci&oacute;n del pedido. Los Usuarios Profesionales pueden solicitar eliminaci&oacute;n completa e inmediata de su perfil.
+                Env&iacute;e un email a <B>soporte@turnolink.com.ar</B> con asunto &ldquo;Ejercicio de Derecho &mdash; [tipo]&rdquo;, indicando nombre completo, email registrado y descripci&oacute;n del pedido. Los Usuarios Profesionales pueden solicitar eliminaci&oacute;n completa e inmediata de su perfil.
               </P>
 
               <Highlight>
@@ -322,7 +364,7 @@ export default function PrivacidadPage() {
 
             <Section num="11" title="Datos de Menores de Edad">
               <P>
-                La Plataforma est&aacute; dirigida a personas mayores de dieciocho (18) a&ntilde;os. No recopilamos intencionalmente datos de menores. Si tomamos conocimiento de datos de un menor, procederemos a eliminarlos de inmediato. Contacto para padres/tutores: <B>soporte@turnolink.mubitt.com</B>.
+                La Plataforma est&aacute; dirigida a personas mayores de dieciocho (18) a&ntilde;os. No recopilamos intencionalmente datos de menores. Si tomamos conocimiento de datos de un menor, procederemos a eliminarlos de inmediato. Contacto para padres/tutores: <B>soporte@turnolink.com.ar</B>.
               </P>
             </Section>
 
@@ -346,7 +388,7 @@ export default function PrivacidadPage() {
 
             <Section num="15" title="Contacto">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <MiniCard title="Email" text="soporte@turnolink.mubitt.com" />
+                <MiniCard title="Email" text="soporte@turnolink.com.ar" />
                 <MiniCard title="Asunto sugerido" text="&ldquo;Privacidad &mdash; [consulta]&rdquo;" />
                 <MiniCard title="Plazo de respuesta" text="10 d&iacute;as corridos" />
               </div>
@@ -358,7 +400,7 @@ export default function PrivacidadPage() {
                 Al utilizar TurnoLink, usted confirma que ha le&iacute;do y aceptado esta Pol&iacute;tica de Privacidad en su totalidad.
               </p>
               <p className="text-white/30 text-sm mt-3">
-                Contacto: <span className="text-white/50">soporte@turnolink.mubitt.com</span>
+                Contacto: <span className="text-white/50">soporte@turnolink.com.ar</span>
               </p>
               <p className="text-white/30 text-sm mt-2">
                 Autoridad de control: <span className="text-white/50">Agencia de Acceso a la Informaci&oacute;n P&uacute;blica (AAIP)</span> &mdash; <a href="https://www.argentina.gob.ar/aaip" className="text-white/50 underline decoration-white/20 hover:decoration-white/50 transition-colors" target="_blank" rel="noopener noreferrer">www.argentina.gob.ar/aaip</a>

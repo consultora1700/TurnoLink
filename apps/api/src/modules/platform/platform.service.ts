@@ -349,7 +349,7 @@ export class PlatformService {
 
     const externalReference = `sub_${tenantId}_${planSlug}_${Date.now()}`;
     const apiUrl = this.configService.get<string>('API_URL');
-    const webUrl = this.configService.get<string>('WEB_URL') || 'https://turnolink.mubitt.com';
+    const webUrl = this.configService.get<string>('WEB_URL') || 'https://turnolink.com.ar';
 
     const preference = {
       items: [
@@ -574,6 +574,392 @@ export class PlatformService {
       }
     } catch (emailError) {
       this.logger.error('Failed to send payment success email', emailError);
+    }
+  }
+
+  // ============ RECURRING SUBSCRIPTIONS (PREAPPROVAL) ============
+
+  /**
+   * Create a MercadoPago preapproval (recurring subscription)
+   * The user authorizes once and gets charged automatically every month/year
+   */
+  async createRecurringSubscription(
+    tenantId: string,
+    planSlug: string,
+    billingPeriod: 'MONTHLY' | 'YEARLY',
+    payerEmail: string,
+  ): Promise<{ initPoint: string; preapprovalId: string }> {
+    const credentials = await this.getCredentials();
+    if (!credentials) {
+      throw new BadRequestException('La plataforma no tiene MercadoPago configurado');
+    }
+
+    const plan = await this.prisma.subscriptionPlan.findUnique({
+      where: { slug: planSlug },
+    });
+
+    if (!plan) {
+      throw new BadRequestException('Plan no encontrado');
+    }
+
+    if (Number(plan.priceMonthly) === 0) {
+      throw new BadRequestException('El plan gratuito no requiere suscripción de pago');
+    }
+
+    const amount = billingPeriod === 'YEARLY' && plan.priceYearly
+      ? Number(plan.priceYearly)
+      : Number(plan.priceMonthly);
+
+    const frequency = billingPeriod === 'YEARLY' ? 12 : 1;
+    const frequencyType = 'months';
+    const webUrl = this.configService.get<string>('WEB_URL') || 'https://turnolink.com.ar';
+    const apiUrl = this.configService.get<string>('API_URL');
+
+    const preapprovalData = {
+      reason: `TurnoLink ${plan.name} - ${billingPeriod === 'YEARLY' ? 'Anual' : 'Mensual'}`,
+      external_reference: `sub_${tenantId}_${planSlug}_${billingPeriod}`,
+      payer_email: payerEmail,
+      auto_recurring: {
+        frequency,
+        frequency_type: frequencyType,
+        transaction_amount: amount,
+        currency_id: plan.currency || 'ARS',
+      },
+      back_url: `${webUrl}/mi-suscripcion?subscription=success`,
+      notification_url: `${apiUrl}/api/platform/webhook`,
+    };
+
+    const response = await fetch('https://api.mercadopago.com/preapproval', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${credentials.accessToken}`,
+      },
+      body: JSON.stringify(preapprovalData),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      this.logger.error('Failed to create preapproval', error);
+      throw new InternalServerErrorException('Error al crear la suscripción recurrente');
+    }
+
+    const result = await response.json();
+
+    // Store the preapproval ID on the subscription
+    await this.prisma.subscription.update({
+      where: { tenantId },
+      data: {
+        mpSubscriptionId: result.id,
+      },
+    });
+
+    this.logger.log(`Recurring subscription created for tenant ${tenantId}: preapproval ${result.id}`);
+
+    const initPoint = credentials.isSandbox
+      ? result.sandbox_init_point
+      : result.init_point;
+
+    return {
+      initPoint,
+      preapprovalId: result.id,
+    };
+  }
+
+  /**
+   * Process preapproval status change (subscription_preapproval webhook)
+   * Called when the user authorizes, pauses, or cancels their recurring subscription
+   */
+  async processPreapprovalNotification(preapprovalId: string): Promise<void> {
+    const credentials = await this.getCredentials();
+    if (!credentials) {
+      this.logger.error('No platform credentials for preapproval webhook');
+      return;
+    }
+
+    const response = await fetch(`https://api.mercadopago.com/preapproval/${preapprovalId}`, {
+      headers: { Authorization: `Bearer ${credentials.accessToken}` },
+    });
+
+    if (!response.ok) {
+      this.logger.error(`Failed to get preapproval ${preapprovalId}`);
+      return;
+    }
+
+    const preapproval = await response.json();
+
+    // Find subscription by mpSubscriptionId
+    const subscription = await this.prisma.subscription.findFirst({
+      where: { mpSubscriptionId: preapprovalId },
+      include: { plan: true },
+    });
+
+    if (!subscription) {
+      // Try to find by external_reference
+      const ref = preapproval.external_reference;
+      if (ref?.startsWith('sub_')) {
+        const parts = ref.split('_');
+        const tenantId = parts[1];
+        const sub = await this.prisma.subscription.findUnique({ where: { tenantId } });
+        if (sub) {
+          await this.prisma.subscription.update({
+            where: { tenantId },
+            data: { mpSubscriptionId: preapprovalId },
+          });
+        }
+      }
+      this.logger.warn(`No subscription found for preapproval ${preapprovalId}`);
+      return;
+    }
+
+    this.logger.log(`Preapproval ${preapprovalId} status: ${preapproval.status}`);
+
+    switch (preapproval.status) {
+      case 'authorized':
+        // User authorized the recurring charge — subscription is active
+        if (subscription.status !== 'ACTIVE') {
+          await this.prisma.subscription.update({
+            where: { id: subscription.id },
+            data: {
+              status: 'ACTIVE',
+              currentPeriodStart: new Date(),
+              currentPeriodEnd: subscription.billingPeriod === 'YEARLY'
+                ? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
+                : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+              trialEndAt: null,
+            },
+          });
+          this.logger.log(`Subscription activated via preapproval for tenant ${subscription.tenantId}`);
+        }
+        break;
+
+      case 'paused':
+        await this.prisma.subscription.update({
+          where: { id: subscription.id },
+          data: { status: 'PAST_DUE' },
+        });
+        this.logger.log(`Subscription paused for tenant ${subscription.tenantId}`);
+        break;
+
+      case 'cancelled':
+        await this.prisma.subscription.update({
+          where: { id: subscription.id },
+          data: {
+            status: 'CANCELLED',
+            cancelledAt: new Date(),
+            cancelReason: 'Cancelado desde MercadoPago',
+          },
+        });
+        this.logger.log(`Subscription cancelled via MP for tenant ${subscription.tenantId}`);
+        break;
+
+      default:
+        this.logger.debug(`Unhandled preapproval status: ${preapproval.status}`);
+    }
+  }
+
+  /**
+   * Process authorized payment notification (subscription_authorized_payment webhook)
+   * Called each time MercadoPago successfully charges a recurring payment
+   */
+  async processAuthorizedPaymentNotification(authorizedPaymentId: string): Promise<void> {
+    const credentials = await this.getCredentials();
+    if (!credentials) {
+      this.logger.error('No platform credentials for authorized payment webhook');
+      return;
+    }
+
+    // Get the authorized payment details
+    const response = await fetch(
+      `https://api.mercadopago.com/authorized_payments/${authorizedPaymentId}`,
+      { headers: { Authorization: `Bearer ${credentials.accessToken}` } },
+    );
+
+    if (!response.ok) {
+      this.logger.error(`Failed to get authorized payment ${authorizedPaymentId}`);
+      return;
+    }
+
+    const authorizedPayment = await response.json();
+    const preapprovalId = authorizedPayment.preapproval_id;
+
+    if (!preapprovalId) {
+      this.logger.error(`No preapproval_id in authorized payment ${authorizedPaymentId}`);
+      return;
+    }
+
+    // Find the subscription
+    const subscription = await this.prisma.subscription.findFirst({
+      where: { mpSubscriptionId: preapprovalId },
+      include: { plan: true },
+    });
+
+    if (!subscription) {
+      this.logger.error(`No subscription found for preapproval ${preapprovalId}`);
+      return;
+    }
+
+    if (authorizedPayment.status !== 'approved') {
+      this.logger.log(`Authorized payment ${authorizedPaymentId} status: ${authorizedPayment.status} (not approved)`);
+
+      if (authorizedPayment.status === 'rejected') {
+        // Payment failed — mark as past due
+        await this.prisma.subscription.update({
+          where: { id: subscription.id },
+          data: { status: 'PAST_DUE' },
+        });
+        this.logger.warn(`Recurring payment rejected for tenant ${subscription.tenantId}`);
+      }
+      return;
+    }
+
+    // Payment approved — renew subscription period
+    const now = new Date();
+    const periodEnd = subscription.billingPeriod === 'YEARLY'
+      ? new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000)
+      : new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+    await this.prisma.subscription.update({
+      where: { id: subscription.id },
+      data: {
+        status: 'ACTIVE',
+        currentPeriodStart: now,
+        currentPeriodEnd: periodEnd,
+      },
+    });
+
+    // Record the payment
+    await this.prisma.subscriptionPayment.create({
+      data: {
+        id: crypto.randomUUID(),
+        subscriptionId: subscription.id,
+        mpPaymentId: authorizedPaymentId,
+        amount: authorizedPayment.transaction_amount || 0,
+        currency: authorizedPayment.currency_id || 'ARS',
+        status: 'APPROVED',
+        periodStart: now,
+        periodEnd,
+        paidAt: new Date(authorizedPayment.date_approved || now),
+        rawResponse: JSON.stringify(authorizedPayment),
+      },
+    });
+
+    this.logger.log(
+      `Recurring payment ${authorizedPaymentId} processed: tenant ${subscription.tenantId}, ` +
+      `plan ${subscription.plan.name}, next period ends ${periodEnd.toISOString()}`,
+    );
+
+    // Send payment success email
+    try {
+      const tenant = await this.prisma.tenant.findUnique({
+        where: { id: subscription.tenantId },
+        include: { users: { where: { role: 'OWNER' }, take: 1 } },
+      });
+
+      if (tenant?.users[0]) {
+        const owner = tenant.users[0];
+        await this.emailNotifications.sendPaymentSuccessEmail(
+          owner.email,
+          owner.name,
+          subscription.plan.name,
+          authorizedPayment.transaction_amount,
+          subscription.billingPeriod as 'MONTHLY' | 'YEARLY',
+          periodEnd,
+        );
+      }
+    } catch (emailError) {
+      this.logger.error('Failed to send recurring payment email', emailError);
+    }
+  }
+
+  /**
+   * Cancel a MercadoPago preapproval (recurring subscription)
+   */
+  async cancelRecurringSubscription(tenantId: string): Promise<void> {
+    const subscription = await this.prisma.subscription.findUnique({
+      where: { tenantId },
+    });
+
+    if (!subscription?.mpSubscriptionId) {
+      return; // No MP subscription to cancel
+    }
+
+    const credentials = await this.getCredentials();
+    if (!credentials) return;
+
+    try {
+      const response = await fetch(
+        `https://api.mercadopago.com/preapproval/${subscription.mpSubscriptionId}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${credentials.accessToken}`,
+          },
+          body: JSON.stringify({ status: 'cancelled' }),
+        },
+      );
+
+      if (response.ok) {
+        this.logger.log(`MP preapproval cancelled for tenant ${tenantId}`);
+      } else {
+        this.logger.error(`Failed to cancel MP preapproval for tenant ${tenantId}`);
+      }
+    } catch (error) {
+      this.logger.error(`Error cancelling MP preapproval: ${error}`);
+    }
+  }
+
+  /**
+   * Update a MercadoPago preapproval (recurring subscription) amount
+   */
+  async updatePreapprovalAmount(
+    mpSubscriptionId: string,
+    updates: { transactionAmount?: number; reason?: string },
+  ): Promise<{ success: boolean; statusCode: number; response: any }> {
+    const credentials = await this.getCredentials();
+    if (!credentials) {
+      return { success: false, statusCode: 0, response: 'No MP credentials configured' };
+    }
+
+    try {
+      const body: any = {};
+      if (updates.transactionAmount !== undefined) {
+        body.auto_recurring = { transaction_amount: updates.transactionAmount };
+      }
+      if (updates.reason) {
+        body.reason = updates.reason;
+      }
+
+      const response = await fetch(
+        `https://api.mercadopago.com/preapproval/${mpSubscriptionId}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${credentials.accessToken}`,
+          },
+          body: JSON.stringify(body),
+          signal: AbortSignal.timeout(10000),
+        },
+      );
+
+      const responseData = await response.json().catch(() => null);
+
+      if (response.ok) {
+        this.logger.log(`MP preapproval ${mpSubscriptionId} amount updated to ${updates.transactionAmount}`);
+      } else {
+        this.logger.error(`Failed to update MP preapproval ${mpSubscriptionId}: ${response.status}`);
+      }
+
+      return {
+        success: response.ok,
+        statusCode: response.status,
+        response: responseData,
+      };
+    } catch (error) {
+      this.logger.error(`Error updating MP preapproval ${mpSubscriptionId}: ${error}`);
+      return { success: false, statusCode: 0, response: String(error) };
     }
   }
 

@@ -5,16 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { ArrowLeft, Loader2, CheckCircle2, Eye, EyeOff, KeyRound, Shield, Lock } from 'lucide-react';
+import { ArrowLeft, Loader2, CheckCircle2, Eye, EyeOff, KeyRound } from 'lucide-react';
 import { authApi } from '@/lib/api';
 
 function ResetPasswordForm() {
@@ -31,7 +22,6 @@ function ResetPasswordForm() {
   const [success, setSuccess] = useState(false);
   const [redirectCount, setRedirectCount] = useState(5);
 
-  // Redirect countdown after success
   useEffect(() => {
     if (!success) return;
     if (redirectCount <= 0) {
@@ -45,30 +35,30 @@ function ResetPasswordForm() {
   // No token = invalid link
   if (!token) {
     return (
-      <Card className="w-full max-w-md border-0 shadow-2xl bg-white/80 dark:bg-neutral-800/90 backdrop-blur-sm">
-        <CardHeader className="text-center pb-2">
-          <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-            <span className="text-2xl">&#9888;</span>
-          </div>
-          <CardTitle className="text-2xl">Enlace inválido</CardTitle>
-          <CardDescription className="text-base mt-2">
-            Este enlace de recuperación no es válido o ya expiró.
-          </CardDescription>
-        </CardHeader>
-        <CardFooter className="flex flex-col gap-3">
-          <Link href="/forgot-password" className="w-full">
-            <Button className="w-full h-11 bg-gradient-to-r from-primary to-teal-600 hover:from-primary/90 hover:to-teal-600/90">
+      <div className="w-full max-w-sm px-4 text-center">
+        <div className="mx-auto mb-5 h-16 w-16 rounded-full bg-red-900/30 flex items-center justify-center">
+          <span className="text-2xl">&#9888;</span>
+        </div>
+        <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">
+          Enlace inválido
+        </h1>
+        <p className="text-neutral-400 text-sm mb-6">
+          Este enlace de recuperación no es válido o ya expiró.
+        </p>
+        <div className="space-y-3">
+          <Link href="/forgot-password" className="block">
+            <Button className="w-full h-11 bg-gradient-to-r from-[#3F8697] to-[#4DA4B8] hover:from-[#346E7D] hover:to-[#3F8697]">
               Solicitar nuevo enlace
             </Button>
           </Link>
-          <Link href="/login" className="w-full">
-            <Button variant="ghost" className="w-full h-11">
+          <Link href="/login" className="block">
+            <Button variant="ghost" className="w-full h-11 text-neutral-400 hover:text-white hover:bg-neutral-800">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Volver al inicio de sesión
             </Button>
           </Link>
-        </CardFooter>
-      </Card>
+        </div>
+      </div>
     );
   }
 
@@ -108,236 +98,162 @@ function ResetPasswordForm() {
 
   if (success) {
     return (
-      <Card className="w-full max-w-md border-0 shadow-2xl bg-white/80 dark:bg-neutral-800/90 backdrop-blur-sm">
-        <CardHeader className="text-center pb-2">
-          <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-            <CheckCircle2 className="h-8 w-8 text-green-600 dark:text-green-400" />
-          </div>
-          <CardTitle className="text-2xl">Contraseña actualizada</CardTitle>
-          <CardDescription className="text-base mt-2">
-            Tu contraseña fue restablecida correctamente. Ya puedes iniciar sesión con tu nueva contraseña.
-          </CardDescription>
-        </CardHeader>
-        <CardFooter className="flex flex-col gap-3">
-          <Link href="/login" className="w-full">
-            <Button className="w-full h-11 bg-gradient-to-r from-primary to-teal-600 hover:from-primary/90 hover:to-teal-600/90">
+      <div className="w-full max-w-sm px-4 text-center">
+        <div className="mx-auto mb-5 h-16 w-16 rounded-full bg-green-900/30 flex items-center justify-center">
+          <CheckCircle2 className="h-8 w-8 text-green-400" />
+        </div>
+        <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">
+          Contraseña actualizada
+        </h1>
+        <p className="text-neutral-400 text-sm mb-6">
+          Tu contraseña fue restablecida correctamente. Ya podés iniciar sesión con tu nueva contraseña.
+        </p>
+        <div className="space-y-3">
+          <Link href="/login" className="block">
+            <Button className="w-full h-11 bg-gradient-to-r from-[#3F8697] to-[#4DA4B8] hover:from-[#346E7D] hover:to-[#3F8697]">
               Iniciar sesión
             </Button>
           </Link>
-          <p className="text-sm text-muted-foreground text-center">
+          <p className="text-sm text-neutral-500">
             Redirigiendo en {redirectCount}s...
           </p>
-        </CardFooter>
-      </Card>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Card className="w-full max-w-md border-0 shadow-2xl bg-white/80 dark:bg-neutral-800/90 backdrop-blur-sm">
-      <CardHeader className="text-center pb-2">
-        <Link href="/" className="inline-flex items-center justify-center gap-2 mb-4">
-          <img
-            src="/claro2.png"
-            alt="TurnoLink"
-            className="h-28 w-auto dark:hidden"
-          />
-          <img
-            src="/oscuro2.png"
-            alt="TurnoLink"
-            className="h-28 w-auto hidden dark:block"
-          />
+    <div className="w-full max-w-sm px-4">
+      <div className="text-center mb-6">
+        <Link href="/" className="inline-block mb-5">
+          <img src="/oscuro2.png" alt="TurnoLink" className="h-14 sm:h-16 mx-auto" />
         </Link>
-        <CardTitle className="text-2xl">Nueva contraseña</CardTitle>
-        <CardDescription>
-          Crea una contraseña segura para tu cuenta
-        </CardDescription>
-      </CardHeader>
-      <form onSubmit={handleSubmit}>
-        <CardContent className="space-y-4">
-          {error && (
-            <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-sm p-3 rounded-lg flex items-center gap-2">
-              <div className="h-5 w-5 rounded-full bg-red-100 dark:bg-red-900/50 flex items-center justify-center flex-shrink-0">
-                <span className="text-red-500 dark:text-red-400 text-xs">!</span>
-              </div>
-              {error}
-            </div>
-          )}
+        <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1">
+          Nueva contraseña
+        </h1>
+        <p className="text-neutral-500 text-sm">
+          Creá una contraseña segura para tu cuenta
+        </p>
+      </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="password">Nueva contraseña</Label>
-            <div className="relative">
-              <Input
-                id="password"
-                type={showPassword ? 'text' : 'password'}
-                placeholder="Mínimo 8 caracteres"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                disabled={loading}
-                className="h-11 bg-white dark:bg-neutral-700 pr-10"
-                autoFocus
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                tabIndex={-1}
-              >
-                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <div className="bg-red-900/20 border border-red-800/40 text-red-400 text-sm p-3 rounded-lg flex items-center gap-2">
+            <div className="h-5 w-5 rounded-full bg-red-900/50 flex items-center justify-center flex-shrink-0">
+              <span className="text-red-400 text-xs">!</span>
             </div>
+            {error}
           </div>
+        )}
 
-          <div className="space-y-2">
-            <Label htmlFor="confirm-password">Confirmar contraseña</Label>
-            <div className="relative">
-              <Input
-                id="confirm-password"
-                type={showConfirm ? 'text' : 'password'}
-                placeholder="Repetir contraseña"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-                disabled={loading}
-                className="h-11 bg-white dark:bg-neutral-700 pr-10"
-              />
-              <button
-                type="button"
-                onClick={() => setShowConfirm(!showConfirm)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                tabIndex={-1}
-              >
-                {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
+        <div className="space-y-2">
+          <label htmlFor="password" className="text-sm font-medium text-neutral-300">Nueva contraseña</label>
+          <div className="relative">
+            <Input
+              id="password"
+              type={showPassword ? 'text' : 'password'}
+              placeholder="Mínimo 8 caracteres"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              disabled={loading}
+              autoFocus
+              className="h-11 bg-neutral-800 border-neutral-700 text-white placeholder:text-neutral-500 focus:border-[#3F8697] focus:ring-[#3F8697] pr-10"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-300 transition-colors"
+              tabIndex={-1}
+            >
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
           </div>
-
-          {/* Password validation indicators */}
-          <div className="space-y-2 pt-1">
-            <div className={`flex items-center gap-2 text-xs transition-colors ${passwordLongEnough ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`}>
-              <div className={`h-4 w-4 rounded-full flex items-center justify-center transition-colors ${passwordLongEnough ? 'bg-green-100 dark:bg-green-900/30' : 'bg-muted'}`}>
-                {passwordLongEnough ? <CheckCircle2 className="h-3 w-3" /> : <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40" />}
-              </div>
-              Mínimo 8 caracteres
-            </div>
-            <div className={`flex items-center gap-2 text-xs transition-colors ${passwordsMatch ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`}>
-              <div className={`h-4 w-4 rounded-full flex items-center justify-center transition-colors ${passwordsMatch ? 'bg-green-100 dark:bg-green-900/30' : 'bg-muted'}`}>
-                {passwordsMatch ? <CheckCircle2 className="h-3 w-3" /> : <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40" />}
-              </div>
-              Las contraseñas coinciden
-            </div>
-          </div>
-        </CardContent>
-        <CardFooter className="flex flex-col gap-3">
-          <Button
-            type="submit"
-            className="w-full h-11 bg-gradient-to-r from-primary to-teal-600 hover:from-primary/90 hover:to-teal-600/90"
-            disabled={loading || !passwordLongEnough || !passwordsMatch}
-          >
-            {loading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Actualizando...
-              </>
-            ) : (
-              <>
-                <KeyRound className="mr-2 h-4 w-4" />
-                Restablecer contraseña
-              </>
-            )}
-          </Button>
-          <Link href="/login" className="w-full">
-            <Button variant="ghost" className="w-full h-11">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Volver al inicio de sesión
-            </Button>
-          </Link>
-        </CardFooter>
-      </form>
-    </Card>
-  );
-}
-
-function ResetPasswordFallback() {
-  return (
-    <Card className="w-full max-w-md border-0 shadow-2xl">
-      <CardHeader className="text-center">
-        <div className="inline-flex items-center justify-center gap-2 mb-4">
-          <img
-            src="/claro2.png"
-            alt="TurnoLink"
-            className="h-28 w-auto dark:hidden"
-          />
-          <img
-            src="/oscuro2.png"
-            alt="TurnoLink"
-            className="h-28 w-auto hidden dark:block"
-          />
         </div>
-        <CardTitle className="text-2xl">Nueva contraseña</CardTitle>
-      </CardHeader>
-      <CardContent className="flex justify-center py-8">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </CardContent>
-    </Card>
+
+        <div className="space-y-2">
+          <label htmlFor="confirm-password" className="text-sm font-medium text-neutral-300">Confirmar contraseña</label>
+          <div className="relative">
+            <Input
+              id="confirm-password"
+              type={showConfirm ? 'text' : 'password'}
+              placeholder="Repetir contraseña"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+              disabled={loading}
+              className="h-11 bg-neutral-800 border-neutral-700 text-white placeholder:text-neutral-500 focus:border-[#3F8697] focus:ring-[#3F8697] pr-10"
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirm(!showConfirm)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-300 transition-colors"
+              tabIndex={-1}
+            >
+              {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
+        </div>
+
+        {/* Password validation indicators */}
+        <div className="space-y-2 pt-1">
+          <div className={`flex items-center gap-2 text-xs transition-colors ${passwordLongEnough ? 'text-green-400' : 'text-neutral-500'}`}>
+            <div className={`h-4 w-4 rounded-full flex items-center justify-center transition-colors ${passwordLongEnough ? 'bg-green-900/30' : 'bg-neutral-800'}`}>
+              {passwordLongEnough ? <CheckCircle2 className="h-3 w-3" /> : <span className="h-1.5 w-1.5 rounded-full bg-neutral-600" />}
+            </div>
+            Mínimo 8 caracteres
+          </div>
+          <div className={`flex items-center gap-2 text-xs transition-colors ${passwordsMatch ? 'text-green-400' : 'text-neutral-500'}`}>
+            <div className={`h-4 w-4 rounded-full flex items-center justify-center transition-colors ${passwordsMatch ? 'bg-green-900/30' : 'bg-neutral-800'}`}>
+              {passwordsMatch ? <CheckCircle2 className="h-3 w-3" /> : <span className="h-1.5 w-1.5 rounded-full bg-neutral-600" />}
+            </div>
+            Las contraseñas coinciden
+          </div>
+        </div>
+
+        <Button
+          type="submit"
+          className="w-full h-11 bg-gradient-to-r from-[#3F8697] to-[#4DA4B8] hover:from-[#346E7D] hover:to-[#3F8697] mt-2"
+          disabled={loading || !passwordLongEnough || !passwordsMatch}
+        >
+          {loading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Actualizando...
+            </>
+          ) : (
+            <>
+              <KeyRound className="mr-2 h-4 w-4" />
+              Restablecer contraseña
+            </>
+          )}
+        </Button>
+
+        <Link href="/login" className="block">
+          <Button variant="ghost" className="w-full h-11 text-neutral-400 hover:text-white hover:bg-neutral-800">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Volver al inicio de sesión
+          </Button>
+        </Link>
+      </form>
+    </div>
   );
 }
 
 export default function ResetPasswordPage() {
   return (
-    <div className="min-h-screen flex">
-      {/* Left side - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 relative overflow-hidden">
-        <div className="absolute inset-0 bg-grid opacity-10" />
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-transparent to-teal-500/20" />
-        <div className="absolute -top-40 -left-40 w-80 h-80 bg-primary/30 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 -right-40 w-80 h-80 bg-teal-500/30 rounded-full blur-3xl" />
+    <div className="min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-950 to-neutral-900 relative overflow-hidden">
+      <div className="absolute inset-0 bg-grid opacity-5" />
+      <div className="absolute -top-40 -left-40 w-96 h-96 bg-[#3F8697]/15 rounded-full blur-3xl" />
+      <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-[#3F8697]/10 rounded-full blur-3xl" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#3F8697]/[0.04] rounded-full blur-3xl" />
 
-        <div className="relative z-10 flex flex-col justify-center px-12 xl:px-20">
-          <div className="flex items-center gap-3 mb-8">
-            <img
-              src="/oscuro2.png"
-              alt="TurnoLink"
-              className="h-28 w-auto"
-            />
+      <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-4 py-8">
+        <Suspense fallback={
+          <div className="flex items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-neutral-500" />
           </div>
-
-          <h1 className="text-4xl xl:text-5xl font-bold text-white mb-4">
-            Crea tu nueva contraseña
-          </h1>
-          <p className="text-lg text-white/70 mb-10">
-            Elige una contraseña segura para proteger tu cuenta.
-          </p>
-
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 text-white/80">
-              <div className="h-10 w-10 rounded-lg bg-white/10 flex items-center justify-center">
-                <Lock className="h-5 w-5" />
-              </div>
-              <span>Mínimo 8 caracteres</span>
-            </div>
-            <div className="flex items-center gap-3 text-white/80">
-              <div className="h-10 w-10 rounded-lg bg-white/10 flex items-center justify-center">
-                <Shield className="h-5 w-5" />
-              </div>
-              <span>Tu contraseña se encripta de forma segura</span>
-            </div>
-            <div className="flex items-center gap-3 text-white/80">
-              <div className="h-10 w-10 rounded-lg bg-white/10 flex items-center justify-center">
-                <KeyRound className="h-5 w-5" />
-              </div>
-              <span>Usa una combinación única</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Right side - Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-teal-50/30 dark:from-neutral-900 dark:via-neutral-900 dark:to-neutral-800 px-4 py-8 relative">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 dark:bg-primary/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-teal-500/5 dark:bg-teal-500/10 rounded-full blur-3xl" />
-
-        <Suspense fallback={<ResetPasswordFallback />}>
+        }>
           <ResetPasswordForm />
         </Suspense>
       </div>

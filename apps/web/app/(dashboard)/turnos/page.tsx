@@ -27,117 +27,46 @@ import {
   XCircle,
   AlertCircle,
   Plus,
-  Sparkles,
-  Phone,
-  User,
-  Scissors,
-  MessageSquare,
   CalendarDays,
   LayoutGrid,
   ExternalLink,
   Layers,
   Star,
   Moon,
+  Video,
+  ShoppingBag,
+  DollarSign,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { createApiClient, Tenant } from '@/lib/api';
-import { notifications, errorNotifications } from '@/lib/notifications';
-import { formatDuration, formatPrice, parseBookingDate } from '@/lib/utils';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-
-/**
- * Normalizes a phone number for WhatsApp.
- * Handles Argentine numbers without country code.
- */
-function normalizePhoneForWhatsApp(phone: string): string {
-  let cleaned = phone.replace(/\D/g, '');
-  if (cleaned.startsWith('0')) cleaned = cleaned.substring(1);
-  if (cleaned.length === 10 && !cleaned.startsWith('54')) {
-    cleaned = '549' + cleaned;
-  } else if (cleaned.length === 11 && cleaned.startsWith('15')) {
-    cleaned = '549' + cleaned.substring(2);
-  } else if (cleaned.length >= 12 && cleaned.startsWith('54') && !cleaned.startsWith('549')) {
-    cleaned = '549' + cleaned.substring(2);
-  }
-  return cleaned;
-}
-
-interface Booking {
-  id: string;
-  date: string;
-  startTime: string;
-  endTime: string;
-  checkOutDate?: string | null;
-  totalNights?: number | null;
-  totalPrice?: number | null;
-  status: string;
-  notes: string | null;
-  service: { id: string; name: string; duration: number; price?: number };
-  customer: { id: string; name: string; phone: string; email?: string };
-}
+import { createApiClient, Tenant, type Booking } from '@/lib/api';
+import { notifications, errorNotifications, handleApiError } from '@/lib/notifications';
+import { formatDuration, formatPrice } from '@/lib/utils';
+import { BookingDetailDialog } from '@/components/autogestion/booking-detail-dialog';
+import { useRubroTerms, useTenantConfig } from '@/contexts/tenant-config-context';
+import { isMercadoRubro } from '@/lib/rubro-attributes';
+import { bookingGender } from '@/lib/tenant-config';
 
 type ViewMode = 'week' | 'month';
 
-const statusConfig: Record<string, { bg: string; text: string; border: string; icon: React.ElementType; label: string; dot: string }> = {
-  PENDING: {
-    bg: 'bg-amber-50 dark:bg-amber-900/30',
-    text: 'text-amber-700 dark:text-amber-300',
-    border: 'border-amber-200 dark:border-amber-800',
-    icon: AlertCircle,
-    label: 'Pendiente',
-    dot: 'bg-amber-500'
-  },
-  CONFIRMED: {
-    bg: 'bg-blue-50 dark:bg-blue-900/30',
-    text: 'text-blue-700 dark:text-blue-300',
-    border: 'border-blue-200 dark:border-blue-800',
-    icon: CheckCircle2,
-    label: 'Confirmado',
-    dot: 'bg-blue-500'
-  },
-  COMPLETED: {
-    bg: 'bg-emerald-50 dark:bg-emerald-900/30',
-    text: 'text-emerald-700 dark:text-emerald-300',
-    border: 'border-emerald-200 dark:border-emerald-800',
-    icon: CheckCircle2,
-    label: 'Completado',
-    dot: 'bg-emerald-500'
-  },
-  CANCELLED: {
-    bg: 'bg-red-50 dark:bg-red-900/30',
-    text: 'text-red-700 dark:text-red-300',
-    border: 'border-red-200 dark:border-red-800',
-    icon: XCircle,
-    label: 'Cancelado',
-    dot: 'bg-red-500'
-  },
-  NO_SHOW: {
-    bg: 'bg-slate-50 dark:bg-neutral-800',
-    text: 'text-slate-700 dark:text-neutral-300',
-    border: 'border-slate-200 dark:border-neutral-700',
-    icon: XCircle,
-    label: 'No asistió',
-    dot: 'bg-slate-500'
-  },
+const statusStyles: Record<string, { bg: string; text: string; border: string; icon: React.ElementType; dot: string }> = {
+  PENDING: { bg: 'bg-amber-50 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-300', border: 'border-amber-200 dark:border-amber-800', icon: AlertCircle, dot: 'bg-amber-500' },
+  CONFIRMED: { bg: 'bg-blue-50 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-300', border: 'border-blue-200 dark:border-blue-800', icon: CheckCircle2, dot: 'bg-blue-500' },
+  COMPLETED: { bg: 'bg-emerald-50 dark:bg-emerald-900/30', text: 'text-emerald-700 dark:text-emerald-300', border: 'border-emerald-200 dark:border-emerald-800', icon: CheckCircle2, dot: 'bg-emerald-500' },
+  CANCELLED: { bg: 'bg-red-50 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-300', border: 'border-red-200 dark:border-red-800', icon: XCircle, dot: 'bg-red-500' },
+  NO_SHOW: { bg: 'bg-slate-50 dark:bg-neutral-800', text: 'text-slate-700 dark:text-neutral-300', border: 'border-slate-200 dark:border-neutral-700', icon: XCircle, dot: 'bg-slate-500' },
 };
+
+function getStatusLabels(g: { suffix: string }): Record<string, string> {
+  return {
+    PENDING: 'Pendiente',
+    CONFIRMED: `Confirmad${g.suffix}`,
+    COMPLETED: `Completad${g.suffix}`,
+    CANCELLED: `Cancelad${g.suffix}`,
+    NO_SHOW: 'No asistió',
+  };
+}
 
 export default function TurnosPage() {
   const { data: session } = useSession();
@@ -151,8 +80,11 @@ export default function TurnosPage() {
   const [mounted, setMounted] = useState(false);
   const [tenantSlug, setTenantSlug] = useState<string | null>(null);
   const [tenantData, setTenantData] = useState<Tenant | null>(null);
-  const [showCancelDialog, setShowCancelDialog] = useState(false);
-  const [bookingToCancel, setBookingToCancel] = useState<Booking | null>(null);
+  const { rubro } = useTenantConfig();
+  const isMercado = isMercadoRubro(rubro);
+  const terms = useRubroTerms();
+  const gender = bookingGender(terms);
+  const statusLabels = getStatusLabels(gender);
 
   // Initialize date on client side only to avoid hydration mismatch
   useEffect(() => {
@@ -167,9 +99,7 @@ export default function TurnosPage() {
       api.getTenant().then((tenant) => {
         setTenantSlug(tenant.slug);
         setTenantData(tenant);
-      }).catch(() => {
-        // Silently fail - button will be disabled
-      });
+      }).catch((error) => handleApiError(error));
     }
   }, [session]);
 
@@ -204,8 +134,9 @@ export default function TurnosPage() {
           const bookingsArray = Array.isArray(data) ? data : (data?.data || []);
           setBookings(bookingsArray as Booking[]);
         })
-        .catch(() => {
+        .catch((error) => {
           setBookings([]);
+          handleApiError(error);
         })
         .finally(() => setLoading(false));
     }
@@ -245,89 +176,13 @@ export default function TurnosPage() {
         else setSelectedBooking(null);
       }
     } catch (error) {
-      errorNotifications.saveFailed();
-      console.error('Error updating booking status:', error);
-    }
-  };
-
-  const handleCancelClick = (booking: Booking) => {
-    setBookingToCancel(booking);
-    setShowCancelDialog(true);
-  };
-
-  const confirmCancel = async () => {
-    if (bookingToCancel) {
-      await handleStatusChange(bookingToCancel.id, 'CANCELLED');
-      setShowCancelDialog(false);
-      setBookingToCancel(null);
+      handleApiError(error);
     }
   };
 
   const handleNewBooking = () => {
     if (tenantSlug) {
       window.open(`/${tenantSlug}`, '_blank');
-    }
-  };
-
-  const buildWhatsAppMessage = (booking: Booking) => {
-    if (booking.checkOutDate) {
-      // Daily booking message
-      const checkIn = parseBookingDate(booking.date).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
-      const checkOut = parseBookingDate(booking.checkOutDate).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
-      let msg = `Hola ${booking.customer.name}! Tu reserva de *${booking.service.name}* está confirmada. Check-in: *${checkIn}* / Check-out: *${checkOut}* (${booking.totalNights} ${booking.totalNights === 1 ? 'noche' : 'noches'}).`;
-      if (tenantData?.address) {
-        msg += ` Te esperamos en ${tenantData.address}${tenantData.city ? `, ${tenantData.city}` : ''}.`;
-      }
-      msg += ' Gracias!';
-      return msg;
-    }
-    // Hourly booking message
-    const date = parseBookingDate(booking.date).toLocaleDateString('es-AR', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-    });
-    let msg = `Hola ${booking.customer.name}! Tu turno de *${booking.service.name}* el *${date}* a las *${booking.startTime} hs* está confirmado.`;
-    if (tenantData?.address) {
-      msg += ` Te esperamos en ${tenantData.address}${tenantData.city ? `, ${tenantData.city}` : ''}.`;
-    }
-    msg += ' Gracias!';
-    return msg;
-  };
-
-  const openWhatsApp = (booking: Booking) => {
-    const message = buildWhatsAppMessage(booking);
-    window.open(
-      `https://wa.me/${normalizePhoneForWhatsApp(booking.customer.phone)}?text=${encodeURIComponent(message)}`,
-      '_blank',
-    );
-  };
-
-  const handleConfirmAndWhatsApp = async (booking: Booking) => {
-    if (!session?.accessToken) return;
-    try {
-      const api = createApiClient(session.accessToken as string);
-      await api.updateBookingStatus(booking.id, 'CONFIRMED');
-      notifications.bookingConfirmed();
-
-      // Reload bookings
-      const data = await api.getBookings({
-        startDate: format(startDate, 'yyyy-MM-dd'),
-        endDate: format(endDate, 'yyyy-MM-dd'),
-      });
-      const bookingsArray = Array.isArray(data) ? data : (data?.data || []);
-      setBookings(bookingsArray as Booking[]);
-
-      if (selectedBooking?.id === booking.id) {
-        const updated = bookingsArray.find((b: Booking) => b.id === booking.id);
-        if (updated) setSelectedBooking(updated);
-        else setSelectedBooking(null);
-      }
-
-      // Open WhatsApp with confirmation message
-      openWhatsApp(booking);
-    } catch {
-      errorNotifications.saveFailed();
     }
   };
 
@@ -368,6 +223,9 @@ export default function TurnosPage() {
   const confirmedCount = bookings.filter(b => b.status === 'CONFIRMED').length;
   const completedCount = bookings.filter(b => b.status === 'COMPLETED').length;
   const totalPeriod = bookings.length;
+  const totalSold = isMercado
+    ? bookings.filter((b) => b.status !== 'CANCELLED').reduce((sum, b) => sum + Number(b.totalPrice ?? 0), 0)
+    : 0;
 
   // Generate days for current view
   const days = viewMode === 'week'
@@ -401,8 +259,8 @@ export default function TurnosPage() {
                 <CalendarIcon className="h-5 w-5 md:h-6 md:w-6" />
               </div>
               <div>
-                <h1 className="text-xl md:text-2xl font-bold">Turnos</h1>
-                <p className="text-white/70 text-sm hidden md:block">Gestiona los turnos de tu negocio</p>
+                <h1 className="text-xl md:text-2xl font-bold">{terms.bookingPlural}</h1>
+                <p className="text-white/70 text-sm hidden md:block">Gestiona {terms.bookingPlural.toLowerCase()} de tu negocio</p>
               </div>
             </div>
             <Button
@@ -412,7 +270,7 @@ export default function TurnosPage() {
               disabled={!tenantSlug}
             >
               <Plus className="h-4 w-4 md:mr-2" />
-              <span className="hidden md:inline">Nuevo Turno</span>
+              <span className="hidden md:inline">Nuev{gender.suffix} {terms.bookingSingular}</span>
               <ExternalLink className="h-3 w-3 ml-1 hidden md:inline" />
             </Button>
           </div>
@@ -427,24 +285,30 @@ export default function TurnosPage() {
             </div>
             <div className="flex flex-col items-center justify-center p-2 sm:p-3 rounded-lg bg-white/10 backdrop-blur-sm">
               <div className="flex items-center gap-1 sm:gap-2">
-                <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-white/70 hidden sm:block" />
-                <p className="text-xl sm:text-2xl md:text-3xl font-bold">{pendingCount}</p>
+                {isMercado ? (
+                  <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-white/70 hidden sm:block" />
+                ) : (
+                  <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-white/70 hidden sm:block" />
+                )}
+                <p className={`${isMercado ? 'text-base sm:text-lg md:text-xl' : 'text-xl sm:text-2xl md:text-3xl'} font-bold`}>
+                  {isMercado ? formatPrice(totalSold) : pendingCount}
+                </p>
               </div>
-              <p className="text-white/70 text-[10px] sm:text-xs md:text-sm">Pendientes</p>
+              <p className="text-white/70 text-[10px] sm:text-xs md:text-sm">{isMercado ? 'Vendido' : 'Pendientes'}</p>
             </div>
             <div className="flex flex-col items-center justify-center p-2 sm:p-3 rounded-lg bg-white/10 backdrop-blur-sm">
               <div className="flex items-center gap-1 sm:gap-2">
                 <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 text-white/70 hidden sm:block" />
                 <p className="text-xl sm:text-2xl md:text-3xl font-bold">{confirmedCount}</p>
               </div>
-              <p className="text-white/70 text-[10px] sm:text-xs md:text-sm">Confirmados</p>
+              <p className="text-white/70 text-[10px] sm:text-xs md:text-sm">Confirmad{gender.suffix}s</p>
             </div>
             <div className="flex flex-col items-center justify-center p-2 sm:p-3 rounded-lg bg-white/10 backdrop-blur-sm">
               <div className="flex items-center gap-1 sm:gap-2">
                 <Star className="h-4 w-4 sm:h-5 sm:w-5 text-white/70 hidden sm:block" />
                 <p className="text-xl sm:text-2xl md:text-3xl font-bold">{completedCount}</p>
               </div>
-              <p className="text-white/70 text-[10px] sm:text-xs md:text-sm">Completados</p>
+              <p className="text-white/70 text-[10px] sm:text-xs md:text-sm">Completad{gender.suffix}s</p>
             </div>
           </div>
         </div>
@@ -513,7 +377,7 @@ export default function TurnosPage() {
             <div className="h-12 w-12 rounded-full border-4 border-indigo-100 dark:border-indigo-900" />
             <div className="absolute inset-0 h-12 w-12 rounded-full border-4 border-transparent border-t-indigo-600 dark:border-t-indigo-400 animate-spin" />
           </div>
-          <p className="text-muted-foreground text-sm">Cargando turnos...</p>
+          <p className="text-muted-foreground text-sm">Cargando {terms.bookingPlural.toLowerCase()}...</p>
         </div>
       ) : (
         <>
@@ -563,15 +427,16 @@ export default function TurnosPage() {
                         <Card className="border-0 shadow-sm">
                           <CardContent className="py-10 text-center">
                             <CalendarIcon className="h-10 w-10 text-slate-300 mx-auto mb-3" />
-                            <p className="text-muted-foreground text-sm">Sin turnos para este día</p>
+                            <p className="text-muted-foreground text-sm">Sin {terms.bookingPlural.toLowerCase()} para este día</p>
                           </CardContent>
                         </Card>
                       );
                     }
 
                     return dayBookings.map((booking) => {
-                      const config = statusConfig[booking.status] || statusConfig.PENDING;
+                      const config = statusStyles[booking.status] || statusStyles.PENDING;
                       const isDaily = !!booking.checkOutDate;
+                      const isProductSale = !!booking.product && !booking.service;
                       return (
                         <Card
                           key={booking.id}
@@ -581,7 +446,12 @@ export default function TurnosPage() {
                           <CardContent className="p-4">
                             <div className="flex items-center gap-3">
                               <div className="text-center shrink-0 w-14">
-                                {isDaily ? (
+                                {isProductSale ? (
+                                  <>
+                                    <p className="text-sm font-bold">{formatPrice(Number(booking.totalPrice ?? 0))}</p>
+                                    <p className="text-[10px] text-muted-foreground">{(booking.quantity ?? 1) > 1 ? `×${booking.quantity}` : booking.startTime}</p>
+                                  </>
+                                ) : isDaily ? (
                                   <>
                                     <Moon className="h-4 w-4 mx-auto mb-0.5 text-indigo-500" />
                                     <p className="text-[10px] text-muted-foreground">{booking.totalNights} {booking.totalNights === 1 ? 'noche' : 'noches'}</p>
@@ -589,22 +459,37 @@ export default function TurnosPage() {
                                 ) : (
                                   <>
                                     <p className="text-lg font-bold">{booking.startTime}</p>
-                                    <p className="text-[10px] text-muted-foreground">{formatDuration(booking.service.duration)}</p>
+                                    <p className="text-[10px] text-muted-foreground">{formatDuration(booking.service?.duration ?? 15)}</p>
                                   </>
                                 )}
                               </div>
                               <div className={`w-1 self-stretch rounded-full ${config.dot}`} />
                               <div className="flex-1 min-w-0">
-                                <p className="font-semibold truncate">{booking.customer.name}</p>
-                                <p className="text-sm text-muted-foreground truncate">
-                                  {isDaily
-                                    ? `${booking.service.name} · ${booking.date.split('T')[0].slice(5)} → ${booking.checkOutDate!.split('T')[0].slice(5)}`
-                                    : booking.service.name
-                                  }
-                                </p>
+                                {isProductSale ? (
+                                  <>
+                                    <p className="font-semibold truncate">{booking.product?.name ?? 'Sin detalle'}</p>
+                                    <p className="text-sm text-muted-foreground truncate">{booking.customer.name}</p>
+                                  </>
+                                ) : (
+                                  <>
+                                    <p className="font-semibold truncate">{booking.customer.name}</p>
+                                    <p className="text-sm text-muted-foreground truncate">
+                                      {isDaily
+                                        ? `${(booking.service?.name ?? booking.product?.name ?? 'Sin detalle')} · ${booking.date.split('T')[0].slice(5)} → ${booking.checkOutDate!.split('T')[0].slice(5)}`
+                                        : (booking.service?.name ?? booking.product?.name ?? 'Sin detalle')
+                                      }
+                                    </p>
+                                  </>
+                                )}
                               </div>
+                              {booking.bookingMode === 'online' && (
+                                <Badge className="bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 border-0 text-[10px] shrink-0">
+                                  <Video className="h-2.5 w-2.5 mr-0.5" />
+                                  Online
+                                </Badge>
+                              )}
                               <Badge className={`${config.bg} ${config.text} border-0 text-[10px] shrink-0`}>
-                                {config.label}
+                                {statusLabels[booking.status] || 'Pendiente'}
                               </Badge>
                             </div>
                           </CardContent>
@@ -637,12 +522,13 @@ export default function TurnosPage() {
                       <CardContent className="p-1.5 space-y-1 min-h-[180px] max-h-[300px] overflow-y-auto">
                         {dayBookings.length === 0 ? (
                           <div className="flex items-center justify-center h-20 text-slate-400 dark:text-neutral-500">
-                            <span className="text-xs">Sin turnos</span>
+                            <span className="text-xs">Sin {terms.bookingPlural.toLowerCase()}</span>
                           </div>
                         ) : (
                           dayBookings.map((booking) => {
-                            const config = statusConfig[booking.status] || statusConfig.PENDING;
+                            const config = statusStyles[booking.status] || statusStyles.PENDING;
                             const isDaily = !!booking.checkOutDate;
+                            const isProductSale = !!booking.product && !booking.service;
                             return (
                               <div
                                 key={booking.id}
@@ -650,18 +536,28 @@ export default function TurnosPage() {
                                 className={`p-2 rounded-lg ${config.bg} border ${config.border} cursor-pointer hover:shadow-md transition-all`}
                               >
                                 <div className="flex items-center gap-1 mb-1">
-                                  {isDaily ? (
+                                  {isProductSale ? (
+                                    <ShoppingBag className="h-3 w-3 text-violet-500" />
+                                  ) : isDaily ? (
                                     <Moon className="h-3 w-3 text-indigo-500" />
                                   ) : (
                                     <Clock className="h-3 w-3 text-slate-500 dark:text-neutral-400" />
                                   )}
                                   <span className="text-xs font-semibold">
-                                    {isDaily ? `${booking.totalNights}N` : booking.startTime}
+                                    {isProductSale
+                                      ? formatPrice(Number(booking.totalPrice ?? 0))
+                                      : isDaily ? `${booking.totalNights}N` : booking.startTime
+                                    }
                                   </span>
                                   <div className={`ml-auto h-2 w-2 rounded-full ${config.dot}`} />
                                 </div>
-                                <p className="text-xs font-medium truncate">{booking.customer.name}</p>
-                                <p className="text-[10px] text-muted-foreground truncate">{booking.service.name}</p>
+                                <p className="text-xs font-medium truncate">
+                                  {isProductSale ? (booking.product?.name ?? 'Sin detalle') : booking.customer.name}
+                                </p>
+                                <p className="text-[10px] text-muted-foreground truncate">
+                                  {booking.bookingMode === 'online' && <Video className="h-2.5 w-2.5 inline mr-0.5" />}
+                                  {isProductSale ? booking.customer.name : (booking.service?.name ?? booking.product?.name ?? 'Sin detalle')}
+                                </p>
                               </div>
                             );
                           })
@@ -715,7 +611,7 @@ export default function TurnosPage() {
                         {/* Booking indicators */}
                         <div className="space-y-0.5">
                           {dayBookings.slice(0, 3).map((booking) => {
-                            const config = statusConfig[booking.status] || statusConfig.PENDING;
+                            const config = statusStyles[booking.status] || statusStyles.PENDING;
                             const isDaily = !!booking.checkOutDate;
                             return (
                               <div
@@ -726,6 +622,7 @@ export default function TurnosPage() {
                                 }}
                                 className={`text-[10px] px-1.5 py-0.5 rounded ${config.bg} ${config.text} truncate hidden md:block`}
                               >
+                                {booking.bookingMode === 'online' && <Video className="h-2 w-2 inline mr-0.5" />}
                                 {isDaily ? `${booking.totalNights}N` : booking.startTime} {booking.customer.name.split(' ')[0]}
                               </div>
                             );
@@ -733,7 +630,7 @@ export default function TurnosPage() {
                           {dayBookings.length > 0 && (
                             <div className="md:hidden flex gap-0.5 flex-wrap">
                               {dayBookings.slice(0, 4).map((booking) => {
-                                const config = statusConfig[booking.status] || statusConfig.PENDING;
+                                const config = statusStyles[booking.status] || statusStyles.PENDING;
                                 return (
                                   <div key={booking.id} className={`h-1.5 w-1.5 rounded-full ${config.dot}`} />
                                 );
@@ -757,197 +654,14 @@ export default function TurnosPage() {
       )}
 
       {/* Booking Detail Dialog */}
-      <Dialog open={!!selectedBooking} onOpenChange={(open) => !open && setSelectedBooking(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Detalle del Turno</DialogTitle>
-            <DialogDescription>
-              Información y acciones del turno seleccionado
-            </DialogDescription>
-          </DialogHeader>
-          {selectedBooking && (
-            <div className="space-y-4">
-              {/* Status Badge */}
-              {(() => {
-                const config = statusConfig[selectedBooking.status] || statusConfig.PENDING;
-                const StatusIcon = config.icon;
-                return (
-                  <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${config.bg} ${config.text}`}>
-                    <StatusIcon className="h-4 w-4" />
-                    <span className="font-medium">{config.label}</span>
-                  </div>
-                );
-              })()}
-
-              {/* Date & Time */}
-              <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-neutral-800 rounded-lg">
-                <div className="h-10 w-10 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center">
-                  {selectedBooking.checkOutDate ? (
-                    <Moon className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-                  ) : (
-                    <CalendarIcon className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-                  )}
-                </div>
-                <div>
-                  {selectedBooking.checkOutDate ? (
-                    <>
-                      <p className="font-semibold">
-                        {format(parseBookingDate(selectedBooking.date), "EEE d MMM", { locale: es })} → {format(parseBookingDate(selectedBooking.checkOutDate), "EEE d MMM", { locale: es })}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {selectedBooking.totalNights} {selectedBooking.totalNights === 1 ? 'noche' : 'noches'}
-                        {selectedBooking.totalPrice != null && ` · Total: ${formatPrice(Number(selectedBooking.totalPrice))}`}
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <p className="font-semibold">{format(parseBookingDate(selectedBooking.date), "EEEE d 'de' MMMM", { locale: es })}</p>
-                      <p className="text-sm text-muted-foreground">{selectedBooking.startTime} - {selectedBooking.endTime}</p>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* Customer */}
-              <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-neutral-800 rounded-lg">
-                <div className="h-10 w-10 rounded-lg bg-teal-100 dark:bg-teal-900/40 flex items-center justify-center">
-                  <User className="h-5 w-5 text-teal-600 dark:text-teal-400" />
-                </div>
-                <div className="flex-1">
-                  <p className="font-semibold">{selectedBooking.customer.name}</p>
-                  <p className="text-sm text-muted-foreground">{selectedBooking.customer.phone}</p>
-                </div>
-              </div>
-
-              {/* Service */}
-              <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-neutral-800 rounded-lg">
-                <div className="h-10 w-10 rounded-lg bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center">
-                  <Scissors className="h-5 w-5 text-violet-600 dark:text-violet-400" />
-                </div>
-                <div className="flex-1">
-                  <p className="font-semibold">{selectedBooking.service.name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {selectedBooking.checkOutDate
-                      ? (selectedBooking.service.price != null ? `${formatPrice(selectedBooking.service.price)}/noche` : '')
-                      : formatDuration(selectedBooking.service.duration)
-                    }
-                  </p>
-                </div>
-              </div>
-
-              {/* Notes */}
-              {selectedBooking.notes && (
-                <div className="p-3 bg-amber-50 dark:bg-amber-900/30 rounded-lg">
-                  <p className="text-sm text-amber-800 dark:text-amber-300">{selectedBooking.notes}</p>
-                </div>
-              )}
-
-              {/* Actions */}
-              <div className="flex flex-col gap-2 pt-2">
-                {/* PENDING: Combined confirm + WhatsApp, and cancel */}
-                {selectedBooking.status === 'PENDING' && (
-                  <>
-                    <Button
-                      className="w-full h-14 text-lg bg-green-600 hover:bg-green-700 text-white"
-                      onClick={() => handleConfirmAndWhatsApp(selectedBooking)}
-                    >
-                      <MessageSquare className="h-5 w-5 mr-2" />
-                      Confirmar y enviar WhatsApp
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="w-full border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30"
-                      onClick={() => handleCancelClick(selectedBooking)}
-                    >
-                      <XCircle className="h-4 w-4 mr-2" />
-                      Cancelar Turno
-                    </Button>
-                  </>
-                )}
-
-                {/* CONFIRMED: WhatsApp message + status actions */}
-                {selectedBooking.status === 'CONFIRMED' && (
-                  <>
-                    <Button
-                      className="w-full bg-green-600 hover:bg-green-700 text-white"
-                      onClick={() => openWhatsApp(selectedBooking)}
-                    >
-                      <MessageSquare className="h-4 w-4 mr-2" />
-                      Enviar mensaje por WhatsApp
-                    </Button>
-                    <div className="flex gap-2">
-                      <Button
-                        className="flex-1 bg-violet-500 hover:bg-violet-600"
-                        onClick={() => handleStatusChange(selectedBooking.id, 'COMPLETED')}
-                      >
-                        <Sparkles className="h-4 w-4 mr-2" />
-                        Marcar Completado
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="border-slate-200 dark:border-neutral-700 text-slate-600 dark:text-neutral-400 hover:bg-slate-50 dark:hover:bg-neutral-800"
-                        onClick={() => handleStatusChange(selectedBooking.id, 'NO_SHOW')}
-                      >
-                        No asistió
-                      </Button>
-                    </div>
-                  </>
-                )}
-
-                {/* Contact buttons */}
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    className="flex-1"
-                    onClick={() => window.open(`https://wa.me/${normalizePhoneForWhatsApp(selectedBooking.customer.phone)}`, '_blank')}
-                  >
-                    <MessageSquare className="h-4 w-4 mr-2 text-green-600" />
-                    Chat
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="flex-1"
-                    onClick={() => window.open(`tel:${selectedBooking.customer.phone}`, '_blank')}
-                  >
-                    <Phone className="h-4 w-4 mr-2 text-blue-600" />
-                    Llamar
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Cancel Confirmation AlertDialog */}
-      <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Cancelar este turno?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {bookingToCancel && (
-                <>
-                  Estás por cancelar el turno de <strong>{bookingToCancel.customer.name}</strong> para{' '}
-                  <strong>{bookingToCancel.service.name}</strong> el{' '}
-                  <strong>{format(parseBookingDate(bookingToCancel.date), "d 'de' MMMM", { locale: es })}</strong> a las{' '}
-                  <strong>{bookingToCancel.startTime}</strong>.
-                  <br /><br />
-                  Esta acción no se puede deshacer.
-                </>
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Volver</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmCancel}
-              className="bg-red-600 hover:bg-red-700 text-white"
-            >
-              Sí, cancelar turno
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <BookingDetailDialog
+        booking={selectedBooking}
+        open={!!selectedBooking}
+        onClose={() => setSelectedBooking(null)}
+        onStatusChange={handleStatusChange}
+        tenantAddress={tenantData?.address ?? undefined}
+        tenantCity={tenantData?.city ?? undefined}
+      />
     </div>
   );
 }

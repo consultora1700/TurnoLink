@@ -41,6 +41,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { createApiClient, Branch } from '@/lib/api';
+import { handleApiError } from '@/lib/notifications';
 import { useToast } from '@/hooks/use-toast';
 
 interface BranchForm {
@@ -101,8 +102,9 @@ export default function SucursalesPage() {
       const api = createApiClient(session.accessToken as string);
       const data = await api.getBranches();
       setBranches(Array.isArray(data) ? data : []);
-    } catch {
+    } catch (error) {
       setBranches([]);
+      handleApiError(error);
     } finally {
       setLoading(false);
     }
@@ -170,8 +172,8 @@ export default function SucursalesPage() {
 
       setDialogOpen(false);
       loadBranches();
-    } catch {
-      toast({ title: 'Error', description: 'No se pudo guardar la sucursal', variant: 'destructive' });
+    } catch (error) {
+      handleApiError(error);
     } finally {
       setSaving(false);
     }
@@ -187,8 +189,8 @@ export default function SucursalesPage() {
       setDeleteDialogOpen(false);
       setBranchToDelete(null);
       loadBranches();
-    } catch {
-      toast({ title: 'Error', description: 'No se pudo eliminar la sucursal', variant: 'destructive' });
+    } catch (error) {
+      handleApiError(error);
     }
   };
 

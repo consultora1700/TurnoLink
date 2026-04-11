@@ -162,7 +162,7 @@ export default function TenantDetailPage() {
         </div>
         <div className="flex items-center gap-3">
           <a
-            href={`https://turnolink.mubitt.com/${tenant.slug}`}
+            href={`https://turnolink.com.ar/${tenant.slug}`}
             target="_blank"
             rel="noopener noreferrer"
           >

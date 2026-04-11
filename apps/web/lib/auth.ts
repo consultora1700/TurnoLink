@@ -60,6 +60,8 @@ export const authOptions: NextAuthOptions = {
             role: data.user.role,
             tenantId: data.user.tenantId,
             tenantType: data.user.tenantType || 'BUSINESS',
+            employeeId: (data.user as any).employeeId || null,
+            employeeRole: (data.user as any).employeeRole || null,
             accessToken: data.accessToken,
             refreshToken: data.refreshToken,
           };
@@ -85,6 +87,8 @@ export const authOptions: NextAuthOptions = {
           role: user.role,
           tenantId: user.tenantId,
           tenantType: user.tenantType || 'BUSINESS',
+          employeeId: user.employeeId || null,
+          employeeRole: user.employeeRole || null,
           accessToken: user.accessToken,
           refreshToken: user.refreshToken,
           accessTokenExpires: Date.now() + ACCESS_TOKEN_TTL,
@@ -127,6 +131,8 @@ export const authOptions: NextAuthOptions = {
         role: token.role as string,
         tenantId: token.tenantId as string,
         tenantType: (token.tenantType as string) || 'BUSINESS',
+        employeeId: (token.employeeId as string) || null,
+        employeeRole: (token.employeeRole as string) || null,
       };
       session.accessToken = token.accessToken as string;
 
@@ -139,7 +145,7 @@ export const authOptions: NextAuthOptions = {
   },
   session: {
     strategy: 'jwt',
-    maxAge: 7 * 24 * 60 * 60, // 7 days
+    maxAge: 14 * 24 * 60 * 60, // 14 days (refresh token rotation keeps it alive)
   },
   cookies: {
     sessionToken: {
@@ -153,5 +159,5 @@ export const authOptions: NextAuthOptions = {
     },
   },
   secret: process.env.NEXTAUTH_SECRET,
-  debug: true,
+  debug: process.env.NODE_ENV !== 'production',
 };

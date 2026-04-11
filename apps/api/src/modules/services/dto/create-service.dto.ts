@@ -3,9 +3,11 @@ import {
   IsNotEmpty,
   IsString,
   IsNumber,
+  IsInt,
   IsOptional,
-  IsUUID,
+  IsBoolean,
   IsArray,
+  IsIn,
   Min,
   Max,
   MaxLength,
@@ -42,9 +44,22 @@ export class CreateServiceDto {
   @Max(480)
   duration: number;
 
+  @ApiPropertyOptional({ example: 1, description: 'Max simultaneous bookings per time slot' })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  capacity?: number;
+
+  @ApiPropertyOptional({ example: 'presencial', description: 'Service mode: presencial, online, or ambos' })
+  @IsOptional()
+  @IsString()
+  @IsIn(['presencial', 'online', 'ambos'])
+  mode?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
-  @IsUUID()
+  @IsString()
   categoryId?: string;
 
   @ApiPropertyOptional()
@@ -69,4 +84,50 @@ export class CreateServiceDto {
   @IsString()
   @MaxLength(10000)
   variations?: string;
+
+  @ApiPropertyOptional({ description: 'ID de la especialidad asociada' })
+  @IsOptional()
+  @IsString()
+  specialtyId?: string;
+
+  @ApiPropertyOptional({
+    example: 'client_chooses',
+    description: 'Modo de asignación: client_chooses, auto_assign, round_robin',
+  })
+  @IsOptional()
+  @IsString()
+  @IsIn(['client_chooses', 'auto_assign', 'round_robin'])
+  assignmentMode?: string;
+
+  @ApiPropertyOptional({ description: 'Visible en la página pública de reservas' })
+  @IsOptional()
+  @IsBoolean()
+  visibleOnPublicPage?: boolean;
+
+  @ApiPropertyOptional({ description: 'ID del formulario de admisión vinculado' })
+  @IsOptional()
+  @IsString()
+  intakeFormId?: string;
+
+  // Per-service check-in/out times (daily mode)
+  @ApiPropertyOptional({ example: '14:00' }) @IsOptional() @IsString() @MaxLength(5) checkInTime?: string;
+  @ApiPropertyOptional({ example: '10:00' }) @IsOptional() @IsString() @MaxLength(5) checkOutTime?: string;
+
+  // Rich content per service
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(500) youtubeVideoUrl?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(5000) amenities?: string;
+
+  // Pack fields (daily mode only)
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() isPack?: boolean;
+  @ApiPropertyOptional() @IsOptional() @IsString() packCheckIn?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() packCheckOut?: string;
+  @ApiPropertyOptional() @IsOptional() @IsInt() @Min(1) packNights?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() @Min(0) packOriginalPrice?: number;
+
+  // Promotion fields
+  @ApiPropertyOptional() @IsOptional() @IsNumber() @Min(0) promoPrice?: number;
+  @ApiPropertyOptional() @IsOptional() @IsString() promoStartDate?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() promoEndDate?: string;
+  @ApiPropertyOptional() @IsOptional() @IsInt() @Min(1) promoMaxBookings?: number;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(50) promoLabel?: string;
 }

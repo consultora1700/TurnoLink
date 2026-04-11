@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo, Fragment } from 'react';
+import Image from 'next/image';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
@@ -27,6 +28,10 @@ import {
   ChevronRight,
   Moon,
   CalendarDays,
+  Video,
+  ClipboardList,
+  Package,
+  Layers,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -37,17 +42,38 @@ import { BookingCalendar } from './booking-calendar';
 import { DailyBookingCalendar } from './daily-booking-calendar';
 import { TimeSlots } from './time-slots';
 import { BookingCustomerForm, CustomerFormData } from './booking-customer-form';
-import { useAvailability, useBooking, useDailyAvailability } from '@/hooks';
+import { useAvailability, useBooking, useDailyAvailability, useMonthlyAvailability } from '@/hooks';
 import { toast } from '@/hooks/use-toast';
 import Link from 'next/link';
-import { publicApi, EmployeePublic, BranchPublic, CreateDailyBookingData } from '@/lib/api';
+import { publicApi, EmployeePublic, BranchPublic, CreateDailyBookingData, IntakeFormField } from '@/lib/api';
 import { PublicThemeWrapper, PublicThemeToggleFloating } from './public-theme-wrapper';
 import { BackgroundStyles, BackgroundStyle } from '@/components/ui/background-styles';
 import { LocationCarousel } from './location-carousel';
 import { PublicHero } from './public-hero';
-import { PublicServiceCard } from './public-service-card';
+import { PublicServiceCard, PriceDisplay } from './public-service-card';
+import { PublicReviewsSection } from './public-reviews-section';
 import { HeroStyleName, HERO_STYLES } from '@/lib/hero-styles';
 import { postTurnoLinkEvent } from './embed-booking-page';
+import { getTerminology } from '@/lib/terminology';
+import { RUBRO_TERMS } from '@/lib/tenant-config';
+import { getSelectedAmenities, AMENITY_ICON_MAP } from '@/lib/amenities-catalog';
+import { getRubroUIConfig } from '@/lib/tenant-config';
+import { PublicSorteoCard } from './public-sorteo-card';
+
+/**
+ * Extract YouTube video ID from various URL formats.
+ */
+function extractYoutubeId(url: string): string | null {
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+    /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,
+  ];
+  for (const p of patterns) {
+    const m = url.match(p);
+    if (m) return m[1];
+  }
+  return null;
+}
 
 /**
  * Normalizes a phone number for WhatsApp.
@@ -105,6 +131,35 @@ interface Service {
   imageDisplayMode?: string;
   includes: string | null;
   variations?: VariationGroup[];
+  mode?: string;
+  specialtyId?: string | null;
+  assignmentMode?: string;
+  specialty?: { id: string; name: string; slug: string } | null;
+  intakeFormId?: string | null;
+  // Per-service check-in/out times
+  checkInTime?: string | null;
+  checkOutTime?: string | null;
+  // Rich content
+  youtubeVideoUrl?: string | null;
+  amenities?: string[];
+  // Pack fields
+  isPack?: boolean;
+  packCheckIn?: string | null;
+  packCheckOut?: string | null;
+  packNights?: number | null;
+  packOriginalPrice?: number | null;
+  // Promo fields
+  promoPrice?: number | null;
+  promoLabel?: string | null;
+}
+
+interface SpecialtyInfo {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string | null;
+  icon?: string | null;
+  _count?: { services?: number; employeeSpecialties?: number };
 }
 
 interface Tenant {
@@ -118,6 +173,9 @@ interface Tenant {
   city: string | null;
   instagram: string | null;
   services: Service[];
+  publicPageLayout?: string;
+  publicPageConfig?: Record<string, unknown>;
+  specialties?: SpecialtyInfo[];
   settings: {
     showPrices: boolean;
     requirePhone: boolean;
@@ -146,6 +204,12 @@ interface Tenant {
     coverOverlayOpacity?: number;
     coverFadeEnabled?: boolean;
     coverFadeColor?: string;
+    heroTextTone?: 'auto' | 'light' | 'dark';
+    heroTrustTone?: 'auto' | 'light' | 'dark';
+    heroButtons?: ('location' | 'call' | 'whatsapp' | 'instagram')[];
+    rubro?: string | null;
+    youtubeVideoUrl?: string | null;
+    amenities?: string[];
   };
 }
 
@@ -163,17 +227,33 @@ interface BookingResponse {
   depositMode?: string;
   service?: Service;
   customer?: { name: string; phone: string; email?: string };
+  videoJoinUrl?: string;
+  videoProvider?: string;
+  bookingMode?: string;
 }
 
-type Step = 'branch' | 'services' | 'datetime' | 'details' | 'payment' | 'confirmation';
+type Step = 'branch' | 'employee' | 'specialty' | 'services' | 'datetime' | 'details' | 'payment' | 'confirmation';
 
 export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }: Props) {
   const tenant = tenantData as Tenant;
+  const logoScale = (tenant.settings as any)?.logoScale ?? 1;
+  const logoOffsetX = (tenant.settings as any)?.logoOffsetX ?? 0;
+  const logoOffsetY = (tenant.settings as any)?.logoOffsetY ?? 0;
   const [branches, setBranches] = useState<BranchPublic[]>([]);
   const [selectedBranch, setSelectedBranch] = useState<BranchPublic | null>(null);
   const [branchServices, setBranchServices] = useState<Service[]>([]);
   const [loadingBranches, setLoadingBranches] = useState(true);
-  const [step, setStep] = useState<Step>('services');
+  // Compute initial step from layout to avoid flash/flicker.
+  // For employee_first/specialty_first the correct step is set immediately
+  // so the page never renders 'services' first and then switches.
+  const initialStep: Step = (() => {
+    const layout = (tenantData as any).publicPageLayout || 'service_first';
+    const specs = (tenantData as any).specialties;
+    if (layout === 'specialty_first' && specs?.length > 0) return 'specialty';
+    if (layout === 'employee_first') return 'employee';
+    return 'services';
+  })();
+  const [step, setStep] = useState<Step>(initialStep);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
@@ -193,10 +273,90 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
   const [selectedVariations, setSelectedVariations] = useState<Record<string, string[]>>({});
   const [bookingVariations, setBookingVariations] = useState<Record<string, string[]>>({});
 
+  // Swipe-down-to-dismiss for service detail modal
+  const serviceModalRef = useRef<HTMLDivElement>(null);
+  const svcSwipeStartY = useRef(0);
+  const [svcSwipeDragY, setSvcSwipeDragY] = useState(0);
+  const [svcSwipeAnimating, setSvcSwipeAnimating] = useState(false);
+  const svcSwipeDragging = useRef(false);
+  const svcLastDragY = useRef(0);
+  const svcSwipeBlocked = useRef(false);
+  const svcClosing = useRef(false);
+  const [svcEntryDone, setSvcEntryDone] = useState(false);
+
+  // Remove entry animation class after it finishes so inline transform works
+  useEffect(() => {
+    if (showServiceDetail) {
+      setSvcEntryDone(false);
+      const t = setTimeout(() => setSvcEntryDone(true), 650);
+      return () => clearTimeout(t);
+    }
+  }, [showServiceDetail]);
+
+  // Animated close for service detail modal (used by backdrop tap, close btn, swipe, and CTA)
+  const closeServiceDetail = useCallback(() => {
+    if (svcClosing.current) return;
+    svcClosing.current = true;
+    setSvcSwipeAnimating(true);
+    setSvcSwipeDragY(700);
+    setTimeout(() => {
+      setShowServiceDetail(false);
+      setSvcSwipeDragY(0);
+      setSvcSwipeAnimating(false);
+      svcClosing.current = false;
+    }, 280);
+  }, []);
+
+  // Service mode state (presencial/online)
+  const [selectedBookingMode, setSelectedBookingMode] = useState<'presencial' | 'online' | null>(null);
+
+  // Intake form state
+  const [intakeFormFields, setIntakeFormFields] = useState<IntakeFormField[]>([]);
+  const [intakeFormData, setIntakeFormData] = useState<Record<string, unknown>>({});
+  const [loadingIntakeForm, setLoadingIntakeForm] = useState(false);
+  const [activeIntakeFormId, setActiveIntakeFormId] = useState<string | null>(null);
+
+  // Specialty-first layout
+  const pageLayout = tenant.publicPageLayout || 'service_first';
+  const hasSpecialties = (tenant.specialties?.length || 0) > 0;
+  const isSpecialtyFirst = pageLayout === 'specialty_first' && hasSpecialties;
+  const isEmployeeFirst = pageLayout === 'employee_first' && employees.length > 0;
+  const [selectedSpecialty, setSelectedSpecialty] = useState<{ id: string; name: string; slug: string } | null>(null);
+  const [employeeFilteredServiceIds, setEmployeeFilteredServiceIds] = useState<string[] | null>(null);
+
+  // Dynamic terminology
+  const terms = useMemo(() => getTerminology(tenant.publicPageConfig), [tenant.publicPageConfig]);
+  const rubroTerms = tenant.settings.rubro ? RUBRO_TERMS[tenant.settings.rubro] : undefined;
+  const depositLabel = rubroTerms?.depositLabel || 'Seña';
+
   // Daily booking mode state
   const isDailyMode = tenant.settings.bookingMode === 'DAILY';
   const [checkInDate, setCheckInDate] = useState<Date | null>(null);
   const [checkOutDate, setCheckOutDate] = useState<Date | null>(null);
+
+  // Helper: first step after branch for the current layout.
+  // Uses pageLayout directly (not employee state) to avoid flash.
+  const firstContentStep: Step = isSpecialtyFirst
+    ? 'specialty'
+    : pageLayout === 'employee_first'
+      ? 'employee'
+      : 'services';
+
+  // Filter services by selected specialty or employee
+  const filteredServices = useMemo(() => {
+    const base = branchServices.length > 0 ? branchServices : tenant.services;
+    if (isSpecialtyFirst && selectedSpecialty) {
+      return base.filter((s: Service) => s.specialtyId === selectedSpecialty.id);
+    }
+    if (isEmployeeFirst && employeeFilteredServiceIds) {
+      return base.filter((s: Service) => employeeFilteredServiceIds.includes(s.id));
+    }
+    return base;
+  }, [branchServices, tenant.services, isSpecialtyFirst, selectedSpecialty, isEmployeeFirst, employeeFilteredServiceIds]);
+
+  // Separate normal services and packs
+  const normalServices = useMemo(() => filteredServices.filter(s => !s.isPack), [filteredServices]);
+  const packServices = useMemo(() => filteredServices.filter(s => s.isPack), [filteredServices]);
 
   // Lock body scroll when service detail modal is open
   useEffect(() => {
@@ -206,6 +366,60 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
       document.body.style.overflow = '';
     }
     return () => { document.body.style.overflow = ''; };
+  }, [showServiceDetail]);
+
+  // Swipe-down-to-dismiss touch handlers for service detail modal
+  useEffect(() => {
+    const el = serviceModalRef.current;
+    if (!el) return;
+    const getScrollTop = () => {
+      const scrollable = el.querySelector('[class*="overflow-y-auto"]');
+      return scrollable ? scrollable.scrollTop : 0;
+    };
+    const onStart = (e: TouchEvent) => {
+      svcSwipeStartY.current = e.touches[0].clientY;
+      svcSwipeDragging.current = false;
+      setSvcSwipeAnimating(false);
+      svcSwipeBlocked.current = getScrollTop() > 5;
+    };
+    const onMove = (e: TouchEvent) => {
+      if (svcSwipeBlocked.current) return;
+      const dy = e.touches[0].clientY - svcSwipeStartY.current;
+      if (dy > 12) {
+        svcSwipeDragging.current = true;
+        e.preventDefault();
+        const val = Math.min(dy * 0.55, 300);
+        svcLastDragY.current = val;
+        setSvcSwipeDragY(val);
+      } else if (dy < -5 && svcSwipeDragging.current) {
+        svcSwipeDragging.current = false;
+        svcLastDragY.current = 0;
+        setSvcSwipeDragY(0);
+      }
+    };
+    const onEnd = () => {
+      if (svcSwipeDragging.current && svcLastDragY.current > 60) {
+        closeServiceDetail();
+      } else if (svcSwipeDragging.current) {
+        setSvcSwipeAnimating(true);
+        setSvcSwipeDragY(0);
+        setTimeout(() => setSvcSwipeAnimating(false), 250);
+      }
+      svcSwipeDragging.current = false;
+      svcSwipeBlocked.current = false;
+    };
+    el.addEventListener('touchstart', onStart, { passive: true });
+    el.addEventListener('touchmove', onMove, { passive: false });
+    el.addEventListener('touchend', onEnd, { passive: true });
+    return () => { el.removeEventListener('touchstart', onStart); el.removeEventListener('touchmove', onMove); el.removeEventListener('touchend', onEnd); };
+  }, [showServiceDetail, closeServiceDetail]);
+
+  // Reset swipe state when modal closes
+  useEffect(() => {
+    if (!showServiceDetail) {
+      setSvcSwipeDragY(0);
+      setSvcSwipeAnimating(false);
+    }
   }, [showServiceDetail]);
 
   // Embed: notify parent of step changes
@@ -246,6 +460,12 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
     fetchAvailability: fetchDailyAvailability,
     reset: resetDailyAvailability,
   } = useDailyAvailability(slug);
+
+  const {
+    availabilityMap,
+    fetchMonth,
+    reset: resetMonthlyAvailability,
+  } = useMonthlyAvailability(slug);
 
   // Refs for smart auto-scroll
   const calendarSectionRef = useRef<HTMLDivElement>(null);
@@ -305,7 +525,7 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
   useEffect(() => {
     const loadReputationStats = async () => {
       try {
-        const response = await fetch(`/api/public/reviews/${slug}/stats`);
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://api.turnolink.com.ar'}/api/public/reviews/${slug}/stats`);
         if (response.ok) {
           const data = await response.json();
           setReputationStats(data);
@@ -328,20 +548,20 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
         if (data.length === 1) {
           setSelectedBranch(data[0]);
           setBranchServices(tenant.services);
-          setStep('services');
+          setStep(firstContentStep);
         } else if (data.length > 1) {
           // Multiple branches - show branch selector first
           setStep('branch');
         } else {
           // No branches - use tenant services directly
           setBranchServices(tenant.services);
-          setStep('services');
+          setStep(firstContentStep);
         }
       } catch {
         // No branches or error - use tenant services
         setBranches([]);
         setBranchServices(tenant.services);
-        setStep('services');
+        setStep(firstContentStep);
       } finally {
         setLoadingBranches(false);
       }
@@ -372,6 +592,24 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
     loadEmployees();
   }, [slug, selectedBranch]);
 
+  // Load active sorteos
+  const [activeSorteos, setActiveSorteos] = useState<any[]>([]);
+  useEffect(() => {
+    publicApi.getSorteos(slug).then(setActiveSorteos).catch(() => {});
+  }, [slug]);
+
+  // Fallback: if employee_first but no employees exist, fall back to services
+  useEffect(() => {
+    if (
+      !loadingEmployees &&
+      pageLayout === 'employee_first' &&
+      employees.length === 0 &&
+      step === 'employee'
+    ) {
+      setStep('services');
+    }
+  }, [loadingEmployees, pageLayout, employees.length, step]);
+
   useEffect(() => {
     if (isSuccess && bookingResult) {
       const result = bookingResult as BookingResponse;
@@ -393,8 +631,8 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
           postTurnoLinkEvent('turnolink:booking_confirmed', { bookingId: result.id });
         }
         toast({
-          title: 'Reserva confirmada',
-          description: 'Tu turno ha sido registrado exitosamente.',
+          title: `${terms.booking} confirmada`,
+          description: `Tu ${terms.appointment.toLowerCase()} ha sido registrado exitosamente.`,
         });
       }
     }
@@ -406,7 +644,7 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
     }
     if (bookingError) {
       toast({
-        title: 'Error al reservar',
+        title: `Error al ${terms.bookAction.toLowerCase()}`,
         description: bookingError,
         variant: 'destructive',
       });
@@ -432,28 +670,138 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
       setBranchServices(tenant.services);
     }
 
-    setStep('services');
-  }, [slug, tenant.services]);
+    setStep(firstContentStep);
+  }, [slug, tenant.services, firstContentStep]);
 
-  const handleServiceSelect = useCallback((service: Service) => {
+  // Handle specialty selection (specialty_first flow)
+  const handleSpecialtySelect = useCallback((specialty: { id: string; name: string; slug: string }) => {
+    setSelectedSpecialty(specialty);
+    setSelectedService(null);
+    setStep('services');
+  }, []);
+
+  // Handle employee selection (employee_first flow)
+  const handleEmployeeFirstSelect = useCallback(async (employee: EmployeePublic) => {
+    setSelectedEmployee(employee);
+    try {
+      const services = await publicApi.getEmployeeServices(slug, employee.id);
+      setEmployeeFilteredServiceIds(services.map(s => s.id));
+    } catch {
+      // Fallback: show all services
+      setEmployeeFilteredServiceIds(null);
+    }
+    setSelectedService(null);
+    setStep('services');
+  }, [slug]);
+
+  // Helper: check if a service has a __mode__ variation (different prices for presencial/online)
+  const hasModeVariation = useCallback((service: Service) => {
+    return service.variations?.some(g => g.id === '__mode__') ?? false;
+  }, []);
+
+  const handleServiceSelect = useCallback((service: Service, variations?: Record<string, string[]>) => {
+    const effectiveVariations = variations ?? bookingVariations;
     setSelectedService(service);
     setStep('datetime');
+    // In employee_first flow, keep the pre-selected employee; otherwise load service-specific employees
+    if (!isEmployeeFirst || !selectedEmployee) {
+      setSelectedEmployee(null);
+      (async () => {
+        setLoadingEmployees(true);
+        try {
+          const data = await publicApi.getServiceEmployees(slug, service.id);
+          setEmployees(data);
+        } catch {
+          // Fallback: keep existing employees
+        } finally {
+          setLoadingEmployees(false);
+        }
+      })();
+    }
+    // Auto-set booking mode based on service mode
+    if (service.mode === 'online') {
+      setSelectedBookingMode('online');
+    } else if (service.mode === 'ambos') {
+      // If __mode__ variation exists, extract booking mode from variations
+      const modeVariation = service.variations?.find(g => g.id === '__mode__');
+      if (modeVariation) {
+        const modeSelection = effectiveVariations['__mode__'];
+        if (modeSelection?.includes('__online__')) {
+          setSelectedBookingMode('online');
+        } else if (modeSelection?.includes('__presencial__')) {
+          setSelectedBookingMode('presencial');
+        } else {
+          setSelectedBookingMode(null);
+        }
+      } else {
+        setSelectedBookingMode(null); // Client must choose via simple selector
+      }
+    } else {
+      setSelectedBookingMode('presencial');
+    }
     if (isDailyMode) {
       resetDailyAvailability();
       setCheckInDate(null);
       setCheckOutDate(null);
     } else {
       resetAvailability();
+      resetMonthlyAvailability();
+      const now = new Date();
+      fetchMonth(now.getFullYear(), now.getMonth() + 1, service.id, selectedBranch?.id);
+    }
+    // Load intake form if service has one
+    if (service.intakeFormId) {
+      setLoadingIntakeForm(true);
+      setActiveIntakeFormId(service.intakeFormId);
+      setIntakeFormData({});
+      publicApi.getIntakeForm(slug, service.intakeFormId)
+        .then(form => setIntakeFormFields(form.fields || []))
+        .catch(() => { setIntakeFormFields([]); setActiveIntakeFormId(null); })
+        .finally(() => setLoadingIntakeForm(false));
+    } else {
+      setIntakeFormFields([]);
+      setIntakeFormData({});
+      setActiveIntakeFormId(null);
     }
     // Scroll to calendar section after step change
     scrollToElement(calendarSectionRef, 200);
-  }, [isDailyMode, resetAvailability, resetDailyAvailability, scrollToElement]);
+  }, [isDailyMode, resetAvailability, resetDailyAvailability, resetMonthlyAvailability, fetchMonth, selectedBranch?.id, scrollToElement, bookingVariations, slug, isEmployeeFirst, selectedEmployee]);
+
+  // Pack selection: skip calendar, go straight to details
+  const handlePackSelect = useCallback((pack: Service) => {
+    setSelectedService(pack);
+    if (pack.packCheckIn) setCheckInDate(new Date(pack.packCheckIn));
+    if (pack.packCheckOut) setCheckOutDate(new Date(pack.packCheckOut));
+    // Load intake form if pack has one
+    if (pack.intakeFormId) {
+      setLoadingIntakeForm(true);
+      setActiveIntakeFormId(pack.intakeFormId);
+      setIntakeFormData({});
+      publicApi.getIntakeForm(slug, pack.intakeFormId)
+        .then(form => setIntakeFormFields(form.fields || []))
+        .catch(() => { setIntakeFormFields([]); setActiveIntakeFormId(null); })
+        .finally(() => setLoadingIntakeForm(false));
+    } else {
+      setIntakeFormFields([]);
+      setIntakeFormData({});
+      setActiveIntakeFormId(null);
+    }
+    setStep('details');
+    scrollToElement(formSectionRef, 200);
+  }, [scrollToElement, slug]);
 
   // Daily mode: handle range selection (no auto-advance — user must click "Confirmar")
   const handleDailyRangeSelect = useCallback((checkIn: Date | null, checkOut: Date | null) => {
     setCheckInDate(checkIn);
     setCheckOutDate(checkOut);
   }, []);
+
+  // Scroll to calendar when booking mode is selected (for 'ambos' services)
+  useEffect(() => {
+    if (selectedBookingMode && selectedService?.mode === 'ambos' && step === 'datetime') {
+      scrollToElement(calendarSectionRef, 200);
+    }
+  }, [selectedBookingMode, selectedService?.mode, step, scrollToElement]);
 
   // Daily mode: user confirmed their date selection
   const handleDailyConfirm = useCallback(() => {
@@ -467,6 +815,21 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
   const handleDailyMonthChange = useCallback((startDate: string, endDate: string) => {
     fetchDailyAvailability(startDate, endDate, selectedBranch?.id);
   }, [fetchDailyAvailability, selectedBranch?.id]);
+
+  // Hourly mode: fetch monthly availability for calendar indicators
+  const handleMonthChange = useCallback((year: number, month: number) => {
+    if (!isDailyMode) {
+      fetchMonth(year, month, selectedService?.id, selectedBranch?.id);
+    }
+  }, [fetchMonth, isDailyMode, selectedService?.id, selectedBranch?.id]);
+
+  // Compute next available date from monthly availability map
+  const nextAvailableDate = useMemo(() => {
+    if (!selectedDate || !availabilityMap) return null;
+    return Object.entries(availabilityMap)
+      .filter(([date, avail]) => avail && new Date(date + 'T12:00:00') > selectedDate)
+      .sort(([a], [b]) => a.localeCompare(b))[0]?.[0] || null;
+  }, [selectedDate, availabilityMap]);
 
   // Variation helpers
   const handleVariationSelect = useCallback((groupId: string, optionId: string, type: 'single' | 'multi') => {
@@ -531,27 +894,33 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
     setSelectedTime(null);
     const dateStr = format(date, 'yyyy-MM-dd');
 
+    // Pass employeeId when an employee is selected (employee_first flow)
+    const empId = selectedEmployee?.id;
+
     // Use branch availability if branch is selected
     if (selectedBranch) {
       try {
-        const slots = await publicApi.getBranchAvailability(
+        await publicApi.getBranchAvailability(
           slug,
           selectedBranch.slug,
           dateStr,
           selectedService?.id
         );
-        // Use the hook's internal state update (we need to modify useAvailability hook or use local state)
-        // For now, fetch through the hook which will need to be updated
-        await fetchAvailability(dateStr, selectedService?.id);
+        await fetchAvailability(dateStr, selectedService?.id, empId);
       } catch {
-        await fetchAvailability(dateStr, selectedService?.id);
+        await fetchAvailability(dateStr, selectedService?.id, empId);
       }
     } else {
-      await fetchAvailability(dateStr, selectedService?.id);
+      await fetchAvailability(dateStr, selectedService?.id, empId);
     }
     // Scroll to time slots after loading
     scrollToElement(timeSlotsSectionRef, 300);
-  }, [fetchAvailability, selectedService?.id, selectedBranch, slug, scrollToElement]);
+  }, [fetchAvailability, selectedService?.id, selectedBranch, selectedEmployee?.id, slug, scrollToElement]);
+
+  // Jump to a suggested date
+  const handleJumpToDate = useCallback((date: Date) => {
+    handleDateSelect(date);
+  }, [handleDateSelect]);
 
   const handleTimeSelect = useCallback((time: string) => {
     setSelectedTime(time);
@@ -568,6 +937,24 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
 
   const handleFormSubmit = useCallback(async (formData: CustomerFormData) => {
     if (!selectedService) return;
+
+    // Validate required intake form fields
+    if (intakeFormFields.length > 0) {
+      const missingFields = intakeFormFields
+        .filter(f => f.required)
+        .filter(f => {
+          const val = intakeFormData[f.id];
+          return val === undefined || val === null || val === '' || val === false;
+        });
+      if (missingFields.length > 0) {
+        toast({
+          title: 'Campos requeridos',
+          description: `Completá: ${missingFields.map(f => f.label).join(', ')}`,
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
 
     // Store customer data for confirmation screen
     setCustomerData({
@@ -590,6 +977,7 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
         customerPhone: formData.phone.trim(),
         customerEmail: formData.email?.trim() || undefined,
         notes: formData.notes?.trim() || undefined,
+        bookingMode: selectedBookingMode || undefined,
       };
 
       try {
@@ -607,14 +995,14 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
           setPendingBooking(bookingResponse);
           setStep('confirmation');
           toast({
-            title: 'Reserva confirmada',
-            description: 'Tu estadía ha sido registrada exitosamente.',
+            title: `${terms.booking} confirmada`,
+            description: `Tu ${terms.booking.toLowerCase()} ha sido registrada exitosamente.`,
           });
         }
       } catch (error: any) {
         toast({
-          title: 'Error al reservar',
-          description: error.message || 'No se pudo completar la reserva.',
+          title: `Error al ${terms.bookAction.toLowerCase()}`,
+          description: error.message || `No se pudo completar la ${terms.booking.toLowerCase()}.`,
           variant: 'destructive',
         });
       }
@@ -622,11 +1010,12 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
       // Hourly booking mode (original)
       if (!selectedDate || !selectedTime) return;
 
-      // Build variation summary for booking notes
+      // Build variation summary for booking notes (exclude __mode__ since bookingMode handles it)
       let variationNotes = '';
       if (selectedService?.variations && Object.keys(bookingVariations).length > 0) {
         const parts: string[] = [];
         for (const group of selectedService.variations) {
+          if (group.id === '__mode__') continue; // Mode is tracked via bookingMode field
           const selectedIds = bookingVariations[group.id] || [];
           if (selectedIds.length > 0) {
             const selectedOptions = group.options
@@ -654,11 +1043,14 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
         customerPhone: formData.phone.trim(),
         customerEmail: formData.email?.trim() || undefined,
         notes: noteParts.length > 0 ? noteParts.join(' - ') : undefined,
+        bookingMode: selectedBookingMode || undefined,
+        intakeFormId: activeIntakeFormId || undefined,
+        intakeFormData: activeIntakeFormId && Object.keys(intakeFormData).length > 0 ? intakeFormData : undefined,
       };
 
       await submitBooking(bookingData);
     }
-  }, [selectedService, selectedDate, selectedTime, selectedEmployee, selectedBranch, submitBooking, bookingVariations, isDailyMode, checkInDate, checkOutDate, slug]);
+  }, [selectedService, selectedDate, selectedTime, selectedEmployee, selectedBranch, submitBooking, bookingVariations, isDailyMode, checkInDate, checkOutDate, slug, selectedBookingMode, activeIntakeFormId, intakeFormData, intakeFormFields]);
 
   const handleSimulatePayment = useCallback(async () => {
     if (!pendingBooking) return;
@@ -680,7 +1072,7 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
         setStep('confirmation');
         toast({
           title: '¡Pago exitoso!',
-          description: 'Tu reserva ha sido confirmada.',
+          description: `Tu ${terms.booking.toLowerCase()} ha sido confirmada.`,
         });
       }
     } catch {
@@ -741,7 +1133,7 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
                   setStep('confirmation');
                   toast({
                     title: 'Pago confirmado',
-                    description: 'Tu reserva ha sido confirmada exitosamente.',
+                    description: `Tu ${terms.booking.toLowerCase()} ha sido confirmada exitosamente.`,
                   });
                 }
               }
@@ -787,6 +1179,8 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
     setSelectedDate(null);
     setSelectedTime(null);
     setSelectedEmployee(null);
+    setSelectedBookingMode(null);
+    setBookingVariations({});
     setCustomerData({ name: '', phone: '', email: '', notes: '' });
     setPendingBooking(null);
     resetAvailability();
@@ -829,11 +1223,19 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
           <div className="relative z-10 px-4 sm:px-6 lg:px-8 pt-6 pb-4">
             <div className="container mx-auto flex items-center gap-3">
               {tenant.logo && (
-                <img
-                  src={tenant.logo}
-                  alt={tenant.name}
-                  className="h-10 w-10 rounded-lg object-cover"
-                />
+                <div className="h-10 w-10 rounded-lg overflow-hidden shrink-0">
+                  <img
+                    src={tenant.logo}
+                    alt={tenant.name}
+                    className="w-full h-full object-cover"
+                    style={(() => {
+                      const parts: string[] = [];
+                      if (logoScale && logoScale !== 1) parts.push(`scale(${logoScale})`);
+                      if (logoOffsetX || logoOffsetY) parts.push(`translate(${logoOffsetX || 0}%, ${logoOffsetY || 0}%)`);
+                      return parts.length ? { transform: parts.join(' '), transformOrigin: 'center' } : undefined;
+                    })()}
+                  />
+                </div>
               )}
               <div>
                 <h1 className="text-lg font-bold text-slate-900 dark:text-white">{tenant.name}</h1>
@@ -848,13 +1250,19 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
             tenant={tenant}
             reputationStats={reputationStats}
             heroStyle={(tenant.settings.heroStyle as HeroStyleName) || 'classic'}
+            heroButtons={tenant.settings.heroButtons}
             coverSettings={{
               showProfilePhoto: tenant.settings.showProfilePhoto,
               coverOverlayColor: tenant.settings.coverOverlayColor,
               coverOverlayOpacity: tenant.settings.coverOverlayOpacity,
               coverFadeEnabled: tenant.settings.coverFadeEnabled,
               coverFadeColor: tenant.settings.coverFadeColor,
+              heroTextTone: tenant.settings.heroTextTone,
+              heroTrustTone: tenant.settings.heroTrustTone,
             }}
+            logoScale={logoScale}
+            logoOffsetX={logoOffsetX}
+            logoOffsetY={logoOffsetY}
           />
         )}
 
@@ -862,37 +1270,52 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
       <div className="sticky top-0 z-40 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-lg border-b border-slate-200 dark:border-neutral-700 shadow-sm transition-colors">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-center gap-1.5 sm:gap-2">
-            {branches.length > 1 && (
-              <>
-                <StepIndicator
-                  number={1}
-                  label="Sucursal"
-                  active={step === 'branch'}
-                  completed={!!selectedBranch}
-                />
-                <div className={cn('w-6 sm:w-12 h-0.5 sm:h-1 rounded-full transition-all', selectedBranch ? 'bg-emerald-500' : 'bg-slate-200 dark:bg-neutral-700')} />
-              </>
-            )}
-            <StepIndicator
-              number={branches.length > 1 ? 2 : 1}
-              label="Servicio"
-              active={step === 'services'}
-              completed={!!selectedService}
-            />
-            <div className={cn('w-6 sm:w-12 h-0.5 sm:h-1 rounded-full transition-all', selectedService ? 'bg-emerald-500' : 'bg-slate-200 dark:bg-neutral-700')} />
-            <StepIndicator
-              number={branches.length > 1 ? 3 : 2}
-              label={isDailyMode ? 'Fechas' : 'Fecha y Hora'}
-              active={step === 'datetime'}
-              completed={isDailyMode ? !!(checkInDate && checkOutDate) : !!selectedTime}
-            />
-            <div className={cn('w-6 sm:w-12 h-0.5 sm:h-1 rounded-full transition-all', (isDailyMode ? !!(checkInDate && checkOutDate) : !!selectedTime) ? 'bg-emerald-500' : 'bg-slate-200 dark:bg-neutral-700')} />
-            <StepIndicator
-              number={branches.length > 1 ? 4 : 3}
-              label="Confirmar"
-              active={step === 'details' || step === 'confirmation'}
-              completed={step === 'confirmation'}
-            />
+            {(() => {
+              let stepNum = 1;
+              const indicators: React.ReactNode[] = [];
+
+              if (branches.length > 1) {
+                indicators.push(
+                  <StepIndicator key="branch" number={stepNum} label={terms.branch} active={step === 'branch'} completed={!!selectedBranch} />,
+                  <div key="branch-sep" className={cn('w-6 sm:w-12 h-0.5 sm:h-1 rounded-full transition-all', selectedBranch ? 'bg-emerald-500' : 'bg-slate-200 dark:bg-neutral-700')} />,
+                );
+                stepNum++;
+              }
+
+              if (isEmployeeFirst) {
+                indicators.push(
+                  <StepIndicator key="employee" number={stepNum} label={terms.professional} active={step === 'employee'} completed={!!selectedEmployee} />,
+                  <div key="employee-sep" className={cn('w-6 sm:w-12 h-0.5 sm:h-1 rounded-full transition-all', selectedEmployee ? 'bg-emerald-500' : 'bg-slate-200 dark:bg-neutral-700')} />,
+                );
+                stepNum++;
+              }
+
+              if (isSpecialtyFirst) {
+                indicators.push(
+                  <StepIndicator key="specialty" number={stepNum} label="Area" active={step === 'specialty'} completed={!!selectedSpecialty} />,
+                  <div key="specialty-sep" className={cn('w-6 sm:w-12 h-0.5 sm:h-1 rounded-full transition-all', selectedSpecialty ? 'bg-emerald-500' : 'bg-slate-200 dark:bg-neutral-700')} />,
+                );
+                stepNum++;
+              }
+
+              indicators.push(
+                <StepIndicator key="service" number={stepNum} label={terms.service} active={step === 'services'} completed={!!selectedService} />,
+                <div key="service-sep" className={cn('w-6 sm:w-12 h-0.5 sm:h-1 rounded-full transition-all', selectedService ? 'bg-emerald-500' : 'bg-slate-200 dark:bg-neutral-700')} />,
+              );
+              stepNum++;
+
+              indicators.push(
+                <StepIndicator key="datetime" number={stepNum} label={isDailyMode ? 'Fechas' : 'Fecha y Hora'} active={step === 'datetime'} completed={isDailyMode ? !!(checkInDate && checkOutDate) : !!selectedTime} />,
+                <div key="datetime-sep" className={cn('w-6 sm:w-12 h-0.5 sm:h-1 rounded-full transition-all', (isDailyMode ? !!(checkInDate && checkOutDate) : !!selectedTime) ? 'bg-emerald-500' : 'bg-slate-200 dark:bg-neutral-700')} />,
+              );
+              stepNum++;
+
+              indicators.push(
+                <StepIndicator key="confirm" number={stepNum} label="Confirmar" active={step === 'details' || step === 'confirmation'} completed={step === 'confirmation'} />,
+              );
+
+              return indicators;
+            })()}
           </div>
         </div>
       </div>
@@ -919,7 +1342,7 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
                 Paso 1 de {branches.length > 1 ? 4 : 3}
               </Badge>
               <h2 className="text-2xl md:text-3xl font-bold mb-3 text-slate-900 dark:text-white">
-                Selecciona una sucursal
+                {`Seleccioná tu ${terms.branch.toLowerCase()}`}
               </h2>
               <p className="text-muted-foreground max-w-md mx-auto">Elige la ubicacion mas conveniente para vos</p>
             </div>
@@ -1007,15 +1430,14 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
             {/* Helper text */}
             <p className="text-center text-xs text-muted-foreground mt-6 md:mt-8">
               <Sparkles className="h-3 w-3 inline mr-1" />
-              Toca una sucursal para continuar con la reserva
+              {`Tocá una ${terms.branch.toLowerCase()} para continuar`}
             </p>
           </div>
         )}
 
-        {/* Step 1: Select Service */}
-        {!loadingBranches && step === 'services' && (
-          <div className="max-w-5xl mx-auto px-4 animate-fade-in">
-            {/* Back button for branch change */}
+        {/* Step: Select Specialty (specialty_first only) */}
+        {!loadingBranches && step === 'specialty' && isSpecialtyFirst && (
+          <div className="max-w-4xl mx-auto px-4 animate-fade-in">
             {selectedBranch && branches.length > 1 && (
               <Button
                 variant="ghost"
@@ -1023,8 +1445,229 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
                 className="mb-4 -ml-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 <ChevronLeft className="h-4 w-4 mr-1" />
-                Cambiar sucursal
+                {`Cambiar ${terms.branch.toLowerCase()}`}
               </Button>
+            )}
+
+            <div className="text-center mb-8 md:mb-10">
+              <div className="inline-flex items-center gap-2 bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 px-4 py-1.5 rounded-full text-sm font-medium mb-4">
+                <Sparkles className="h-3.5 w-3.5" />
+                Especialidades
+              </div>
+              <h2 className="text-2xl md:text-3xl font-bold mb-3 text-slate-900 dark:text-white">
+                {`¿Qué área necesitás?`}
+              </h2>
+              <p className="text-muted-foreground max-w-lg mx-auto">
+                {`Elegí el área que buscás y te mostramos las opciones disponibles`}
+              </p>
+            </div>
+
+            <div className={cn(
+              'grid gap-4 md:gap-5',
+              (tenant.specialties?.length || 0) <= 2 ? 'sm:grid-cols-2 max-w-2xl mx-auto' :
+              (tenant.specialties?.length || 0) <= 4 ? 'sm:grid-cols-2 lg:grid-cols-2 max-w-3xl mx-auto' :
+              'sm:grid-cols-2 lg:grid-cols-3'
+            )}>
+              {tenant.specialties?.map((specialty, idx) => {
+                const serviceCount = specialty._count?.services ?? tenant.services.filter((s: Service) => s.specialtyId === specialty.id).length;
+                const professionalCount = specialty._count?.employeeSpecialties || 0;
+                const colorPalette = [
+                  { icon: 'bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-400', border: 'hover:border-violet-400 dark:hover:border-violet-500', accent: 'group-hover:bg-violet-500' },
+                  { icon: 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400', border: 'hover:border-blue-400 dark:hover:border-blue-500', accent: 'group-hover:bg-blue-500' },
+                  { icon: 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400', border: 'hover:border-emerald-400 dark:hover:border-emerald-500', accent: 'group-hover:bg-emerald-500' },
+                  { icon: 'bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400', border: 'hover:border-amber-400 dark:hover:border-amber-500', accent: 'group-hover:bg-amber-500' },
+                  { icon: 'bg-teal-100 dark:bg-teal-900/40 text-teal-600 dark:text-teal-400', border: 'hover:border-teal-400 dark:hover:border-teal-500', accent: 'group-hover:bg-teal-500' },
+                  { icon: 'bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400', border: 'hover:border-rose-400 dark:hover:border-rose-500', accent: 'group-hover:bg-rose-500' },
+                ];
+                const color = colorPalette[idx % colorPalette.length];
+
+                return (
+                  <Card
+                    key={specialty.id}
+                    className={cn(
+                      'group cursor-pointer border border-slate-200 dark:border-neutral-700 shadow-sm hover:shadow-lg transition-all duration-200 overflow-hidden',
+                      color.border,
+                    )}
+                    onClick={() => handleSpecialtySelect(specialty)}
+                  >
+                    <CardContent className="p-0">
+                      <div className="p-5 md:p-6">
+                        {/* Icon + Name row */}
+                        <div className="flex items-start gap-4 mb-3">
+                          <div className={cn('w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 transition-all', color.icon)}>
+                            {specialty.icon ? (
+                              <span className="text-xl">{specialty.icon}</span>
+                            ) : (
+                              <Layers className="h-5 w-5" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0 pt-1">
+                            <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-tight group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">
+                              {specialty.name}
+                            </h3>
+                          </div>
+                        </div>
+
+                        {/* Description */}
+                        {specialty.description && (
+                          <p className="text-sm text-muted-foreground line-clamp-2 mb-4 leading-relaxed">
+                            {specialty.description}
+                          </p>
+                        )}
+
+                        {/* Stats + CTA */}
+                        <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-neutral-700/60">
+                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <ClipboardList className="h-3.5 w-3.5" />
+                              {serviceCount} {serviceCount === 1 ? terms.service.toLowerCase() : terms.services.toLowerCase()}
+                            </span>
+                            {professionalCount > 0 && (
+                              <span className="flex items-center gap-1">
+                                <Users className="h-3.5 w-3.5" />
+                                {professionalCount}
+                              </span>
+                            )}
+                          </div>
+                          <div className={cn('w-8 h-8 rounded-full bg-slate-100 dark:bg-neutral-700 flex items-center justify-center transition-all', color.accent)}>
+                            <ArrowRight className="h-4 w-4 text-slate-400 group-hover:text-white transition-colors" />
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+
+            <p className="text-center text-xs text-muted-foreground mt-6 md:mt-8">
+              <Sparkles className="h-3 w-3 inline mr-1" />
+              {`Tocá un área para ver ${terms.services.toLowerCase()}`}
+            </p>
+          </div>
+        )}
+
+        {/* Step: Select Employee (employee_first only) */}
+        {!loadingBranches && step === 'employee' && pageLayout === 'employee_first' && (
+          <div className="max-w-4xl mx-auto px-4 animate-fade-in">
+            {selectedBranch && branches.length > 1 && (
+              <Button
+                variant="ghost"
+                onClick={() => setStep('branch')}
+                className="mb-4 -ml-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" />
+                {`Cambiar ${terms.branch.toLowerCase()}`}
+              </Button>
+            )}
+
+            <div className="text-center mb-8">
+              <h2 className="text-2xl md:text-3xl font-bold mb-3 text-slate-900 dark:text-white">
+                {`Elegí tu ${terms.professional.toLowerCase()}`}
+              </h2>
+              <p className="text-muted-foreground max-w-md mx-auto">
+                {`Seleccioná el ${terms.professional.toLowerCase()} con quien querés atenderte`}
+              </p>
+            </div>
+
+            {loadingEmployees ? (
+              <div className="text-center py-12">
+                <div className="w-12 h-12 mx-auto mb-4 rounded-full border-4 border-primary/30 border-t-primary animate-spin" />
+                <p className="text-muted-foreground">Cargando...</p>
+              </div>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {employees.map((employee) => (
+                  <Card
+                    key={employee.id}
+                    className="group cursor-pointer border border-slate-200 dark:border-neutral-700 hover:border-teal-400 dark:hover:border-teal-500 shadow-sm hover:shadow-md transition-all"
+                    onClick={() => handleEmployeeFirstSelect(employee)}
+                  >
+                    <CardContent className="p-6">
+                      <div className="flex items-start gap-4">
+                        {employee.image ? (
+                          <img
+                            src={employee.image}
+                            alt={employee.name}
+                            className="w-14 h-14 rounded-xl object-cover flex-shrink-0"
+                          />
+                        ) : (
+                          <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-violet-500 to-teal-500 flex items-center justify-center text-white font-semibold text-xl flex-shrink-0">
+                            {employee.name.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-0.5 group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors truncate">
+                            {employee.name}
+                          </h3>
+                          {employee.credentials && (
+                            <p className="text-xs text-amber-600 dark:text-amber-400 mb-1">{employee.credentials}</p>
+                          )}
+                          {employee.specialty && (
+                            <p className="text-sm text-muted-foreground line-clamp-1">{employee.specialty}</p>
+                          )}
+                          {employee.bio && (
+                            <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{employee.bio}</p>
+                          )}
+                        </div>
+                        <div className="flex-shrink-0 w-10 h-10 rounded-full bg-slate-100 dark:bg-neutral-700 flex items-center justify-center group-hover:bg-teal-500 transition-all">
+                          <ArrowRight className="h-5 w-5 text-slate-400 group-hover:text-white transition-colors" />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+
+            <p className="text-center text-xs text-muted-foreground mt-6 md:mt-8">
+              <Sparkles className="h-3 w-3 inline mr-1" />
+              {`Tocá un ${terms.professional.toLowerCase()} para ver sus ${terms.services.toLowerCase()}`}
+            </p>
+          </div>
+        )}
+
+        {/* Step: Select Service */}
+        {!loadingBranches && step === 'services' && (
+          <div className="max-w-5xl mx-auto px-4 animate-fade-in">
+            {/* Back button for branch/specialty/employee change */}
+            {isEmployeeFirst && selectedEmployee && (
+              <Button
+                variant="ghost"
+                onClick={() => { setStep('employee'); setSelectedEmployee(null); setEmployeeFilteredServiceIds(null); }}
+                className="mb-4 -ml-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" />
+                {`Cambiar ${terms.professional.toLowerCase()}`}
+              </Button>
+            )}
+            {isSpecialtyFirst && selectedSpecialty && (
+              <Button
+                variant="ghost"
+                onClick={() => { setStep('specialty'); setSelectedSpecialty(null); }}
+                className="mb-4 -ml-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" />
+                Cambiar area
+              </Button>
+            )}
+            {!isSpecialtyFirst && !isEmployeeFirst && selectedBranch && branches.length > 1 && (
+              <Button
+                variant="ghost"
+                onClick={() => setStep('branch')}
+                className="mb-4 -ml-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" />
+                {`Cambiar ${terms.branch.toLowerCase()}`}
+              </Button>
+            )}
+
+            {/* Selected employee pill (employee_first) */}
+            {isEmployeeFirst && selectedEmployee && (
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 mb-4 mr-2 rounded-full bg-violet-50 dark:bg-violet-900/30 border border-violet-200 dark:border-violet-800">
+                <User className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+                <span className="text-sm font-medium text-violet-700 dark:text-violet-300">{selectedEmployee.name}</span>
+              </div>
             )}
 
             {/* Selected Branch - Compact pill */}
@@ -1038,49 +1681,126 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
             {/* Section Header */}
             <div className="text-center mb-6 md:mb-10">
               <h2 className="text-2xl md:text-3xl font-bold mb-2 text-slate-900 dark:text-white">
-                Elegi tu servicio
+                {selectedSpecialty ? `${terms.services} de ${selectedSpecialty.name}` : isEmployeeFirst && selectedEmployee ? `${terms.services} de ${selectedEmployee.name}` : `Elegí tu ${terms.service.toLowerCase()}`}
               </h2>
-              <p className="text-sm text-muted-foreground">Selecciona el servicio que deseas reservar</p>
+              <p className="text-sm text-muted-foreground">{`Seleccioná el ${terms.service.toLowerCase()} que deseas reservar`}</p>
             </div>
 
             {/* Services Container with elegant frame */}
-            <div className="relative">
+            <div className="relative md:p-4 lg:p-6">
               {/* Decorative background for desktop */}
-              <div className="hidden md:block absolute -inset-4 lg:-inset-6 bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-neutral-800/50 dark:via-neutral-900/50 dark:to-neutral-800/50 rounded-3xl border border-slate-200/60 dark:border-neutral-700/60" />
+              <div className="hidden md:block absolute inset-0 bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-neutral-800/50 dark:via-neutral-900/50 dark:to-neutral-800/50 rounded-3xl border border-slate-200/60 dark:border-neutral-700/60" />
 
               {/* Services Grid */}
-              <div className="relative grid gap-4 md:gap-6 sm:grid-cols-2 lg:grid-cols-3 md:p-4 lg:p-6">
-                {(branchServices.length > 0 ? branchServices : tenant.services).map((service, index) => (
-                  <PublicServiceCard
-                    key={service.id}
-                    service={service}
-                    cardStyle={(tenant.settings.cardStyle as HeroStyleName) || (tenant.settings.heroStyle as HeroStyleName) || 'classic'}
-                    showPrices={tenant.settings.showPrices}
-                    index={index}
-                    onSelect={(s) => {
-                      const svc = s as Service;
-                      if (svc.variations && svc.variations.length > 0) {
-                        setServiceForDetail(svc);
+              <div className="relative grid grid-cols-1 gap-4 md:gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {normalServices.map((service, index) => (
+                  <Fragment key={service.id}>
+                    <PublicServiceCard
+                      service={service}
+                      cardStyle={(tenant.settings.cardStyle as HeroStyleName) || (tenant.settings.heroStyle as HeroStyleName) || 'classic'}
+                      showPrices={tenant.settings.showPrices}
+                      index={index}
+                      onSelect={(s) => {
+                        const svc = s as Service;
+                        if (svc.variations && svc.variations.length > 0) {
+                          setServiceForDetail(svc);
+                          setSelectedVariations({});
+                          setShowServiceDetail(true);
+                        } else {
+                          handleServiceSelect(svc);
+                        }
+                      }}
+                      onShowDetail={(s) => {
+                        setServiceForDetail(s as Service);
                         setSelectedVariations({});
                         setShowServiceDetail(true);
-                      } else {
-                        handleServiceSelect(svc);
-                      }
-                    }}
-                    onShowDetail={(s) => {
-                      setServiceForDetail(s as Service);
-                      setSelectedVariations({});
-                      setShowServiceDetail(true);
-                    }}
-                  />
+                      }}
+                    />
+                    {/* Inject sorteo card after 3rd service */}
+                    {index === 2 && activeSorteos.length > 0 && (
+                      <PublicSorteoCard sorteo={activeSorteos[0]} tenantSlug={slug} instagramHandle={tenant.instagram} />
+                    )}
+                  </Fragment>
                 ))}
+                {/* If fewer than 3 services, show sorteo at end */}
+                {normalServices.length < 3 && activeSorteos.length > 0 && (
+                  <PublicSorteoCard sorteo={activeSorteos[0]} tenantSlug={slug} instagramHandle={tenant.instagram} />
+                )}
               </div>
             </div>
+
+            {/* Packs Section */}
+            {packServices.length > 0 && (
+              <div className="mt-8 md:mt-12">
+                <div className="text-center mb-6">
+                  <h3 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white flex items-center justify-center gap-2">
+                    <Package className="h-5 w-5 text-amber-500" />
+                    Packs y Promociones
+                  </h3>
+                  <p className="text-sm text-muted-foreground mt-1">Estadías con fechas fijas a precio especial</p>
+                </div>
+                <div className="relative md:p-4 lg:p-6">
+                  <div className="hidden md:block absolute inset-0 bg-gradient-to-br from-amber-50/50 via-white to-amber-50/50 dark:from-amber-900/10 dark:via-neutral-900/50 dark:to-amber-900/10 rounded-3xl border border-amber-200/60 dark:border-amber-800/30" />
+                  <div className="relative grid grid-cols-1 gap-4 md:gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                    {packServices.map((pack, index) => {
+                      const checkIn = pack.packCheckIn ? new Date(pack.packCheckIn) : null;
+                      const checkOut = pack.packCheckOut ? new Date(pack.packCheckOut) : null;
+                      return (
+                        <div key={pack.id} className="group animate-slide-up" style={{ animationDelay: `${index * 0.08}s` }}>
+                          <Card
+                            className="overflow-hidden border border-amber-200 dark:border-amber-800/40 shadow-sm hover:shadow-lg hover:border-amber-400 dark:hover:border-amber-600 transition-all duration-300 hover:-translate-y-1 bg-white dark:bg-neutral-800 rounded-2xl cursor-pointer"
+                            onClick={() => {
+                              setServiceForDetail(pack);
+                              setSelectedVariations({});
+                              setShowServiceDetail(true);
+                            }}
+                          >
+                            {pack.image && (
+                              <div className="relative h-36 overflow-hidden">
+                                <Image src={pack.image} alt={pack.name} fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover" />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+                              </div>
+                            )}
+                            <CardContent className="p-4">
+                              <Badge className="mb-2 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800">
+                                <Package className="h-3 w-3 mr-1" />
+                                Pack
+                              </Badge>
+                              <h4 className="font-bold text-slate-900 dark:text-white text-base mb-1 line-clamp-2">{pack.name}</h4>
+                              {checkIn && checkOut && (
+                                <p className="text-sm text-muted-foreground mb-2 flex items-center gap-1.5">
+                                  <CalendarDays className="h-3.5 w-3.5" />
+                                  {format(checkIn, "d MMM", { locale: es })} → {format(checkOut, "d MMM", { locale: es })}
+                                  {pack.packNights && <span className="text-xs">({pack.packNights} noches)</span>}
+                                </p>
+                              )}
+                              {pack.description && <p className="text-xs text-muted-foreground line-clamp-2 mb-3">{pack.description}</p>}
+                              {tenant.settings.showPrices && pack.price !== null && (
+                                <div className="flex items-center gap-2 mb-3">
+                                  {pack.packOriginalPrice && (
+                                    <span className="text-sm line-through text-slate-400 dark:text-neutral-500">{formatPrice(pack.packOriginalPrice)}</span>
+                                  )}
+                                  <span className="text-lg font-bold text-amber-600 dark:text-amber-400">{formatPrice(pack.price)}</span>
+                                </div>
+                              )}
+                              <Button className="w-full bg-amber-500 hover:bg-amber-600 text-white font-semibold rounded-xl">
+                                {terms.bookAction} pack
+                                <ArrowRight className="h-4 w-4 ml-2" />
+                              </Button>
+                            </CardContent>
+                          </Card>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Helper text */}
             <p className="text-center text-xs text-muted-foreground mt-6 md:mt-8">
               <Sparkles className="h-3 w-3 inline mr-1" />
-              Toca un servicio para continuar con la reserva
+{`Tocá un ${terms.service.toLowerCase()} para continuar con la ${terms.booking.toLowerCase()}`}
             </p>
           </div>
         )}
@@ -1089,11 +1809,11 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
         {step === 'datetime' && selectedService && (
           <div className="max-w-5xl mx-auto animate-fade-in">
             <button
-              onClick={() => setStep('services')}
+              onClick={() => { setStep('services'); setSelectedBookingMode(null); }}
               className="mb-5 inline-flex items-center gap-1 text-sm font-medium text-slate-700 dark:text-white hover:text-slate-900 dark:hover:text-white transition-colors border border-slate-300 dark:border-neutral-600 rounded-lg px-3 py-1.5 hover:border-slate-400 dark:hover:border-neutral-500 bg-white/80 dark:bg-neutral-800/80"
             >
               <ChevronLeft className="h-3.5 w-3.5" />
-              Cambiar servicio
+              {`Cambiar ${terms.service.toLowerCase()}`}
             </button>
 
             {/* Selected Service Card - Mobile Optimized */}
@@ -1101,9 +1821,9 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
                   {/* Service Image or Initial */}
-                  <div className="w-14 h-14 md:w-16 md:h-16 rounded-xl overflow-hidden flex-shrink-0 bg-white/10">
+                  <div className="relative w-14 h-14 md:w-16 md:h-16 rounded-xl overflow-hidden flex-shrink-0 bg-white/10">
                     {selectedService.image ? (
-                      <img src={selectedService.image} alt={selectedService.name} className="w-full h-full object-cover" />
+                      <Image src={selectedService.image} alt={selectedService.name} fill sizes="64px" className="object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-white/80 font-bold text-xl">
                         {selectedService.name.charAt(0)}
@@ -1123,7 +1843,9 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
                           </Badge>
                           {selectedService.price !== null && (
                             <Badge className="bg-emerald-500/90 text-white border-0 text-xs font-bold">
-                              {formatPrice(selectedService.price)}/noche
+                              {selectedService.promoPrice != null ? (
+                                <><span className="line-through opacity-70 mr-1">{formatPrice(selectedService.price)}</span>{formatPrice(selectedService.promoPrice)}/noche</>
+                              ) : `${formatPrice(selectedService.price)}/noche`}
                             </Badge>
                           )}
                         </>
@@ -1135,7 +1857,9 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
                           </Badge>
                           {selectedService.price !== null && (
                             <Badge className="bg-emerald-500/90 text-white border-0 text-xs font-bold">
-                              {formatPrice(selectedService.price)}
+                              {selectedService.promoPrice != null ? (
+                                <><span className="line-through opacity-70 mr-1">{formatPrice(selectedService.price)}</span>{formatPrice(selectedService.promoPrice)}</>
+                              ) : formatPrice(selectedService.price)}
                             </Badge>
                           )}
                         </>
@@ -1146,6 +1870,84 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
               </CardContent>
             </Card>
 
+            {/* Mode Selector: Only show when service supports both modes AND no __mode__ variation (equal prices) */}
+            {selectedService.mode === 'ambos' && !hasModeVariation(selectedService) && (
+              <div className="mb-6 md:mb-8">
+                <p className="text-sm font-medium text-slate-700 dark:text-neutral-300 mb-3 text-center">
+                  ¿Cómo preferís tu sesión?
+                </p>
+                <div className="grid grid-cols-2 gap-3 max-w-md mx-auto">
+                  <button
+                    onClick={() => setSelectedBookingMode('presencial')}
+                    className={cn(
+                      'flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all',
+                      selectedBookingMode === 'presencial'
+                        ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 dark:border-indigo-400'
+                        : 'border-slate-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 hover:border-slate-300 dark:hover:border-neutral-600'
+                    )}
+                  >
+                    <div className={cn(
+                      'h-10 w-10 rounded-lg flex items-center justify-center',
+                      selectedBookingMode === 'presencial'
+                        ? 'bg-indigo-100 dark:bg-indigo-900/50'
+                        : 'bg-slate-100 dark:bg-neutral-700'
+                    )}>
+                      <MapPin className={cn(
+                        'h-5 w-5',
+                        selectedBookingMode === 'presencial'
+                          ? 'text-indigo-600 dark:text-indigo-400'
+                          : 'text-slate-500 dark:text-neutral-400'
+                      )} />
+                    </div>
+                    <div className="text-center">
+                      <p className={cn(
+                        'font-medium text-sm',
+                        selectedBookingMode === 'presencial'
+                          ? 'text-indigo-700 dark:text-indigo-300'
+                          : 'text-slate-700 dark:text-neutral-300'
+                      )}>Presencial</p>
+                      <p className="text-xs text-muted-foreground">Asistir al local</p>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => setSelectedBookingMode('online')}
+                    className={cn(
+                      'flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all',
+                      selectedBookingMode === 'online'
+                        ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 dark:border-indigo-400'
+                        : 'border-slate-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 hover:border-slate-300 dark:hover:border-neutral-600'
+                    )}
+                  >
+                    <div className={cn(
+                      'h-10 w-10 rounded-lg flex items-center justify-center',
+                      selectedBookingMode === 'online'
+                        ? 'bg-indigo-100 dark:bg-indigo-900/50'
+                        : 'bg-slate-100 dark:bg-neutral-700'
+                    )}>
+                      <Video className={cn(
+                        'h-5 w-5',
+                        selectedBookingMode === 'online'
+                          ? 'text-indigo-600 dark:text-indigo-400'
+                          : 'text-slate-500 dark:text-neutral-400'
+                      )} />
+                    </div>
+                    <div className="text-center">
+                      <p className={cn(
+                        'font-medium text-sm',
+                        selectedBookingMode === 'online'
+                          ? 'text-indigo-700 dark:text-indigo-300'
+                          : 'text-slate-700 dark:text-neutral-300'
+                      )}>Online</p>
+                      <p className="text-xs text-muted-foreground">Videollamada</p>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Show calendar only when booking mode is selected (or service is not 'ambos', or mode was chosen via __mode__ variation) */}
+            {(selectedService.mode !== 'ambos' || selectedBookingMode !== null || hasModeVariation(selectedService)) && (
+            <>
             {isDailyMode ? (
               /* Daily Booking Calendar */
               <div ref={calendarSectionRef} className="scroll-mt-24 max-w-xl mx-auto">
@@ -1168,8 +1970,8 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
                       maxAdvanceDays={tenant.settings.maxAdvanceBookingDays ?? 90}
                       minNights={tenant.settings.dailyMinNights ?? 1}
                       maxNights={tenant.settings.dailyMaxNights ?? 30}
-                      checkInTime={tenant.settings.dailyCheckInTime ?? '14:00'}
-                      checkOutTime={tenant.settings.dailyCheckOutTime ?? '10:00'}
+                      checkInTime={selectedService?.checkInTime || tenant.settings.dailyCheckInTime || '14:00'}
+                      checkOutTime={selectedService?.checkOutTime || tenant.settings.dailyCheckOutTime || '10:00'}
                     />
                   </CardContent>
                 </Card>
@@ -1190,6 +1992,8 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
                       selectedDate={selectedDate}
                       onSelect={handleDateSelect}
                       maxAdvanceDays={tenant.settings.maxAdvanceBookingDays ?? 30}
+                      unavailableDates={availabilityMap}
+                      onMonthChange={handleMonthChange}
                     />
                   </CardContent>
                 </Card>
@@ -1220,6 +2024,8 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
                             onSelect={handleTimeSelect}
                             loading={loadingSlots}
                             groupByPeriod={tenant.settings.smartTimeSlots !== false}
+                            nextAvailableDate={nextAvailableDate}
+                            onJumpToDate={handleJumpToDate}
                           />
                         )}
                       </>
@@ -1237,18 +2043,20 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
                 </Card>
               </div>
             )}
+            </>
+            )}
           </div>
         )}
 
         {/* Step 3: Customer Details */}
-        {step === 'details' && selectedService && (isDailyMode ? (checkInDate && checkOutDate) : (selectedDate && selectedTime)) && (
+        {step === 'details' && selectedService && (selectedService.isPack ? (checkInDate && checkOutDate) : (isDailyMode ? (checkInDate && checkOutDate) : (selectedDate && selectedTime))) && (
           <div ref={formSectionRef} className="scroll-mt-24 max-w-xl mx-auto animate-fade-in">
             <button
-              onClick={() => setStep('datetime')}
+              onClick={() => selectedService?.isPack ? setStep('services') : setStep('datetime')}
               className="mb-5 inline-flex items-center gap-1 text-sm font-medium text-slate-700 dark:text-white hover:text-slate-900 dark:hover:text-white transition-colors border border-slate-300 dark:border-neutral-600 rounded-lg px-3 py-1.5 hover:border-slate-400 dark:hover:border-neutral-500 bg-white/80 dark:bg-neutral-800/80"
             >
               <ChevronLeft className="h-3.5 w-3.5" />
-              {isDailyMode ? 'Cambiar fechas' : 'Cambiar horario'}
+              {selectedService?.isPack ? `Cambiar ${terms.service.toLowerCase()}` : (isDailyMode ? 'Cambiar fechas' : 'Cambiar horario')}
             </button>
 
             {/* Booking Summary */}
@@ -1256,13 +2064,13 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
               <CardContent className="p-6">
                 <h3 className="font-semibold mb-5 flex items-center gap-2 text-slate-900 dark:text-white">
                   <CheckCircle2 className="h-5 w-5 text-slate-600 dark:text-neutral-400" />
-                  Resumen de tu reserva
+                  {`Resumen de tu ${terms.booking.toLowerCase()}`}
                 </h3>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-neutral-700/50">
                     <span className="text-muted-foreground flex items-center gap-2">
                       <Sparkles className="h-4 w-4 text-slate-500 dark:text-neutral-400" />
-                      Servicio
+                      {terms.service}
                     </span>
                     <span className="font-medium text-slate-900 dark:text-white">{selectedService.name}</span>
                   </div>
@@ -1276,7 +2084,7 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
                           Check-in
                         </span>
                         <span className="font-medium capitalize text-slate-900 dark:text-white">
-                          {format(checkInDate, "EEE d MMM", { locale: es })} ({tenant.settings.dailyCheckInTime ?? '14:00'} hs)
+                          {format(checkInDate, "EEE d MMM", { locale: es })} ({selectedService?.checkInTime || tenant.settings.dailyCheckInTime || '14:00'} hs)
                         </span>
                       </div>
                       <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-neutral-700/50">
@@ -1285,7 +2093,7 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
                           Check-out
                         </span>
                         <span className="font-medium capitalize text-slate-900 dark:text-white">
-                          {format(checkOutDate, "EEE d MMM", { locale: es })} ({tenant.settings.dailyCheckOutTime ?? '10:00'} hs)
+                          {format(checkOutDate, "EEE d MMM", { locale: es })} ({selectedService?.checkOutTime || tenant.settings.dailyCheckOutTime || '10:00'} hs)
                         </span>
                       </div>
                       <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-neutral-700/50">
@@ -1301,26 +2109,51 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
                         </span>
                       </div>
                       {selectedService.price !== null && (
-                        <>
-                          <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-neutral-700/50">
-                            <span className="text-muted-foreground flex items-center gap-2">
-                              <CreditCard className="h-4 w-4 text-slate-500 dark:text-neutral-400" />
-                              Precio por noche
-                            </span>
-                            <span className="font-medium text-slate-900 dark:text-white">
-                              {formatPrice(selectedService.price)}
-                            </span>
-                          </div>
-                          <div className="flex items-center justify-between p-4 rounded-lg bg-slate-900 dark:bg-white text-white dark:text-neutral-900">
-                            <span className="font-semibold">Total</span>
-                            <span className="text-xl font-bold">
-                              {(() => {
-                                const nights = Math.round((checkOutDate.getTime() - checkInDate.getTime()) / (24 * 3600000));
-                                return formatPrice((selectedService.price || 0) * nights);
-                              })()}
-                            </span>
-                          </div>
-                        </>
+                        selectedService.isPack ? (
+                          <>
+                            {/* Pack pricing: original tachado + precio pack */}
+                            {selectedService.packOriginalPrice && (
+                              <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-neutral-700/50">
+                                <span className="text-muted-foreground flex items-center gap-2">
+                                  <CreditCard className="h-4 w-4 text-slate-500 dark:text-neutral-400" />
+                                  Precio sin descuento
+                                </span>
+                                <span className="font-medium text-slate-400 line-through">
+                                  {formatPrice(selectedService.packOriginalPrice)}
+                                </span>
+                              </div>
+                            )}
+                            <div className="flex items-center justify-between p-4 rounded-lg bg-amber-500 text-white">
+                              <span className="font-semibold">Precio del pack</span>
+                              <span className="text-xl font-bold">{formatPrice(selectedService.price)}</span>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            {/* Normal daily pricing */}
+                            <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-neutral-700/50">
+                              <span className="text-muted-foreground flex items-center gap-2">
+                                <CreditCard className="h-4 w-4 text-slate-500 dark:text-neutral-400" />
+                                Precio por noche
+                              </span>
+                              <span className="font-medium text-slate-900 dark:text-white">
+                                {selectedService.promoPrice != null ? (
+                                  <PriceDisplay price={selectedService.price} promoPrice={selectedService.promoPrice} promoLabel={selectedService.promoLabel} />
+                                ) : formatPrice(selectedService.price)}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between p-4 rounded-lg bg-slate-900 dark:bg-white text-white dark:text-neutral-900">
+                              <span className="font-semibold">Total</span>
+                              <span className="text-xl font-bold">
+                                {(() => {
+                                  const nights = Math.round((checkOutDate.getTime() - checkInDate.getTime()) / (24 * 3600000));
+                                  const pricePerNight = selectedService.promoPrice ?? selectedService.price ?? 0;
+                                  return formatPrice(pricePerNight * nights);
+                                })()}
+                              </span>
+                            </div>
+                          </>
+                        )
                       )}
                     </>
                   ) : (
@@ -1357,37 +2190,63 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
                         <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-neutral-700/50">
                           <span className="text-muted-foreground flex items-center gap-2">
                             <User className="h-4 w-4 text-slate-500 dark:text-neutral-400" />
-                            Profesional
+                            {terms.professional}
                           </span>
                           <span className="font-medium text-slate-900 dark:text-white">{selectedEmployee.name}</span>
                         </div>
                       )}
-                      {selectedService.price !== null && (
-                        <div className="flex items-center justify-between p-4 rounded-lg bg-slate-900 dark:bg-white text-white dark:text-neutral-900">
-                          <span className="font-semibold">Total a pagar</span>
-                          <span className="text-xl font-bold">
-                            {formatPrice(selectedService.price)}
+                      {selectedBookingMode && (
+                        <div className="flex items-center justify-between p-3 rounded-lg bg-indigo-50 dark:bg-indigo-900/30">
+                          <span className="text-indigo-600 dark:text-indigo-400 flex items-center gap-2">
+                            {selectedBookingMode === 'online' ? <Video className="h-4 w-4" /> : <MapPin className="h-4 w-4" />}
+                            Modalidad
                           </span>
+                          <Badge className="bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 border-0">
+                            {selectedBookingMode === 'online' ? 'Online' : 'Presencial'}
+                          </Badge>
                         </div>
                       )}
+                      {selectedService.price !== null && (() => {
+                        const { price: effectivePrice } = getEffectivePriceAndDuration(selectedService, bookingVariations);
+                        const basePrice = effectivePrice ?? selectedService.price ?? 0;
+                        const finalPrice = selectedService.promoPrice ?? basePrice;
+                        return (
+                          <>
+                            {selectedService.promoPrice != null && (
+                              <div className="flex items-center justify-between p-3 rounded-lg bg-red-50 dark:bg-red-900/20">
+                                <span className="text-red-600 dark:text-red-400 flex items-center gap-2 text-sm font-medium">
+                                  {selectedService.promoLabel || 'Oferta'}
+                                </span>
+                                <span className="text-sm line-through text-slate-400">{formatPrice(basePrice)}</span>
+                              </div>
+                            )}
+                            <div className="flex items-center justify-between p-4 rounded-lg bg-slate-900 dark:bg-white text-white dark:text-neutral-900">
+                              <span className="font-semibold">Total a pagar</span>
+                              <span className="text-xl font-bold">
+                                {formatPrice(finalPrice)}
+                              </span>
+                            </div>
+                          </>
+                        );
+                      })()}
                     </>
                   )}
                 </div>
               </CardContent>
             </Card>
 
-            {/* Employee Selection (Optional) */}
-            {employees.length > 0 && (
+            {/* Employee Selection (Optional) — hidden when employee_first since already chosen */}
+            {employees.length > 0 && !(isEmployeeFirst && selectedEmployee) && (
               <Card className="mb-6 border border-slate-200 dark:border-neutral-700 shadow-sm bg-white dark:bg-neutral-800">
                 <CardContent className="p-6">
                   <h3 className="font-semibold mb-2 flex items-center gap-2 text-slate-900 dark:text-white">
                     <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-neutral-700 flex items-center justify-center">
                       <Users className="h-4 w-4 text-slate-600 dark:text-neutral-300" />
                     </div>
-                    ¿Querés elegir un profesional?
+                    {`¿Querés elegir un ${terms.professional.toLowerCase()}?`}
                   </h3>
                   <p className="text-sm text-muted-foreground mb-4">
-                    Opcional. Si no seleccionás, cualquier profesional disponible te atenderá.
+                    {`Opcional. Si no seleccionás, cualquier ${terms.professional.toLowerCase()} disponible te atenderá.`}
                   </p>
 
                   {loadingEmployees ? (
@@ -1410,7 +2269,7 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
                           <Users className="h-6 w-6" />
                         </div>
                         <div className="flex-1 text-left">
-                          <p className="font-medium text-slate-900 dark:text-white">Cualquier profesional</p>
+                          <p className="font-medium text-slate-900 dark:text-white">{`Cualquier ${terms.professional.toLowerCase()}`}</p>
                           <p className="text-sm text-muted-foreground">El primero disponible</p>
                         </div>
                         {selectedEmployee === null && (
@@ -1421,7 +2280,9 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
                       </button>
 
                       {/* Individual employees */}
-                      {employees.map((employee) => (
+                      {employees.map((employee) => {
+                        const emp = employee as EmployeePublic & { customPrice?: number | null; customDuration?: number | null };
+                        return (
                         <button
                           key={employee.id}
                           type="button"
@@ -1445,8 +2306,14 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
                           )}
                           <div className="flex-1 text-left">
                             <p className="font-medium text-slate-900 dark:text-white">{employee.name}</p>
-                            {employee.specialty && (
+                            {employee.credentials && (
+                              <p className="text-xs text-amber-600 dark:text-amber-400">{employee.credentials}</p>
+                            )}
+                            {employee.specialty && !employee.credentials && (
                               <p className="text-sm text-muted-foreground">{employee.specialty}</p>
+                            )}
+                            {emp.customPrice != null && tenant.settings.showPrices && (
+                              <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400 mt-0.5">{formatPrice(emp.customPrice)}</p>
                             )}
                           </div>
                           {selectedEmployee?.id === employee.id && (
@@ -1455,22 +2322,124 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
                             </div>
                           )}
                         </button>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </CardContent>
               </Card>
             )}
 
+            {/* Intake Form (if service has one) */}
+            {intakeFormFields.length > 0 && (
+              <Card className="mb-6 border border-slate-200 dark:border-neutral-700 shadow-sm bg-white dark:bg-neutral-800">
+                <CardContent className="p-6">
+                  <h3 className="font-semibold mb-4 flex items-center gap-2 text-slate-900 dark:text-white">
+                    <ClipboardList className="h-5 w-5 text-slate-600 dark:text-neutral-400" />
+                    Información adicional
+                  </h3>
+                  <div className="space-y-4">
+                    {intakeFormFields.map((field) => (
+                      <div key={field.id} className="space-y-1.5">
+                        <label className="text-sm font-medium text-slate-700 dark:text-neutral-300">
+                          {field.label}
+                          {field.required && <span className="text-red-500 ml-1">*</span>}
+                        </label>
+                        {field.type === 'textarea' ? (
+                          <textarea
+                            value={String(intakeFormData[field.id] || '')}
+                            onChange={(e) => setIntakeFormData(prev => ({ ...prev, [field.id]: e.target.value }))}
+                            placeholder={field.placeholder || ''}
+                            rows={3}
+                            className="flex w-full rounded-lg border border-slate-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-slate-400 dark:focus:ring-neutral-500 resize-none"
+                          />
+                        ) : field.type === 'select' ? (
+                          <select
+                            value={String(intakeFormData[field.id] || '')}
+                            onChange={(e) => setIntakeFormData(prev => ({ ...prev, [field.id]: e.target.value }))}
+                            className="flex h-10 w-full rounded-lg border border-slate-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 dark:focus:ring-neutral-500"
+                          >
+                            <option value="">{field.placeholder || 'Seleccionar...'}</option>
+                            {(field.options || []).map((opt) => (
+                              <option key={opt} value={opt}>{opt}</option>
+                            ))}
+                          </select>
+                        ) : field.type === 'radio' ? (
+                          <div className="flex flex-wrap gap-2">
+                            {(field.options || []).map((opt) => (
+                              <button
+                                key={opt}
+                                type="button"
+                                onClick={() => setIntakeFormData(prev => ({ ...prev, [field.id]: opt }))}
+                                className={cn(
+                                  'px-3 py-1.5 rounded-lg border text-sm transition-all',
+                                  intakeFormData[field.id] === opt
+                                    ? 'border-slate-800 dark:border-white bg-slate-800 dark:bg-white text-white dark:text-neutral-900'
+                                    : 'border-slate-300 dark:border-neutral-600 hover:border-slate-400 dark:hover:border-neutral-500 text-slate-700 dark:text-neutral-300'
+                                )}
+                              >
+                                {opt}
+                              </button>
+                            ))}
+                          </div>
+                        ) : field.type === 'checkbox' ? (
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={Boolean(intakeFormData[field.id])}
+                              onChange={(e) => setIntakeFormData(prev => ({ ...prev, [field.id]: e.target.checked }))}
+                              className="h-4 w-4 rounded border-slate-300 dark:border-neutral-600 text-slate-800 focus:ring-slate-400"
+                            />
+                            <span className="text-sm text-slate-600 dark:text-neutral-400">{field.placeholder || field.label}</span>
+                          </label>
+                        ) : (
+                          <input
+                            type={field.type === 'email' ? 'email' : field.type === 'phone' ? 'tel' : field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}
+                            value={String(intakeFormData[field.id] || '')}
+                            onChange={(e) => setIntakeFormData(prev => ({ ...prev, [field.id]: e.target.value }))}
+                            placeholder={field.placeholder || ''}
+                            className="flex h-10 w-full rounded-lg border border-slate-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-slate-400 dark:focus:ring-neutral-500"
+                          />
+                        )}
+                        {field.helpText && (
+                          <p className="text-xs text-muted-foreground">{field.helpText}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Customer Form with Real-time Validation */}
             <div ref={customerFormRef} className="scroll-mt-24">
-              <BookingCustomerForm
-                requireEmail={tenant.settings.requireEmail}
-                onSubmit={handleFormSubmit}
-                isSubmitting={isSubmitting}
-                externalError={bookingError}
-                onClearError={resetBooking}
-              />
+              {(() => {
+                const activeStyle = (tenant.settings.cardStyle as HeroStyleName) || (tenant.settings.heroStyle as HeroStyleName) || 'classic';
+                const styleCfg = HERO_STYLES[activeStyle] || HERO_STYLES.classic;
+                // Derive input radius from card radius (slightly smaller for visual hierarchy)
+                const INPUT_RADIUS_MAP: Record<string, string> = {
+                  'rounded-2xl': 'rounded-xl',
+                  'rounded-xl': 'rounded-lg',
+                  'rounded-lg': 'rounded-lg',
+                  'rounded-md': 'rounded-md',
+                  'rounded-sm': 'rounded-sm',
+                };
+                return (
+                  <BookingCustomerForm
+                    requireEmail={tenant.settings.requireEmail}
+                    onSubmit={handleFormSubmit}
+                    isSubmitting={isSubmitting}
+                    externalError={bookingError}
+                    onClearError={resetBooking}
+                    styleProps={{
+                      ctaBtnClasses: styleCfg.modalCtaBtnClasses,
+                      cardRadius: styleCfg.cardRadius,
+                      inputRadius: INPUT_RADIUS_MAP[styleCfg.cardRadius] || 'rounded-xl',
+                      iconAccentClasses: `bg-[hsl(var(--tenant-primary-50))] dark:bg-[hsl(var(--tenant-primary-900)_/_0.3)]`,
+                    }}
+                  />
+                );
+              })()}
             </div>
           </div>
         )}
@@ -1483,7 +2452,7 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
               <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-5 py-3">
                 <div className="flex items-center gap-2 text-white">
                   <Clock className="h-4 w-4" />
-                  <span className="text-sm font-medium">Falta un paso para confirmar tu {isDailyMode ? 'reserva' : 'turno'}</span>
+                  <span className="text-sm font-medium">{`Falta un paso para confirmar tu ${isDailyMode ? terms.booking.toLowerCase() : terms.appointment.toLowerCase()}`}</span>
                 </div>
               </div>
               <CardContent className="p-5">
@@ -1510,7 +2479,7 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
                 {selectedService.price !== null && (
                   <div className="flex items-center justify-between p-4 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800">
                     <div>
-                      <p className="text-sm text-emerald-700 dark:text-emerald-400">Seña ({tenant.settings.depositPercentage || 30}%)</p>
+                      <p className="text-sm text-emerald-700 dark:text-emerald-400">{depositLabel} ({tenant.settings.depositPercentage || 30}%)</p>
                       <p className="text-xs text-muted-foreground mt-0.5">
                         Resto en el local: {formatPrice((selectedService.price || 0) - (pendingBooking.depositAmount || 0))}
                       </p>
@@ -1588,10 +2557,10 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
             </div>
 
             <h2 className="text-2xl md:text-3xl font-bold mb-3 text-slate-900 dark:text-white">
-              ¡Reserva Confirmada!
+              ¡{terms.booking} Confirmada!
             </h2>
             <p className="text-muted-foreground text-base mb-4">
-              {isDailyMode ? 'Tu estadía ha sido registrada exitosamente.' : 'Tu turno ha sido registrado exitosamente.'}
+              {isDailyMode ? 'Tu estadía ha sido registrada exitosamente.' : `Tu ${terms.appointment.toLowerCase()} ha sido registrado exitosamente.`}
             </p>
 
             {/* Email Confirmation Banner */}
@@ -1604,6 +2573,32 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
               </span>
             </div>
 
+            {/* Video Call Link */}
+            {((bookingResult as BookingResponse)?.videoJoinUrl || pendingBooking?.videoJoinUrl) && (
+              <div className="mb-8 p-4 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-xl text-left">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-indigo-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Video className="h-5 w-5 text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-indigo-800 dark:text-indigo-300">Sesión online</p>
+                    <p className="text-sm text-indigo-600 dark:text-indigo-400 mt-0.5">
+                      También recibirás el link por email y WhatsApp
+                    </p>
+                  </div>
+                </div>
+                <a
+                  href={(bookingResult as BookingResponse)?.videoJoinUrl || pendingBooking?.videoJoinUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-3 w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors"
+                >
+                  <Video className="h-4 w-4" />
+                  Entrar a la sesión
+                </a>
+              </div>
+            )}
+
             {/* Booking Details Card - only show if we have details (not from MP redirect) */}
             {selectedService && (
               <Card className="text-left mb-8 border border-slate-200 dark:border-neutral-700 shadow-sm bg-white dark:bg-neutral-800">
@@ -1613,7 +2608,7 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
                       {selectedService.name.charAt(0)}
                     </div>
                     <div>
-                      <p className="text-sm text-muted-foreground">Reserva en</p>
+                      <p className="text-sm text-muted-foreground">{terms.booking} en</p>
                       <p className="font-semibold text-lg text-slate-900 dark:text-white">{tenant.name}</p>
                     </div>
                   </div>
@@ -1622,7 +2617,7 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
                     <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-neutral-700/50">
                       <span className="text-muted-foreground flex items-center gap-2">
                         <Sparkles className="h-4 w-4 text-slate-500 dark:text-neutral-400" />
-                        Servicio
+                        {terms.service}
                       </span>
                       <span className="font-medium text-slate-900 dark:text-white">{selectedService.name}</span>
                     </div>
@@ -1634,7 +2629,7 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
                             Check-in
                           </span>
                           <span className="font-medium capitalize text-slate-900 dark:text-white">
-                            {format(checkInDate, "EEE d MMM", { locale: es })} ({tenant.settings.dailyCheckInTime ?? '14:00'} hs)
+                            {format(checkInDate, "EEE d MMM", { locale: es })} ({selectedService?.checkInTime || tenant.settings.dailyCheckInTime || '14:00'} hs)
                           </span>
                         </div>
                         <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-neutral-700/50">
@@ -1643,7 +2638,7 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
                             Check-out
                           </span>
                           <span className="font-medium capitalize text-slate-900 dark:text-white">
-                            {format(checkOutDate, "EEE d MMM", { locale: es })} ({tenant.settings.dailyCheckOutTime ?? '10:00'} hs)
+                            {format(checkOutDate, "EEE d MMM", { locale: es })} ({selectedService?.checkOutTime || tenant.settings.dailyCheckOutTime || '10:00'} hs)
                           </span>
                         </div>
                         <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-neutral-700/50">
@@ -1682,7 +2677,7 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
                           <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-neutral-700/50">
                             <span className="text-muted-foreground flex items-center gap-2">
                               <User className="h-4 w-4 text-slate-500 dark:text-neutral-400" />
-                              Profesional
+                              {terms.professional}
                             </span>
                             <span className="font-medium text-slate-900 dark:text-white">{selectedEmployee.name}</span>
                           </div>
@@ -1704,7 +2699,7 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
                     </div>
                     <div>
                       <p className="font-semibold text-lg text-slate-900 dark:text-white">{tenant.name}</p>
-                      <p className="text-sm text-muted-foreground">Tu pago fue procesado y el turno quedó confirmado</p>
+                      <p className="text-sm text-muted-foreground">{`Tu pago fue procesado y el ${terms.appointment.toLowerCase()} quedó confirmado`}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -1718,12 +2713,78 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
                 className="h-10 px-6 border-slate-300 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-neutral-700"
                 onClick={handleReset}
               >
-                {isDailyMode ? 'Hacer otra reserva' : 'Reservar otro turno'}
+                {isDailyMode ? `Hacer otra ${terms.booking.toLowerCase()}` : `${terms.bookAction} otro ${terms.appointment.toLowerCase()}`}
               </Button>
             </div>
           </div>
         )}
       </main>
+
+      {/* Tenant-level YouTube + Amenities (for single-property pages) */}
+      {!isEmbed && (tenant.settings.youtubeVideoUrl || (tenant.settings.amenities && tenant.settings.amenities.length > 0)) && (
+        <section className="py-8 md:py-12 px-4 relative z-10">
+          <div className="max-w-4xl mx-auto space-y-8">
+            {/* YouTube Video */}
+            {tenant.settings.youtubeVideoUrl && (() => {
+              const videoId = extractYoutubeId(tenant.settings.youtubeVideoUrl);
+              if (!videoId) return null;
+              return (
+                <div>
+                  <h2 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white mb-4 text-center">Conocé el lugar</h2>
+                  <div className="relative w-full rounded-2xl overflow-hidden shadow-lg" style={{ paddingBottom: '56.25%' }}>
+                    <iframe
+                      className="absolute inset-0 w-full h-full"
+                      src={`https://www.youtube-nocookie.com/embed/${videoId}?rel=0&modestbranding=1&iv_load_policy=3&color=white`}
+                      title="Video del negocio"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Amenities Showcase */}
+            {tenant.settings.amenities && tenant.settings.amenities.length > 0 && tenant.settings.rubro && (() => {
+              const amenities = getSelectedAmenities(tenant.settings.rubro, tenant.settings.amenities);
+              if (amenities.length === 0) return null;
+              const accentColor = tenant.settings.primaryColor || '#3F8697';
+              return (
+                <div className="rounded-2xl md:rounded-3xl overflow-hidden border border-slate-200/80 dark:border-neutral-700/60 shadow-md">
+                  {/* Header bar */}
+                  <div className="px-6 py-4 md:py-5 flex flex-col items-center gap-1.5 text-center" style={{ background: `linear-gradient(135deg, ${accentColor}15, ${accentColor}08)` }}>
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-sm" style={{ backgroundColor: `${accentColor}20` }}>
+                      <Sparkles className="h-4.5 w-4.5" style={{ color: accentColor }} />
+                    </div>
+                    <h2 className="text-base md:text-lg font-bold text-slate-900 dark:text-white leading-tight">{getRubroUIConfig(tenant.settings.rubro || '').amenitiesLabel || 'Comodidades'}</h2>
+                  </div>
+                  {/* Amenities grid */}
+                  <div className="px-4 md:px-6 py-5 md:py-6 bg-white/80 dark:bg-neutral-900/60 backdrop-blur-sm">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 md:gap-3">
+                      {amenities.map(amenity => {
+                        const IconComponent = AMENITY_ICON_MAP[amenity.icon];
+                        return (
+                          <div key={amenity.id} className="flex items-center gap-3 px-3.5 py-3 rounded-xl bg-slate-50 dark:bg-neutral-800/70 border border-slate-100 dark:border-neutral-700/50 hover:border-slate-200 dark:hover:border-neutral-600 transition-colors group">
+                            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-110" style={{ backgroundColor: `${accentColor}12` }}>
+                              {IconComponent
+                                ? <IconComponent className="h-4 w-4" style={{ color: accentColor }} />
+                                : <Sparkles className="h-4 w-4" style={{ color: accentColor }} />}
+                            </div>
+                            <span className="text-sm font-medium text-slate-700 dark:text-neutral-200 leading-tight">{amenity.label}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        </section>
+      )}
+
+      {/* Reviews Section (hidden in embed) */}
+      {!isEmbed && <PublicReviewsSection slug={slug} />}
 
       {/* Location Section with Carousel (hidden in embed) */}
       {!isEmbed && (
@@ -1759,7 +2820,7 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
       {isEmbed ? (
         <footer className="py-3 text-center relative z-10">
           <a
-            href="https://app.turnolink.com"
+            href="https://turnolink.com.ar/register"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 text-xs text-slate-400 dark:text-neutral-500 hover:text-slate-600 dark:hover:text-neutral-300 transition-colors"
@@ -1773,15 +2834,13 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
         <footer className="bg-slate-900 text-white mt-auto relative z-10">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-5">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-4 sm:gap-6 text-slate-400 text-xs">
-                <span className="inline-flex items-center gap-1.5"><Zap className="h-3.5 w-3.5" />Rápida</span>
-                <span className="inline-flex items-center gap-1.5"><Shield className="h-3.5 w-3.5" />Segura</span>
-                <span className="inline-flex items-center gap-1.5"><Star className="h-3.5 w-3.5" />Premium</span>
-              </div>
+              <a href="/register" className="inline-flex items-center gap-2 text-xs font-medium text-[#4DA4B8] hover:text-white transition-colors">
+                Creá tu cuenta gratis en TurnoLink →
+              </a>
               <div className="flex items-center gap-2 text-xs text-slate-500">
-                <span>Reservas por</span>
-                <a href="/" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
-                  <img src="/oscuro2.png" alt="TurnoLink" className="h-8 w-auto" />
+                <span>Powered by</span>
+                <a href="/register" className="hover:opacity-80 transition-opacity">
+                  <img src="/oscuro2.png" alt="TurnoLink" className="h-7 w-auto" />
                 </a>
                 <span className="hidden sm:inline">· © {new Date().getFullYear()}</span>
               </div>
@@ -1794,14 +2853,19 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
         {showServiceDetail && serviceForDetail && (
           <div
             className="fixed inset-0 z-50 flex items-end md:items-center justify-center"
-            onClick={() => setShowServiceDetail(false)}
+            onClick={closeServiceDetail}
           >
-            {/* Backdrop */}
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" />
+            {/* Backdrop — stays fixed, fades as modal drags down */}
+            <div
+              className={`absolute inset-0 bg-black/60 backdrop-blur-sm ${svcEntryDone ? '' : 'animate-fade-in'}`}
+              style={svcSwipeDragY > 0 ? { opacity: Math.max(1 - svcSwipeDragY / 300, 0), transition: svcSwipeAnimating ? 'opacity 0.3s ease-out' : 'none' } : undefined}
+            />
 
             {/* Modal Content */}
             <div
-              className="relative w-full md:max-w-lg bg-white dark:bg-neutral-900 rounded-t-3xl md:rounded-2xl shadow-2xl max-h-[85vh] overflow-hidden animate-slide-up"
+              ref={serviceModalRef}
+              className={`relative w-full md:max-w-lg bg-white dark:bg-neutral-900 rounded-t-3xl md:rounded-2xl shadow-2xl max-h-[85vh] overflow-hidden ${svcEntryDone ? '' : 'animate-slide-up'}`}
+              style={svcSwipeDragY > 0 ? { transform: `translateY(${svcSwipeDragY}px)`, transition: svcSwipeAnimating ? 'transform 0.25s ease-out' : 'none' } : undefined}
               onClick={(e) => e.stopPropagation()}
             >
               {/* Drag handle for mobile */}
@@ -1811,7 +2875,7 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
 
               {/* Close button */}
               <button
-                onClick={() => setShowServiceDetail(false)}
+                onClick={closeServiceDetail}
                 className="absolute top-4 right-4 z-10 w-8 h-8 rounded-full bg-white/90 dark:bg-neutral-800/90 shadow-md flex items-center justify-center hover:bg-white dark:hover:bg-neutral-700 transition-colors"
               >
                 <X className="h-4 w-4 text-slate-600 dark:text-neutral-300" />
@@ -1869,10 +2933,62 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
                   </div>
                 )}
 
+                {/* Service YouTube Video */}
+                {serviceForDetail.youtubeVideoUrl && (() => {
+                  const videoId = extractYoutubeId(serviceForDetail.youtubeVideoUrl);
+                  if (!videoId) return null;
+                  return (
+                    <div className="mb-5">
+                      <div className="relative w-full rounded-xl overflow-hidden shadow-sm" style={{ paddingBottom: '56.25%' }}>
+                        <iframe
+                          className="absolute inset-0 w-full h-full"
+                          src={`https://www.youtube-nocookie.com/embed/${videoId}?rel=0&modestbranding=1&iv_load_policy=3&color=white`}
+                          title="Video del servicio"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                        />
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Service Amenities */}
+                {serviceForDetail.amenities && serviceForDetail.amenities.length > 0 && tenant.settings.rubro && (() => {
+                  const amenities = getSelectedAmenities(tenant.settings.rubro, serviceForDetail.amenities);
+                  if (amenities.length === 0) return null;
+                  return (
+                    <div className="mb-5">
+                      <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-lg bg-teal-100 dark:bg-teal-900/40 flex items-center justify-center">
+                          <Sparkles className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
+                        </div>
+                        Comodidades
+                      </h3>
+                      <div className="grid grid-cols-2 gap-2">
+                        {amenities.map(amenity => {
+                          const IconComponent = AMENITY_ICON_MAP[amenity.icon];
+                          return (
+                            <div key={amenity.id} className="flex items-center gap-2.5 p-2.5 rounded-lg bg-teal-50/50 dark:bg-teal-900/10 border border-teal-100 dark:border-teal-800/30">
+                              {IconComponent
+                                ? <IconComponent className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400 flex-shrink-0" />
+                                : <Sparkles className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400 flex-shrink-0" />}
+                              <span className="text-sm text-slate-700 dark:text-neutral-300">{amenity.label}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 {/* Variation Selector */}
-                {serviceForDetail.variations && serviceForDetail.variations.length > 0 && (
+                {(() => {
+                  const validGroups = serviceForDetail.variations
+                    ?.filter(g => g.label?.trim() && g.options?.some(o => o.name?.trim()))
+                    .map(g => ({ ...g, options: g.options.filter(o => o.name?.trim()) })) || [];
+                  return validGroups.length > 0 && (
                   <div className="mb-5 space-y-4">
-                    {serviceForDetail.variations.map(group => (
+                    {validGroups.map(group => (
                       <div key={group.id}>
                         <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-2.5 flex items-center gap-2">
                           <div className="w-6 h-6 rounded-lg bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center">
@@ -1937,18 +3053,68 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
                       </div>
                     ))}
                   </div>
-                )}
+                  );
+                })()}
 
                 {/* Quick info summary */}
                 {(() => {
                   const effective = getEffectivePriceAndDuration(serviceForDetail, selectedVariations);
-                  const hs = (tenant.settings.heroStyle as HeroStyleName) || 'classic';
                   const priceColors = {
-                    bg: 'bg-[hsl(var(--tenant-primary-50))] dark:bg-[hsl(var(--tenant-primary-900)_/_0.2)]',
-                    icon: 'text-[hsl(var(--tenant-primary-600))] dark:text-[hsl(var(--tenant-primary-400))]',
-                    label: 'text-[hsl(var(--tenant-primary-600))] dark:text-[hsl(var(--tenant-primary-500))]',
-                    value: 'text-[hsl(var(--tenant-primary-700))] dark:text-[hsl(var(--tenant-primary-400))]',
+                    bg: 'bg-emerald-50 dark:bg-emerald-900/20',
+                    icon: 'text-emerald-600 dark:text-emerald-400',
+                    label: 'text-emerald-600 dark:text-emerald-500',
+                    value: 'text-emerald-700 dark:text-emerald-400',
                   };
+
+                  if (serviceForDetail.isPack) {
+                    const packCheckIn = serviceForDetail.packCheckIn ? new Date(serviceForDetail.packCheckIn) : null;
+                    const packCheckOut = serviceForDetail.packCheckOut ? new Date(serviceForDetail.packCheckOut) : null;
+                    const nights = packCheckIn && packCheckOut ? Math.round((packCheckOut.getTime() - packCheckIn.getTime()) / (24 * 3600000)) : null;
+                    return (
+                      <div className="space-y-3 mb-6">
+                        <div className="grid grid-cols-2 gap-3">
+                          {packCheckIn && (
+                            <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 text-center">
+                              <CalendarDays className="h-5 w-5 mx-auto mb-1 text-amber-600 dark:text-amber-400" />
+                              <p className="text-xs text-amber-600 dark:text-amber-500">Check-in</p>
+                              <p className="font-semibold text-slate-900 dark:text-white text-sm">{format(packCheckIn, "d 'de' MMM", { locale: es })}</p>
+                            </div>
+                          )}
+                          {packCheckOut && (
+                            <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 text-center">
+                              <CalendarDays className="h-5 w-5 mx-auto mb-1 text-amber-600 dark:text-amber-400" />
+                              <p className="text-xs text-amber-600 dark:text-amber-500">Check-out</p>
+                              <p className="font-semibold text-slate-900 dark:text-white text-sm">{format(packCheckOut, "d 'de' MMM", { locale: es })}</p>
+                            </div>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          {nights && (
+                            <div className="p-3 rounded-xl bg-slate-50 dark:bg-neutral-800/50 text-center">
+                              <Moon className="h-5 w-5 mx-auto mb-1 text-slate-500 dark:text-neutral-400" />
+                              <p className="text-xs text-slate-500 dark:text-neutral-500">Estadía</p>
+                              <p className="font-semibold text-slate-900 dark:text-white">{nights} {nights === 1 ? 'noche' : 'noches'}</p>
+                            </div>
+                          )}
+                          {tenant.settings.showPrices && (
+                            <div className={`p-3 rounded-xl ${priceColors.bg} text-center`}>
+                              <CreditCard className={`h-5 w-5 mx-auto mb-1 ${priceColors.icon}`} />
+                              <p className={`text-xs ${priceColors.label}`}>Precio pack</p>
+                              <p className={`font-bold ${priceColors.value}`}>
+                                {serviceForDetail.packOriginalPrice ? (
+                                  <span className="flex flex-col items-center">
+                                    <span className="text-xs line-through text-slate-400 dark:text-neutral-500">{formatPrice(serviceForDetail.packOriginalPrice)}</span>
+                                    <span>{formatPrice(serviceForDetail.price!)}</span>
+                                  </span>
+                                ) : formatPrice(serviceForDetail.price!)}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  }
+
                   return (
                     <div className="grid grid-cols-2 gap-3 mb-6">
                       <div className="p-3 rounded-xl bg-slate-50 dark:bg-neutral-800/50 text-center">
@@ -1960,7 +3126,14 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
                         <div className={`p-3 rounded-xl ${priceColors.bg} text-center`}>
                           <CreditCard className={`h-5 w-5 mx-auto mb-1 ${priceColors.icon}`} />
                           <p className={`text-xs ${priceColors.label}`}>Precio</p>
-                          <p className={`font-bold ${priceColors.value}`}>{formatPrice(effective.price)}</p>
+                          <p className={`font-bold ${priceColors.value}`}>
+                            {serviceForDetail.promoPrice != null ? (
+                              <span className="flex flex-col items-center">
+                                <span className="text-xs line-through text-slate-400 dark:text-neutral-500">{formatPrice(effective.price)}</span>
+                                <span>{formatPrice(serviceForDetail.promoPrice)}</span>
+                              </span>
+                            ) : formatPrice(effective.price)}
+                          </p>
                         </div>
                       )}
                     </div>
@@ -1973,20 +3146,24 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
                   <Button
                     onClick={() => {
                       setShowServiceDetail(false);
-                      setBookingVariations(selectedVariations);
-                      handleServiceSelect(serviceForDetail);
+                      if (serviceForDetail.isPack) {
+                        handlePackSelect(serviceForDetail);
+                      } else {
+                        setBookingVariations(selectedVariations);
+                        handleServiceSelect(serviceForDetail, selectedVariations);
+                      }
                     }}
                     disabled={!allRequiredVariationsSelected(serviceForDetail, selectedVariations)}
                     className={`w-full h-12 ${(HERO_STYLES[(tenant.settings.cardStyle as HeroStyleName) || (tenant.settings.heroStyle as HeroStyleName) || 'classic'] || HERO_STYLES.classic).modalCtaBtnClasses} font-semibold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed`}
                   >
-                    Reservar este servicio
+                    {`${terms.bookAction} este ${serviceForDetail.isPack ? 'pack' : terms.service.toLowerCase()}`}
                     <ArrowRight className="h-4 w-4 ml-2" />
                   </Button>
 
                   {/* Close button - Secondary */}
                   <Button
                     variant="outline"
-                    onClick={() => setShowServiceDetail(false)}
+                    onClick={closeServiceDetail}
                     className="w-full h-11 border-slate-200 dark:border-neutral-700 text-slate-600 dark:text-neutral-300 font-medium rounded-xl"
                   >
                     Cerrar
@@ -2084,13 +3261,20 @@ function ServiceImageCarousel({
         </div>
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
         <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between">
-          <Badge className={durationBadgeCls}>
-            <Timer className="h-3.5 w-3.5 mr-1.5" />
-            {formatDuration(service.duration)}
-          </Badge>
+          {service.isPack ? (
+            <Badge className={durationBadgeCls}>
+              <Moon className="h-3.5 w-3.5 mr-1.5" />
+              {service.packNights ? `${service.packNights} noches` : 'Pack'}
+            </Badge>
+          ) : (
+            <Badge className={durationBadgeCls}>
+              <Timer className="h-3.5 w-3.5 mr-1.5" />
+              {formatDuration(service.duration)}
+            </Badge>
+          )}
           {service.price !== null && showPrices && (
             <Badge className={`${priceBadgeCls} border-0 shadow-md text-base font-bold px-4 py-1.5`}>
-              {formatPrice(service.price)}
+              {service.promoPrice != null ? <PriceDisplay price={service.price} promoPrice={service.promoPrice} promoLabel={service.promoLabel} /> : formatPrice(service.price)}
             </Badge>
           )}
         </div>
@@ -2113,11 +3297,13 @@ function ServiceImageCarousel({
         {allImages.map((url, i) =>
           getModeForIndex(i) === 'contain' ? (
             <div key={i} className="relative w-full h-full flex-shrink-0">
-              <img src={url} alt="" className="absolute inset-0 w-full h-full object-cover blur-xl scale-110 opacity-60" draggable={false} />
-              <img src={url} alt={`${service.name} ${i + 1}`} className="relative w-full h-full object-contain" draggable={false} />
+              <Image src={url} alt="" fill sizes="100vw" className="object-cover blur-xl scale-110 opacity-60" draggable={false} />
+              <Image src={url} alt={`${service.name} ${i + 1}`} fill sizes="100vw" className="object-contain" draggable={false} />
             </div>
           ) : (
-            <img key={i} src={url} alt={`${service.name} ${i + 1}`} className="w-full h-full object-cover flex-shrink-0" draggable={false} />
+            <div key={i} className="relative w-full h-full flex-shrink-0">
+              <Image src={url} alt={`${service.name} ${i + 1}`} fill sizes="100vw" className="object-cover" draggable={false} />
+            </div>
           )
         )}
       </div>
@@ -2162,13 +3348,20 @@ function ServiceImageCarousel({
 
       {/* Duration & Price badges */}
       <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between">
-        <Badge className="bg-white/95 dark:bg-neutral-900/95 text-slate-700 dark:text-neutral-200 border-0 shadow-md backdrop-blur-sm font-medium px-3 py-1">
-          <Timer className="h-3.5 w-3.5 mr-1.5" />
-          {formatDuration(service.duration)}
-        </Badge>
+        {service.isPack ? (
+          <Badge className="bg-white/95 dark:bg-neutral-900/95 text-slate-700 dark:text-neutral-200 border-0 shadow-md backdrop-blur-sm font-medium px-3 py-1">
+            <Moon className="h-3.5 w-3.5 mr-1.5" />
+            {service.packNights ? `${service.packNights} noches` : 'Pack'}
+          </Badge>
+        ) : (
+          <Badge className="bg-white/95 dark:bg-neutral-900/95 text-slate-700 dark:text-neutral-200 border-0 shadow-md backdrop-blur-sm font-medium px-3 py-1">
+            <Timer className="h-3.5 w-3.5 mr-1.5" />
+            {formatDuration(service.duration)}
+          </Badge>
+        )}
         {service.price !== null && showPrices && (
           <Badge className={`${priceBadgeCls} border-0 shadow-md text-base font-bold px-4 py-1.5`}>
-            {formatPrice(service.price)}
+            {service.promoPrice != null ? <PriceDisplay price={service.price} promoPrice={service.promoPrice} promoLabel={service.promoLabel} /> : formatPrice(service.price)}
           </Badge>
         )}
       </div>

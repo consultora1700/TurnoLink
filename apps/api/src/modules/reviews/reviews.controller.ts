@@ -6,15 +6,15 @@ import {
   Body,
   Param,
   Query,
-  UseGuards,
   Request,
 } from '@nestjs/common';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { Public } from '../../common/decorators/public.decorator';
 import { ReviewsService, TenantStats } from './reviews.service';
 
 // ============ PUBLIC ENDPOINTS ============
 
 @Controller('public/reviews')
+@Public()
 export class PublicReviewsController {
   constructor(private readonly reviewsService: ReviewsService) {}
 
@@ -24,21 +24,38 @@ export class PublicReviewsController {
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
   ) {
-    // Get tenant by slug first
-    const stats = await this.reviewsService.getPublicStats(slug);
-    return stats;
+    return this.reviewsService.getPublicReviews(slug, {
+      limit: limit ? parseInt(limit, 10) : 10,
+      offset: offset ? parseInt(offset, 10) : 0,
+    });
   }
 
   @Get(':slug/stats')
   async getPublicStats(@Param('slug') slug: string) {
     return this.reviewsService.getPublicStats(slug);
   }
+
+  @Get(':slug/booking-info')
+  async getBookingInfo(
+    @Param('slug') slug: string,
+    @Query('bookingId') bookingId: string,
+    @Query('token') token: string,
+  ) {
+    return this.reviewsService.getBookingInfoForReview(slug, bookingId, token);
+  }
+
+  @Post(':slug/submit')
+  async submitReview(
+    @Param('slug') slug: string,
+    @Body() dto: { bookingId: string; token: string; rating: number; comment?: string },
+  ) {
+    return this.reviewsService.submitPublicReview(slug, dto);
+  }
 }
 
 // ============ AUTHENTICATED ENDPOINTS ============
 
 @Controller('reviews')
-@UseGuards(JwtAuthGuard)
 export class ReviewsController {
   constructor(private readonly reviewsService: ReviewsService) {}
 
@@ -50,6 +67,11 @@ export class ReviewsController {
   @Get('stats')
   async getStats(@Request() req: any) {
     return this.reviewsService.getTenantStats(req.user.tenantId);
+  }
+
+  @Get('hide-quota')
+  async getHideQuota(@Request() req: any) {
+    return this.reviewsService.getHideQuota(req.user.tenantId);
   }
 
   @Post()
@@ -67,5 +89,23 @@ export class ReviewsController {
     @Body('isVisible') isVisible: boolean,
   ) {
     return this.reviewsService.updateReviewVisibility(id, req.user.tenantId, isVisible);
+  }
+
+  @Patch(':id/response')
+  async respondToReview(
+    @Request() req: any,
+    @Param('id') id: string,
+    @Body('response') response: string | null,
+  ) {
+    return this.reviewsService.respondToReview(id, req.user.tenantId, response);
+  }
+
+  @Patch(':id/flag')
+  async flagReview(
+    @Request() req: any,
+    @Param('id') id: string,
+    @Body('reason') reason: string,
+  ) {
+    return this.reviewsService.flagReview(id, req.user.tenantId, reason);
   }
 }

@@ -13,7 +13,7 @@ const formatDate = (dateStr: string) => {
   return d.toLocaleDateString('es-AR', { day: '2-digit', month: 'short' });
 };
 
-export function RevenueChart({ data }: { data: RevenueReport }) {
+export function RevenueChart({ data, subtitle }: { data: RevenueReport; subtitle?: string }) {
   const mid = Math.floor(data.data.length / 2);
   const firstHalf = data.data.slice(0, mid).reduce((s, d) => s + d.revenue, 0);
   const secondHalf = data.data.slice(mid).reduce((s, d) => s + d.revenue, 0);
@@ -26,7 +26,7 @@ export function RevenueChart({ data }: { data: RevenueReport }) {
           <div>
             <CardTitle className="text-base">Ingresos en el Tiempo</CardTitle>
             <CardDescription className="text-xs mt-0.5">
-              Evolución de ingresos por reservas completadas
+              {subtitle || 'Evolución de ingresos por reservas completadas'}
             </CardDescription>
           </div>
           <div className="text-right shrink-0">

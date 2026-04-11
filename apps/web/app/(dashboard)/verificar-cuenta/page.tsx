@@ -40,7 +40,7 @@ export default function VerificarCuentaPage() {
       if (!session?.accessToken) return;
       try {
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL || 'https://api-turnolink.mubitt.com'}/api/email-verification/status`,
+          `${process.env.NEXT_PUBLIC_API_URL || 'https://api.turnolink.com.ar'}/api/email-verification/status`,
           {
             headers: { Authorization: `Bearer ${session.accessToken}` },
           }
@@ -75,7 +75,7 @@ export default function VerificarCuentaPage() {
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'https://api-turnolink.mubitt.com'}/api/email-verification/send`,
+        `${process.env.NEXT_PUBLIC_API_URL || 'https://api.turnolink.com.ar'}/api/email-verification/send`,
         {
           method: 'POST',
           headers: {
@@ -107,7 +107,7 @@ export default function VerificarCuentaPage() {
     setLoading(true);
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'https://api-turnolink.mubitt.com'}/api/email-verification/status`,
+        `${process.env.NEXT_PUBLIC_API_URL || 'https://api.turnolink.com.ar'}/api/email-verification/status`,
         {
           headers: { Authorization: `Bearer ${session.accessToken}` },
         }

@@ -887,8 +887,10 @@ export function PaymentFlowUI() {
           {/* Official Mercado Pago logo */}
           <div className="bg-white rounded-lg px-3 py-1.5">
             <img
-              src="/mercadopago-logo.svg"
+              src="/mercadopago-logo.webp"
               alt="Mercado Pago"
+              width={400}
+              height={104}
               className="h-5 object-contain"
             />
           </div>

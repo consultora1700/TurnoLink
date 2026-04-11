@@ -260,6 +260,46 @@ export interface SubscriptionPlan {
   order: number;
 }
 
+// ==================== MAP TYPES ====================
+
+export interface MapBusiness {
+  id: string;
+  name: string;
+  slug: string;
+  city: string | null;
+  address: string | null;
+  status: string;
+  logo: string | null;
+  type: string;
+  lat: number;
+  lng: number;
+  plan: string | null;
+  subscriptionStatus: string | null;
+}
+
+export interface MapProfessional {
+  id: string;
+  name: string;
+  specialty: string | null;
+  category: string | null;
+  zone: string | null;
+  openToWork: boolean;
+  profileVisible: boolean;
+  lat: number;
+  lng: number;
+  image: string | null;
+}
+
+export interface MapEntitiesResponse {
+  businesses: MapBusiness[];
+  professionals: MapProfessional[];
+  counts: {
+    businesses: number;
+    professionals: number;
+    total: number;
+  };
+}
+
 export interface PaginatedResponse<T> {
   data: T[];
   pagination: {
@@ -268,6 +308,44 @@ export interface PaginatedResponse<T> {
     total: number;
     totalPages: number;
   };
+}
+
+export interface AdminIndustryGroup {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  industries: string[];
+  limitLabels: Record<string, string | null>;
+  isActive: boolean;
+  order: number;
+  createdAt: string;
+  updatedAt: string;
+  _count?: { plans: number };
+}
+
+export interface AdminPlan {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  priceMonthly: string;
+  priceYearly: string | null;
+  currency: string;
+  trialDays: number;
+  maxBranches: number | null;
+  maxEmployees: number | null;
+  maxServices: number | null;
+  maxBookingsMonth: number | null;
+  maxCustomers: number | null;
+  features: string[];
+  isPopular: boolean;
+  isActive: boolean;
+  order: number;
+  industryGroupId: string | null;
+  industryGroup: AdminIndustryGroup | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // =============================================================================
@@ -471,6 +549,142 @@ class AdminApiClient {
 
   async getSecurityMetrics(): Promise<SecurityMetrics> {
     return this.request('/api/admin/security/metrics');
+  }
+
+  // ==================== MAP ====================
+
+  async getMapEntities(type?: string): Promise<MapEntitiesResponse> {
+    const query = type ? `?type=${type}` : '';
+    return this.request(`/api/admin/map/entities${query}`);
+  }
+
+  // ==================== INDUSTRY GROUPS & PLANS ====================
+
+  async getIndustryGroups(): Promise<AdminIndustryGroup[]> {
+    return this.request('/api/admin/industry-groups');
+  }
+
+  async createIndustryGroup(data: {
+    slug: string;
+    name: string;
+    description?: string;
+    industries?: string[];
+    limitLabels?: Record<string, string | null>;
+    order?: number;
+  }): Promise<AdminIndustryGroup> {
+    return this.request('/api/admin/industry-groups', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateIndustryGroup(id: string, data: {
+    name?: string;
+    description?: string;
+    industries?: string[];
+    limitLabels?: Record<string, string | null>;
+    order?: number;
+    isActive?: boolean;
+  }): Promise<AdminIndustryGroup> {
+    return this.request(`/api/admin/industry-groups/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getAdminPlans(): Promise<AdminPlan[]> {
+    return this.request('/api/admin/plans');
+  }
+
+  async createPlan(data: {
+    name: string;
+    slug: string;
+    description?: string;
+    priceMonthly: number;
+    priceYearly: number;
+    trialDays?: number;
+    maxBranches?: number | null;
+    maxEmployees?: number | null;
+    maxServices?: number | null;
+    maxBookingsMonth?: number | null;
+    maxCustomers?: number | null;
+    features?: string[];
+    isPopular?: boolean;
+    order?: number;
+    industryGroupId?: string;
+  }): Promise<AdminPlan> {
+    return this.request('/api/admin/plans', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updatePlan(id: string, data: {
+    name?: string;
+    description?: string;
+    priceMonthly?: number;
+    priceYearly?: number;
+    trialDays?: number;
+    maxBranches?: number | null;
+    maxEmployees?: number | null;
+    maxServices?: number | null;
+    maxBookingsMonth?: number | null;
+    maxCustomers?: number | null;
+    features?: string[];
+    isPopular?: boolean;
+    isActive?: boolean;
+    order?: number;
+    industryGroupId?: string | null;
+  }): Promise<AdminPlan> {
+    return this.request(`/api/admin/plans/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deactivatePlan(id: string): Promise<void> {
+    return this.request(`/api/admin/plans/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async seedIndustryPlans(): Promise<{ message: string }> {
+    return this.request('/api/admin/plans/seed', {
+      method: 'POST',
+    });
+  }
+
+  // ==================== PROMO CODES ====================
+
+  async getPromoCodes(): Promise<any[]> {
+    return this.request('/api/admin/promo-codes');
+  }
+
+  async createPromoCode(data: {
+    code: string;
+    description?: string;
+    discountPercent: number;
+    planId: string;
+    maxUses?: number;
+    expiresAt?: string;
+  }): Promise<any> {
+    return this.request('/api/admin/promo-codes', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updatePromoCode(id: string, data: Record<string, any>): Promise<any> {
+    return this.request(`/api/admin/promo-codes/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deactivatePromoCode(id: string): Promise<void> {
+    return this.request(`/api/admin/promo-codes/${id}`, {
+      method: 'DELETE',
+    });
   }
 
   // ==================== AUTH ====================

@@ -20,7 +20,8 @@ export type HeroStyleName =
   | 'zen'
   | 'corporate'
   | 'energetic'
-  | 'warm';
+  | 'warm'
+  | 'minimalist';
 
 export interface HeroStyleConfig {
   // ── Hero background (when there's NO cover image) ──────────────────────
@@ -88,6 +89,7 @@ export const HERO_STYLE_OPTIONS: {
   { value: 'corporate',  label: 'Profesional',   description: 'Compacto lado a lado, fondo formal', industry: 'Abogados, contadores, consultoría' },
   { value: 'energetic',  label: 'Energético',    description: 'Gradiente vibrante con triángulos', industry: 'Fitness, deporte, crossfit' },
   { value: 'warm',       label: 'Cálido',        description: 'Tonos suaves y bordes redondeados', industry: 'Gastronomía, veterinaria, guardería' },
+  { value: 'minimalist', label: 'Minimalista',   description: 'Blanco puro, ultra limpio, sin decoraciones', industry: 'Freelancers, coaches, terapeutas' },
 ];
 
 export const CARD_STYLE_OPTIONS: {
@@ -103,6 +105,7 @@ export const CARD_STYLE_OPTIONS: {
   { value: 'zen',        label: 'Zen',           description: 'Texto centrado, botón redondeado' },
   { value: 'corporate',  label: 'Profesional',   description: 'Filas compactas tipo lista' },
   { value: 'energetic',  label: 'Energético',    description: 'Botón gradiente, precio en badge' },
+  { value: 'minimalist', label: 'Minimalista',   description: 'Lista limpia, bordes sutiles, botón texto' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -117,6 +120,7 @@ export const HERO_STYLE_DEFAULT_COLORS: Record<HeroStyleName, { primary: string;
   corporate:  { primary: '#3B82F6', secondary: '#6366F1', accent: '#10B981' },
   energetic:  { primary: '#F97316', secondary: '#EF4444', accent: '#EAB308' },
   warm:       { primary: '#F59E0B', secondary: '#14B8A6', accent: '#10B981' },
+  minimalist: { primary: '#0069FF', secondary: '#1A1A1A', accent: '#10B981' },
 };
 
 // Card styles share the same color palette as their matching hero style,
@@ -138,6 +142,7 @@ export const HERO_STYLE_COVER_DEFAULTS: Record<HeroStyleName, {
   corporate:  { coverOverlayColor: '#1e293b', coverOverlayOpacity: 65, coverFadeEnabled: false, coverFadeColor: '#1e293b' },
   energetic:  { coverOverlayColor: '#F97316', coverOverlayOpacity: 45, coverFadeEnabled: true,  coverFadeColor: '#000000' },
   warm:       { coverOverlayColor: '#F59E0B', coverOverlayOpacity: 35, coverFadeEnabled: true,  coverFadeColor: '#f5f0e8' },
+  minimalist: { coverOverlayColor: '#ffffff', coverOverlayOpacity: 85, coverFadeEnabled: false, coverFadeColor: '#ffffff' },
 };
 
 // ---------------------------------------------------------------------------
@@ -408,5 +413,37 @@ export const HERO_STYLES: Record<HeroStyleName, HeroStyleConfig> = {
     cardFallbackLetterClasses: 'bg-gradient-to-br from-[hsl(var(--tenant-primary-500))] to-[hsl(var(--tenant-secondary-500))] bg-clip-text text-transparent',
     modalFallbackGradient: 'bg-gradient-to-br from-[hsl(var(--tenant-primary-400))] via-[hsl(var(--tenant-primary-400))] to-[hsl(var(--tenant-secondary-400))]',
     modalCtaBtnClasses: 'bg-[hsl(var(--tenant-primary-600))] hover:bg-[hsl(var(--tenant-primary-700))] dark:bg-[hsl(var(--tenant-primary-500))] dark:hover:bg-[hsl(var(--tenant-primary-600))] text-white shadow-lg shadow-[hsl(var(--tenant-primary-500)_/_0.25)]',
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // MINIMALIST — Pure white, zero decoration, Calendly-inspired
+  // ═══════════════════════════════════════════════════════════════════════
+  minimalist: {
+    heroBg: 'bg-[#F3F4F6] dark:bg-neutral-950',
+    heroPattern: null,
+    heroDecorativeBlobs: ['bg-transparent', 'bg-transparent'],
+    heroLayout: 'center',
+    heroPadding: 'py-8 lg:py-10',
+    logoRadius: 'rounded-full',
+    logoFallbackGradient: 'bg-gradient-to-br from-[hsl(var(--tenant-primary-500))] to-[hsl(var(--tenant-primary-600))]',
+    heroTextColor: 'dark',
+    nameWeight: 'font-semibold',
+    nameTracking: 'tracking-normal',
+    descriptionOpacity: 'text-slate-500',
+    onlineBadgeClasses: 'bg-[hsl(var(--tenant-primary-50))] text-[hsl(var(--tenant-primary-700))] border-[hsl(var(--tenant-primary-200))]',
+    contactBtnClasses: 'bg-transparent rounded-full hover:bg-slate-50 dark:hover:bg-neutral-800 transition-colors',
+    contactIconColors: ['text-slate-400', 'text-slate-400', 'text-slate-400'],
+    trustBadgeStyle: 'text-only',
+    trustBadgeTextClasses: 'text-slate-400',
+    statsBoxClasses: 'bg-white border border-slate-200 dark:bg-neutral-800 dark:border-neutral-700 rounded-xl',
+    cardRadius: 'rounded-xl',
+    cardBorder: 'hover:border-slate-300 dark:hover:border-neutral-600',
+    cardHoverEffect: '',
+    cardCtaClasses: 'text-[hsl(var(--tenant-primary-600))] dark:text-[hsl(var(--tenant-primary-400))] bg-transparent hover:bg-[hsl(var(--tenant-primary-50))] dark:hover:bg-[hsl(var(--tenant-primary-900)_/_0.2)]',
+    cardDesktopBtnClasses: 'bg-[hsl(var(--tenant-primary-600))] hover:bg-[hsl(var(--tenant-primary-700))] dark:bg-[hsl(var(--tenant-primary-500))] dark:hover:bg-[hsl(var(--tenant-primary-600))] text-white',
+    cardFallbackGradient: 'bg-[#F8F9FB] dark:bg-neutral-800',
+    cardFallbackLetterClasses: 'text-slate-300 dark:text-neutral-600',
+    modalFallbackGradient: 'bg-gradient-to-br from-slate-100 to-slate-200 dark:from-neutral-800 dark:to-neutral-900',
+    modalCtaBtnClasses: 'bg-[hsl(var(--tenant-primary-600))] hover:bg-[hsl(var(--tenant-primary-700))] dark:bg-[hsl(var(--tenant-primary-500))] dark:hover:bg-[hsl(var(--tenant-primary-600))] text-white',
   },
 };

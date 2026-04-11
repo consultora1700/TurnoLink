@@ -20,8 +20,10 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { createApiClient } from '@/lib/api';
+import { handleApiError } from '@/lib/notifications';
 import { getDayName } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { useTenantConfig, useRubroTerms } from '@/contexts/tenant-config-context';
 
 interface Schedule {
   id: string;
@@ -64,6 +66,8 @@ const CLOSED_DAY_LABELS = [
 export default function HorariosPage() {
   const { data: session } = useSession();
   const { toast } = useToast();
+  const { clientLabelPlural } = useTenantConfig();
+  const terms = useRubroTerms();
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -91,8 +95,9 @@ export default function HorariosPage() {
       const api = createApiClient(session.accessToken as string);
       const data = await api.getSchedules();
       setSchedules((data || []) as Schedule[]);
-    } catch {
+    } catch (error) {
       setSchedules([]);
+      handleApiError(error);
     } finally {
       setLoading(false);
     }
@@ -112,8 +117,8 @@ export default function HorariosPage() {
       if (settings.dailyMinNights != null) setDailyMinNights(Number(settings.dailyMinNights));
       if (settings.dailyMaxNights != null) setDailyMaxNights(Number(settings.dailyMaxNights));
       if (Array.isArray(settings.dailyClosedDays)) setDailyClosedDays(settings.dailyClosedDays);
-    } catch {
-      // Use defaults
+    } catch (error) {
+      handleApiError(error);
     }
   };
 
@@ -148,12 +153,8 @@ export default function HorariosPage() {
         title: 'Horarios guardados',
         description: 'Los horarios se actualizaron correctamente',
       });
-    } catch {
-      toast({
-        title: 'Error',
-        description: 'No se pudieron guardar los horarios',
-        variant: 'destructive',
-      });
+    } catch (error) {
+      handleApiError(error);
     } finally {
       setSaving(false);
     }
@@ -180,12 +181,8 @@ export default function HorariosPage() {
         title: 'Configuración guardada',
         description: 'La configuración de reservas por día se actualizó correctamente',
       });
-    } catch {
-      toast({
-        title: 'Error',
-        description: 'No se pudo guardar la configuración',
-        variant: 'destructive',
-      });
+    } catch (error) {
+      handleApiError(error);
     } finally {
       setSavingDaily(false);
     }
@@ -437,7 +434,7 @@ export default function HorariosPage() {
                   <div>
                     <h3 className="font-semibold mb-1">Consejo</h3>
                     <p className="text-sm text-muted-foreground">
-                      Recuerda que los clientes solo podrán reservar turnos dentro de los horarios que configures aquí.
+                      Recuerda que los {clientLabelPlural.toLowerCase()} solo podrán {terms.bookingVerb} {terms.bookingPlural.toLowerCase()} dentro de los horarios que configures aquí.
                       Asegúrate de mantener tus horarios actualizados para evitar confusiones.
                     </p>
                   </div>
@@ -583,7 +580,7 @@ export default function HorariosPage() {
                   <div>
                     <h3 className="font-semibold mb-1">Modo por Días</h3>
                     <p className="text-sm text-muted-foreground">
-                      En este modo, tus clientes reservan por rango de fechas (check-in → check-out) con precio por noche.
+                      En este modo, tus {clientLabelPlural.toLowerCase()} reservan por rango de fechas (check-in → check-out) con precio por noche.
                       El precio de cada servicio se interpreta como precio por noche.
                     </p>
                   </div>

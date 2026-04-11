@@ -26,10 +26,16 @@ model User {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
+  lastLoginAt   DateTime?
+
   // Security Relations
   totpSecret         TotpSecret?
   emailVerifications EmailVerification[]
   passwordResets     PasswordReset[]
+
+  // Employee Portal
+  employee           Employee?  @relation("EmployeeUser")
+  employeeAuditLogs  EmployeeAuditLog[]
 
   @@index([email])
   @@index([tenantId])
@@ -50,6 +56,8 @@ model Tenant {
   email       String?
   address     String?
   city        String?
+  latitude    Decimal?  @db.Decimal(10, 7)
+  longitude   Decimal?  @db.Decimal(10, 7)
   instagram   String?
   facebook    String?
   website     String?
@@ -78,8 +86,9 @@ model Tenant {
   carts                Cart[]
   orders               Order[]
   coupons              Coupon[]
-  mercadoPagoCredential MercadoPagoCredential?
-  depositPayments      DepositPayment[]
+  mercadoPagoCredential         MercadoPagoCredential?
+  videoIntegrationCredential    VideoIntegrationCredential?
+  depositPayments               DepositPayment[]
 
   // Subscription & Reviews Relations
   subscription         Subscription?
@@ -91,8 +100,72 @@ model Tenant {
   // Talent Proposals
   talentProposals      TalentProposal[]
 
+  // Job Postings
+  jobPostings          JobPosting[]
+
   // API Keys
   apiKeys              ApiKey[]
+
+  // Specialties
+  specialties          Specialty[]
+
+  // Intake forms
+  intakeForms          IntakeForm[]
+  intakeSubmissions    IntakeSubmission[]
+
+  // Employee Portal
+  employeeInvitations  EmployeeInvitation[]
+  employeeAuditLogs    EmployeeAuditLog[]
+
+  // Promo Codes
+  promoCodeRedemptions PromoCodeRedemption[]
+
+  // Finance
+  expenses             Expense[]
+  budgets              Budget[]
+  revenueGoals         RevenueGoal[]
+  expenseAlerts        ExpenseAlert[]
+
+  // Quotes (Presupuestos)
+  quotes               Quote[]
+
+  // Loyalty
+  loyaltyProgram   LoyaltyProgram?
+  sorteos          Sorteo[]
+
+  // Gastro Salon
+  tableSessions      TableSession[]
+  kitchenStations    KitchenStation[]
+  kitchenComandas    KitchenComanda[]
+
+  // Rental Management (Inmobiliarias)
+  propertyOwners       PropertyOwner[]
+  rentalProperties     RentalProperty[]
+  rentalContracts      RentalContract[]
+  rentalTenants        RentalTenant[]
+  rentalPayments       RentalPayment[]
+  contractAdjustments  ContractAdjustment[]
+  propertyExpenses     PropertyExpenseRecord[]
+  ownerLiquidations    OwnerLiquidation[]
+
+  // Development Projects (Pozo/Preventa)
+  developmentProjects  DevelopmentProject[]
+
+  // CRM Leads (Inmobiliarias)
+  leads                Lead[]
+
+  // Property Deposits / Señas (Inmobiliarias)
+  propertyDeposits     PropertyDeposit[]
+
+  // Guarantee Records (Inmobiliarias)
+  guaranteeRecords     GuaranteeRecord[]
+
+  // Document Templates (Inmobiliarias)
+  documentTemplates    DocumentTemplate[]
+
+  // Professional configuration
+  publicPageLayout     String   @default("employee_first") // employee_first | specialty_first | service_first
+  publicPageConfig     String   @default("{}") // JSON: terminology, display toggles, etc.
 
   @@index([slug])
   @@index([status])
@@ -215,17 +288,62 @@ model BranchEmployee {
 }
 
 model EmployeeService {
-  id         String   @id @default(uuid())
-  employeeId String
-  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  serviceId  String
-  service    Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-  createdAt  DateTime @default(now())
+  id             String   @id @default(uuid())
+  employeeId     String
+  employee       Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  serviceId      String
+  service        Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  customPrice    Decimal? @db.Decimal(10, 2) // Precio diferencial por profesional (null = usa precio del servicio)
+  customDuration Int?     // Duración diferencial en minutos (null = usa duración del servicio)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @default(now()) @updatedAt
 
   @@unique([employeeId, serviceId])
   @@index([employeeId])
   @@index([serviceId])
   @@map("employee_services")
+}
+
+// ============ SPECIALTIES ============
+
+model Specialty {
+  id          String   @id @default(uuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name        String   // "Derecho Civil", "Psicología Cognitiva", "Colorimetría"
+  slug        String
+  description String?
+  icon        String?  // Lucide icon name or emoji
+  isActive    Boolean  @default(true)
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  services            Service[]
+  employeeSpecialties EmployeeSpecialty[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+  @@index([tenantId, isActive])
+  @@map("specialties")
+}
+
+model EmployeeSpecialty {
+  id           String   @id @default(uuid())
+  employeeId   String
+  employee     Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  specialtyId  String
+  specialty    Specialty @relation(fields: [specialtyId], references: [id], onDelete: Cascade)
+  seniorityLevel String? // junior | senior | partner (overrides employee.seniority for this specialty)
+  customRate     Decimal? @db.Decimal(10, 2) // Tarifa diferencial por especialidad
+  createdAt    DateTime @default(now())
+
+  @@unique([employeeId, specialtyId])
+  @@index([employeeId])
+  @@index([specialtyId])
+  @@map("employee_specialties")
 }
 
 // ============ EMPLOYEES ============
@@ -234,30 +352,82 @@ model Employee {
   id        String    @id @default(uuid())
   tenantId  String
   tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId    String?   @unique
+  user      User?     @relation("EmployeeUser", fields: [userId], references: [id], onDelete: SetNull)
+  employeeRole EmployeeRole @default(STAFF)
   name      String
   email     String?
   phone     String?
   image     String?
-  specialty String?   // Ej: "Colorista", "Masajista", etc.
+  specialty String?   // Ej: "Colorista", "Masajista", etc. (legacy, usar specialties relation)
   bio       String?   // Breve descripción
+  credentials       String?   // Matrícula, títulos: "CPACF T° 98 F° 123"
+  seniority         String?   // junior | senior | partner
+  isPubliclyVisible Boolean   @default(true) // Visible en la página pública de booking
   isActive  Boolean   @default(true)
   order     Int       @default(0)
+
+  // Delivery staff fields
+  isDelivery        Boolean   @default(false) // true = repartidor (aparece en dropdown de asignación de pedidos)
+  deliveryVehicle   String?   // moto, bici, auto, a_pie
+  deliveryZone      String?   // notas de zona ej "Zona norte CABA"
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt          DateTime? // Soft delete timestamp
   welcomeEmailSentAt DateTime? // Tracks when welcome email was sent
 
   // Relations
-  bookings         Booking[]
-  branchEmployees  BranchEmployee[]
-  employeeServices EmployeeService[]
-  employeeTokens   EmployeeToken[]
+  bookings             Booking[]
+  deliveryOrders       Order[]          @relation("DeliveryEmployee")
+  branchEmployees      BranchEmployee[]
+  employeeServices     EmployeeService[]
+  employeeTokens       EmployeeToken[]
+  employeeSpecialties  EmployeeSpecialty[]
+  employeeSchedules    EmployeeSchedule[]
+  employeeBlockedDates EmployeeBlockedDate[]
+  invitations          EmployeeInvitation[]
+  auditLogs            EmployeeAuditLog[]
+  tableSessions        TableSession[]
 
   @@index([tenantId])
   @@index([isActive])
   @@index([tenantId, isActive])
   @@index([deletedAt])
+  @@index([userId])
+  @@index([tenantId, deletedAt])
   @@map("employees")
+}
+
+// ============ EMPLOYEE SCHEDULES ============
+
+model EmployeeSchedule {
+  id         String   @id @default(uuid())
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  dayOfWeek  Int      // 0-6: day of week
+  startTime  String   // HH:mm format
+  endTime    String   // HH:mm format
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([employeeId, dayOfWeek])
+  @@index([employeeId])
+  @@map("employee_schedules")
+}
+
+model EmployeeBlockedDate {
+  id         String   @id @default(uuid())
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  date       DateTime
+  reason     String?
+  createdAt  DateTime @default(now())
+
+  @@unique([employeeId, date])
+  @@index([employeeId])
+  @@index([date])
+  @@map("employee_blocked_dates")
 }
 
 // ============ EMPLOYEE TOKENS ============
@@ -298,6 +468,8 @@ model ProfessionalProfile {
   certifications  String    @default("[]")
   availability    String?
   preferredZones  String    @default("[]")
+  latitude        Decimal?  @db.Decimal(10, 7)
+  longitude       Decimal?  @db.Decimal(10, 7)
   consentedAt     DateTime?
   consentIp       String?
   openToWork      Boolean   @default(false)
@@ -306,8 +478,9 @@ model ProfessionalProfile {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  experiences ProfessionalExperience[]
-  proposals   TalentProposal[]
+  experiences     ProfessionalExperience[]
+  proposals       TalentProposal[]
+  jobApplications JobApplication[]
 
   @@index([employeeId])
   @@index([userId])
@@ -391,31 +564,67 @@ model Service {
   tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   categoryId  String?
   category    ServiceCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  specialtyId String?
+  specialty   Specialty?       @relation(fields: [specialtyId], references: [id], onDelete: SetNull)
   name        String
   description String?
   includes    String?          // What the service includes (features list)
   price       Decimal          @db.Decimal(10, 2)
   duration    Int
+  capacity    Int              @default(1)
+  mode        String           @default("presencial")  // presencial | online | ambos
+  assignmentMode   String      @default("client_chooses") // client_chooses | auto_assign | round_robin
+  intakeFormId     String?
+  intakeForm       IntakeForm? @relation(fields: [intakeFormId], references: [id], onDelete: SetNull)
   image       String?
   images           String  @default("[]")
   imageDisplayMode String  @default("cover")
   variations       String  @default("[]")
   isActive         Boolean @default(true)
+  visibleOnPublicPage Boolean @default(true)
   order       Int              @default(0)
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
   deletedAt   DateTime?        // Soft delete timestamp
 
+  // Daily mode: per-service check-in/out times (override tenant global)
+  checkInTime       String?   // e.g. "14:00"
+  checkOutTime      String?   // e.g. "10:00"
+
+  // Rich content per service (enabled via tenant toggle)
+  youtubeVideoUrl   String?
+  amenities         String    @default("[]")  // JSON array of amenity IDs
+
+  // Pack fields (daily mode only)
+  isPack            Boolean   @default(false)
+  packCheckIn       DateTime?
+  packCheckOut      DateTime?
+  packNights        Int?
+  packOriginalPrice Decimal?  @db.Decimal(10, 2)
+
+  // Promotion fields
+  promoPrice        Decimal?  @db.Decimal(10, 2)
+  promoStartDate    DateTime?
+  promoEndDate      DateTime?
+  promoMaxBookings  Int?
+  promoBookingCount Int       @default(0)
+  promoLabel        String?
+
   // Relations
   bookings         Booking[]
   branchServices   BranchService[]
   employeeServices EmployeeService[]
+  quoteItems       QuoteItem[]
 
   @@index([tenantId])
   @@index([categoryId])
+  @@index([specialtyId])
+  @@index([intakeFormId])
   @@index([isActive])
   @@index([tenantId, isActive])
+  @@index([tenantId, categoryId])
   @@index([deletedAt])
+  @@index([tenantId, deletedAt])
   @@map("services")
 }
 
@@ -463,6 +672,7 @@ model Customer {
   phone         String
   email         String?
   notes         String?
+  extraInfo     Json?
   totalBookings Int       @default(0)
   lastBookingAt DateTime?
   createdAt     DateTime  @default(now())
@@ -470,18 +680,29 @@ model Customer {
   deletedAt     DateTime? // Soft delete timestamp
 
   // Turnero Relations
-  bookings      Booking[]
-  reviews       Review[]
+  bookings          Booking[]
+  reviews           Review[]
+  intakeSubmissions  IntakeSubmission[]
 
   // E-Commerce Relations
   carts         Cart[]
   orders        Order[]
   wishlistItems WishlistItem[]
 
+  // Loyalty
+  loyaltyBalances      LoyaltyBalance[]
+  loyaltyTransactions  LoyaltyTransaction[]
+  rewardRedemptions    RewardRedemption[]
+
+  // Quotes
+  quotes               Quote[]
+
   @@unique([tenantId, phone])
   @@index([tenantId])
   @@index([phone])
   @@index([deletedAt])
+  @@index([tenantId, deletedAt])
+  @@index([tenantId, createdAt])
   @@map("customers")
 }
 
@@ -493,8 +714,11 @@ model Booking {
   tenant     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   branchId   String?
   branch     Branch?   @relation(fields: [branchId], references: [id], onDelete: SetNull)
-  serviceId  String
-  service    Service   @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  serviceId  String?
+  service    Service?  @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  productId  String?
+  product    Product?  @relation(fields: [productId], references: [id], onDelete: Restrict)
+  quantity   Int       @default(1)
   customerId String
   customer   Customer  @relation(fields: [customerId], references: [id], onDelete: Restrict)
   employeeId String?
@@ -513,23 +737,86 @@ model Booking {
   depositPaid      Boolean  @default(false)
   depositPaidAt    DateTime?
   depositReference String?  // Reference for payment tracking
+  // Contact snapshot (email provided at booking time, independent of Customer record)
+  customerEmail    String?
+  // Video call fields
+  bookingMode      String?   // "presencial" | "online"
+  videoProvider    String?   // "zoom" | "google_meet"
+  videoMeetingId   String?
+  videoJoinUrl     String?
+  // Reminder tracking
+  reminderSent     Boolean  @default(false)
+  // Assignment tracking
+  assignedBy       String   @default("client") // client | system | admin
+  assignmentReason String?  // "Auto-asignado por disponibilidad", "Round-robin", etc.
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
   // Relations
-  notifications Notification[]
+  notifications    Notification[]
+  review           Review?
+  intakeSubmissions IntakeSubmission[]
 
   @@index([tenantId])
   @@index([branchId])
   @@index([serviceId])
+  @@index([productId])
   @@index([customerId])
   @@index([employeeId])
+  @@index([employeeId, date])
+  @@index([customerId, date])
   @@index([date])
   @@index([status])
   @@index([tenantId, date])
   @@index([tenantId, status, date])
   @@index([tenantId, checkOutDate])
+  @@index([tenantId, date, status, startTime, endTime])
+  @@index([tenantId, date, checkOutDate, status])
   @@map("bookings")
+}
+
+// ============ INTAKE FORMS ============
+
+model IntakeForm {
+  id          String   @id @default(uuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name        String   // "Formulario de admisión", "Ficha inicial"
+  description String?
+  fields      Json     // Array of field definitions: [{ id, type, label, required, options?, placeholder? }]
+  isActive    Boolean  @default(true)
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  services    Service[]          // Services that require this form
+  submissions IntakeSubmission[]
+
+  @@index([tenantId])
+  @@index([tenantId, isActive])
+  @@map("intake_forms")
+}
+
+model IntakeSubmission {
+  id           String      @id @default(uuid())
+  tenantId     String
+  tenant       Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  intakeFormId String
+  intakeForm   IntakeForm  @relation(fields: [intakeFormId], references: [id], onDelete: Cascade)
+  bookingId    String?
+  booking      Booking?    @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  customerId   String?
+  customer     Customer?   @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  data         Json        // { fieldId: value, ... }
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@index([tenantId])
+  @@index([intakeFormId])
+  @@index([bookingId])
+  @@index([customerId])
+  @@map("intake_submissions")
 }
 
 // ============ MEDIA ============
@@ -543,6 +830,8 @@ model Media {
   mimeType     String
   size         Int
   url          String
+  thumbnailUrl String?
+  fallbackUrl  String?
   folder       String?
   createdAt    DateTime @default(now())
 
@@ -621,6 +910,54 @@ model TenantBranding {
   // Public Page Customization
   backgroundStyle    String   @default("modern") // minimal, modern, elegant, fresh, vibrant
 
+  // Store Visual Customization
+  storeHeroStyle       String   @default("classic")     // classic, centered, banner, split, minimal, gradient
+  storeCardStyle       String   @default("standard")    // standard, minimal, compact, editorial, detailed, rounded
+  profilePhotoStyle    String   @default("round")       // none, round, square
+  announcementEnabled  Boolean  @default(false)
+  announcementText     String?
+  announcementBgColor  String   @default("#000000")
+  announcementTextColor String  @default("#FFFFFF")
+  announcementSpeed    String   @default("normal")      // slow, normal, fast
+  showCategoryFilter   Boolean  @default(true)
+  showSearchBar        Boolean  @default(true)
+  showWhatsappButton   Boolean  @default(true)
+
+  // Advanced Store Customization
+  buttonStyle          String   @default("pill")        // pill, rounded, square, ghost
+  buttonText           String   @default("Consultar")
+  cardBorderRadius     String   @default("lg")          // sm, md, lg, xl, 2xl
+  imageAspectRatio     String   @default("square")      // square, portrait, landscape
+  heroHeight           String   @default("medium")      // compact, medium, tall, full
+  heroOverlay          String   @default("gradient")    // gradient, solid, blur, none
+  mobileColumns        Int      @default(2)             // 1, 2
+  priceStyle           String   @default("default")     // default, badge, highlight, minimal
+  categoryStyle        String   @default("pills")       // pills, underline, cards
+
+  // Logo Scale (zoom)
+  logoScale            Float    @default(1.0)            // 0.5 to 2.0
+  logoOffsetX          Float    @default(0)              // -50 to 50 percentage
+  logoOffsetY          Float    @default(0)              // -50 to 50 percentage
+
+  // Logo Glow
+  logoGlowEnabled      Boolean  @default(false)
+  logoGlowColor        String   @default("#6366f1")
+  logoGlowIntensity    String   @default("medium")      // subtle, medium, strong
+
+  // Background Effects
+  backgroundEffect       String   @default("none")      // none, particles, dots, grid, waves, gradient-mesh, bokeh, aurora
+  backgroundEffectColor  String   @default("#6366f1")
+  backgroundEffectOpacity Float  @default(0.15)
+
+  // Page Gradient
+  gradientEnabled    Boolean @default(false)
+  gradientStyle      String  @default("fade")         // fade (white→dark) or immersive (dark→white→dark)
+  gradientFrom       String  @default("#ffffff")
+  gradientTo         String  @default("#111827")
+
+  // Carousel banners
+  carouselImages     Json     @default("[]")
+
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
@@ -672,8 +1009,11 @@ model Product {
 
   // Pricing
   price             Decimal  @db.Decimal(10, 2)
+  priceDelivery     Decimal? @db.Decimal(10, 2)  // null = usa price base
+  priceTakeaway     Decimal? @db.Decimal(10, 2)  // null = usa price base
   compareAtPrice    Decimal? @db.Decimal(10, 2)
   costPrice         Decimal? @db.Decimal(10, 2)
+  currency          String?  // null = tenant default (ARS). Override per-product: "USD", "ARS", etc.
 
   // Inventory
   sku               String?
@@ -685,6 +1025,9 @@ model Product {
   type              String   @default("PHYSICAL") // PHYSICAL, DIGITAL, SERVICE
   digitalFileUrl    String?
 
+  // Ficha técnica: [{key, label, value, type, unit?}]
+  attributes        Json?
+
   // Status
   isActive          Boolean  @default(true)
   isFeatured        Boolean  @default(false)
@@ -693,12 +1036,19 @@ model Product {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
+  // Kitchen Station routing (gastro)
+  kitchenStationId  String?
+  kitchenStation    KitchenStation? @relation(fields: [kitchenStationId], references: [id], onDelete: SetNull)
+
   // Relations
   images            ProductImage[]
   variants          ProductVariant[]
   cartItems         CartItem[]
   orderItems        OrderItem[]
   wishlistItems     WishlistItem[]
+  bookings          Booking[]
+  quoteItems        QuoteItem[]
+  rentalProperties  RentalProperty[]
 
   @@unique([tenantId, slug])
   @@index([tenantId])
@@ -810,7 +1160,25 @@ model Order {
   customerName     String
 
   // Status
-  status           String   @default("PENDING") // PENDING, CONFIRMED, PROCESSING, SHIPPED, DELIVERED, CANCELLED
+  status           String   @default("PENDING") // PENDING, CONFIRMED, PROCESSING, READY, SHIPPED, ARRIVED, DELIVERED, CANCELLED
+
+  // Gastro: when true, order is created without payment method.
+  // Customer chooses payment AFTER commerce accepts (PENDING -> CONFIRMED).
+  // While true, order should not advance to PROCESSING until payment is resolved.
+  awaitingPayment  Boolean  @default(false)
+  paymentMethod    String?  // efectivo, mercadopago, transferencia — chosen by customer
+
+  // Delivery person token (for the temporary courier page)
+  deliveryToken      String?  @unique
+  deliveryEmployeeId String?
+  deliveryEmployee   Employee? @relation("DeliveryEmployee", fields: [deliveryEmployeeId], references: [id], onDelete: SetNull)
+
+  // Pickup word: short keyword the customer tells the courier to confirm delivery
+  pickupWord         String?
+
+  // Gastro order type
+  orderType        String?  // DINE_IN, TAKE_AWAY, DELIVERY (null for non-gastro orders)
+  tableNumber      String?  // For DINE_IN: "Mesa 5"
 
   // Totals
   subtotal         Decimal  @db.Decimal(10, 2)
@@ -846,6 +1214,8 @@ model Order {
   @@index([tenantId, status])
   @@index([tenantId, createdAt])
   @@index([status, createdAt])
+  @@index([tenantId, customerId])
+  @@index([tenantId, status, createdAt])
   @@map("orders")
 }
 
@@ -868,6 +1238,10 @@ model OrderItem {
   quantity        Int
   unitPrice       Decimal  @db.Decimal(10, 2)
   totalPrice      Decimal  @db.Decimal(10, 2)
+
+  // Gastro: item-level options and notes
+  options         String?  // JSON: [{ label: "Guarnición", value: "Papas fritas" }]
+  itemNotes       String?  // "Sin sal, sin cebolla"
 
   // For digital products
   downloadUrl     String?
@@ -932,6 +1306,8 @@ model Payment {
   @@index([orderId])
   @@index([mercadoPagoId])
   @@index([status])
+  @@index([externalReference])
+  @@index([status, externalReference])
   @@map("payments")
 }
 
@@ -1071,6 +1447,28 @@ model MercadoPagoCredential {
   @@map("mercadopago_credentials")
 }
 
+// ============ VIDEO INTEGRATION (Zoom / Google Meet) ============
+
+model VideoIntegrationCredential {
+  id             String    @id @default(uuid())
+  tenantId       String    @unique
+  tenant         Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  provider       String    // 'zoom' | 'google_meet'
+  accessToken    String    // AES-256-GCM encrypted
+  refreshToken   String?   // AES-256-GCM encrypted
+  iv             String    // Initialization vector
+  accountEmail   String?
+  expiresAt      DateTime?
+  isConnected    Boolean   @default(false)
+  connectedAt    DateTime?
+  disconnectedAt DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([tenantId])
+  @@map("video_integration_credentials")
+}
+
 // ============ DEPOSIT PAYMENTS (for booking deposits) ============
 
 model DepositPayment {
@@ -1107,6 +1505,7 @@ model DepositPayment {
   @@index([bookingId])
   @@index([status])
   @@index([tenantId, status])
+  @@index([externalReference])
   @@map("deposit_payments")
 }
 
@@ -1131,11 +1530,12 @@ model SubscriptionPlan {
   trialDays       Int      @default(14)
 
   // Limits (null = ilimitado)
-  maxBranches     Int      @default(1)   // Sucursales permitidas
-  maxEmployees    Int      @default(5)   // Empleados permitidos
+  maxBranches     Int?     // Sucursales permitidas, null = ilimitado
+  maxEmployees    Int?     // Empleados permitidos, null = ilimitado
   maxServices     Int?     // Servicios permitidos, null = ilimitado
   maxBookingsMonth Int?    // null = ilimitado
   maxCustomers    Int?     // Clientes permitidos, null = ilimitado
+  maxPhotos       Int?     // Fotos permitidas (media + product_images), null = ilimitado
 
   // Features (JSON array of feature slugs)
   features        String   @default("[]") // ["whatsapp", "mercadopago", "reports", etc.]
@@ -1148,10 +1548,36 @@ model SubscriptionPlan {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
+  // Industry Group
+  industryGroupId  String?
+  industryGroup    IndustryGroup? @relation(fields: [industryGroupId], references: [id])
+
   // Relations
   subscriptions   Subscription[]
+  promoCodes      PromoCode[]
 
+  @@index([industryGroupId])
   @@map("subscription_plans")
+}
+
+// ============ INDUSTRY GROUPS ============
+
+model IndustryGroup {
+  id          String   @id @default(uuid())
+  slug        String   @unique
+  name        String
+  description String?
+  industries  String   @default("[]")   // JSON: ["peluquerias","barberias",...]
+  limitLabels String   @default("{}")   // JSON: {"maxEmployees":"estilistas","maxBranches":"sucursales",...}
+  isActive    Boolean  @default(true)
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  plans       SubscriptionPlan[]
+
+  @@map("industry_groups")
 }
 
 // ============ SUBSCRIPTIONS ============
@@ -1176,6 +1602,9 @@ model Subscription {
   currentPeriodEnd    DateTime?
   cancelledAt         DateTime?
   cancelReason        String?
+
+  // Trial tracking
+  hasUsedTrial        Boolean   @default(false)
 
   // Mercado Pago Subscription
   mpSubscriptionId    String?   @unique // Mercado Pago preapproval ID
@@ -1223,7 +1652,231 @@ model SubscriptionPayment {
 
   @@index([subscriptionId])
   @@index([status])
+  @@index([paidAt])
   @@map("subscription_payments")
+}
+
+// ============ PROMO CODES ============
+
+model PromoCode {
+  id              String    @id @default(uuid())
+  code            String    @unique
+  description     String?
+
+  // Discount
+  discountPercent Int       // 0-100
+
+  // Plan restriction
+  planId          String
+  plan            SubscriptionPlan @relation(fields: [planId], references: [id])
+
+  // Usage
+  maxUses         Int       @default(1)
+  usedCount       Int       @default(0)
+
+  // Validity
+  isActive        Boolean   @default(true)
+  expiresAt       DateTime?
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  redemptions     PromoCodeRedemption[]
+
+  @@index([code])
+  @@index([planId])
+  @@map("promo_codes")
+}
+
+model PromoCodeRedemption {
+  id            String    @id @default(uuid())
+  promoCodeId   String
+  promoCode     PromoCode @relation(fields: [promoCodeId], references: [id])
+  tenantId      String
+  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  subscriptionId String?
+
+  // Applied discount
+  discountPercent Int
+  originalPrice   Decimal  @db.Decimal(10, 2)
+  discountedPrice Decimal  @db.Decimal(10, 2)
+
+  redeemedAt    DateTime  @default(now())
+
+  @@unique([promoCodeId, tenantId]) // Each tenant can use a code only once
+  @@index([tenantId])
+  @@map("promo_code_redemptions")
+}
+
+// ============ FINANCE / EXPENSES ============
+
+model Expense {
+  id          String   @id @default(uuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Type: EXPENSE or INCOME
+  type        String   @default("EXPENSE") // EXPENSE | INCOME
+
+  // Category
+  category    String   // EXPENSE: SALARY, RENT, TAXES, etc. | INCOME: FREELANCE, CONSULTING, RENTAL_INCOME, INVESTMENT, REFUND, OTHER_INCOME
+  description String?
+
+  // Amount
+  amount      Decimal  @db.Decimal(10, 2)
+  currency    String   @default("ARS")
+
+  // Recurrence
+  isRecurring Boolean  @default(false)
+  recurringDay Int?    // Day of month (1-31) for recurring expenses
+
+  // Period
+  date        DateTime @default(now()) // When expense occurred
+  month       Int      // 1-12
+  year        Int
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId, year, month])
+  @@index([tenantId, type, year, month])
+  @@index([tenantId, category])
+  @@map("expenses")
+}
+
+// ============ BUDGETS ============
+
+model Budget {
+  id        String   @id @default(uuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  category  String
+  amount    Decimal  @db.Decimal(10, 2)
+  month     Int
+  year      Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, category, month, year])
+  @@index([tenantId, year, month])
+  @@map("budgets")
+}
+
+// ============ REVENUE GOALS ============
+
+model RevenueGoal {
+  id        String   @id @default(uuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  amount    Decimal  @db.Decimal(10, 2)
+  month     Int
+  year      Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, month, year])
+  @@index([tenantId, year, month])
+  @@map("revenue_goals")
+}
+
+// ============ EXPENSE ALERTS ============
+
+model ExpenseAlert {
+  id        String   @id @default(uuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  category  String
+  threshold Decimal  @db.Decimal(10, 2)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, category])
+  @@index([tenantId])
+  @@map("expense_alerts")
+}
+
+// ============ QUOTES (PRESUPUESTOS) ============
+
+model Quote {
+  id              String   @id @default(uuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  quoteNumber     String   // #PR-0001
+  publicToken     String   @unique @default(uuid()) // for public access link
+
+  // Customer info (snapshot)
+  customerId      String?
+  customer        Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  customerName    String
+  customerPhone   String?
+  customerEmail   String?
+
+  // Status: DRAFT, SENT, VIEWED, ACCEPTED, REJECTED, EXPIRED
+  status          String   @default("DRAFT")
+
+  // Content
+  title           String?  // e.g. "Presupuesto maquillaje + peinado"
+  notes           String?  // visible to customer
+  internalNotes   String?  // only for business
+  terms           String?  // terms & conditions
+
+  // Totals
+  subtotal        Decimal  @db.Decimal(10, 2) @default(0)
+  discount        Decimal  @db.Decimal(10, 2) @default(0)
+  total           Decimal  @db.Decimal(10, 2) @default(0)
+
+  // Validity
+  validUntil      DateTime?
+  validDays       Int      @default(15)
+
+  // Timestamps
+  sentAt          DateTime?
+  viewedAt        DateTime?
+  respondedAt     DateTime? // accepted or rejected
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  items           QuoteItem[]
+
+  @@unique([tenantId, quoteNumber])
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([tenantId, createdAt])
+  @@index([publicToken])
+  @@map("quotes")
+}
+
+model QuoteItem {
+  id          String   @id @default(uuid())
+  quoteId     String
+  quote       Quote    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  // Type: SERVICE, PRODUCT, CUSTOM
+  type        String   @default("CUSTOM")
+
+  // Reference (optional — for services/products)
+  serviceId   String?
+  service     Service? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  productId   String?
+  product     Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  // Snapshot (always filled — survives deletion of service/product)
+  name        String
+  description String?
+  quantity    Int      @default(1)
+  unitPrice   Decimal  @db.Decimal(10, 2)
+  totalPrice  Decimal  @db.Decimal(10, 2)
+
+  // Ordering
+  position    Int      @default(0)
+
+  createdAt   DateTime @default(now())
+
+  @@index([quoteId])
+  @@map("quote_items")
 }
 
 // ============ EMAIL VERIFICATION ============
@@ -1281,6 +1934,7 @@ model Review {
   customerId  String
   customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
   bookingId   String   @unique // Una review por booking
+  booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
   // Rating
   rating      Int      // 1-5 estrellas
@@ -1290,6 +1944,14 @@ model Review {
   isApproved  Boolean  @default(true)
   isVisible   Boolean  @default(true)
 
+  // Owner response
+  ownerResponse      String?
+  ownerRespondedAt   DateTime?
+
+  // Flagging
+  flaggedByOwner     Boolean  @default(false)
+  flagReason         String?
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -1297,7 +1959,37 @@ model Review {
   @@index([customerId])
   @@index([rating])
   @@index([tenantId, isVisible])
+  @@index([tenantId, flaggedByOwner])
   @@map("reviews")
+}
+
+// ============ PLAN PRICE CHANGE AUDIT ============
+
+model PlanPriceChangeAudit {
+  id                String   @id @default(uuid())
+  planId            String
+  planName          String
+  subscriptionId    String
+  tenantId          String
+  mpSubscriptionId  String
+  billingPeriod     String
+  oldPriceMonthly   Decimal? @db.Decimal(10, 2)
+  newPriceMonthly   Decimal? @db.Decimal(10, 2)
+  oldPriceYearly    Decimal? @db.Decimal(10, 2)
+  newPriceYearly    Decimal? @db.Decimal(10, 2)
+  oldName           String?
+  newName           String?
+  mpApiSuccess      Boolean
+  mpApiStatusCode   Int
+  mpApiResponse     String?  @db.Text
+  emailQueued       Boolean  @default(false)
+  emailRecipient    String?
+  createdAt         DateTime @default(now())
+
+  @@index([planId])
+  @@index([tenantId])
+  @@index([createdAt])
+  @@map("plan_price_change_audits")
 }
 
 // ===========================================
@@ -1426,4 +2118,1074 @@ model PushSubscription {
   @@index([tenantId])
   @@index([userId])
   @@map("push_subscriptions")
+}
+
+// ============ JOB POSTINGS ============
+
+model JobPosting {
+  id              String    @id @default(uuid())
+  tenantId        String
+  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdByUserId String
+
+  title           String
+  description     String
+  category        String
+  requiredSkills  String    @default("[]")
+  availability    String?
+  minExperience   Int?
+  zone            String?
+
+  salaryMin       Decimal?  @db.Decimal(10, 2)
+  salaryMax       Decimal?  @db.Decimal(10, 2)
+  salaryCurrency  String    @default("ARS")
+  salaryPeriod    String?
+
+  status          String    @default("OPEN")
+  deadline        DateTime?
+  closedAt        DateTime?
+  maxApplications Int?
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  applications    JobApplication[]
+
+  @@index([tenantId])
+  @@index([category])
+  @@index([status])
+  @@index([tenantId, status])
+  @@index([category, status])
+  @@index([createdAt])
+  @@map("job_postings")
+}
+
+model JobApplication {
+  id              String    @id @default(uuid())
+  postingId       String
+  posting         JobPosting @relation(fields: [postingId], references: [id], onDelete: Cascade)
+  profileId       String
+  profile         ProfessionalProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  message         String
+  availability    String?
+
+  status          String    @default("PENDING")
+  reviewedAt      DateTime?
+  respondedAt     DateTime?
+  responseMessage String?
+
+  viewedAt        DateTime?
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([postingId, profileId])
+  @@index([postingId])
+  @@index([profileId])
+  @@index([status])
+  @@index([postingId, status])
+  @@map("job_applications")
+}
+
+// ============ EMPLOYEE PORTAL ============
+
+enum EmployeeRole {
+  OWNER
+  MANAGER
+  STAFF
+  VIEWER
+}
+
+model EmployeeInvitation {
+  id         String    @id @default(uuid())
+  tenantId   String
+  tenant     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  employeeId String
+  employee   Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  email      String
+  token      String    @unique
+  role       EmployeeRole @default(STAFF)
+  expiresAt  DateTime
+  acceptedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([tenantId])
+  @@index([employeeId])
+  @@index([token])
+  @@index([expiresAt])
+  @@map("employee_invitations")
+}
+
+model EmployeeAuditLog {
+  id         String   @id @default(uuid())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  employeeId String?
+  employee   Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  action     String   // LOGIN, UPDATE_PROFILE, UPDATE_AVAILABILITY, BLOCK_DATE, VIEW_CLIENT, INVITE_EMPLOYEE, CHANGE_ROLE, REVOKE_ACCESS
+  entity     String   // Employee, Schedule, BlockedDate, Client, Invitation
+  entityId   String?
+  metadata   Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([tenantId, createdAt])
+  @@index([employeeId, createdAt])
+  @@index([action])
+  @@map("employee_audit_logs")
+}
+
+// ============ REFRESH TOKENS (for rotation) ============
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  tokenHash String   @unique // SHA256 hash of the refresh token
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+// ============ PROCESSED WEBHOOKS (anti-replay) ============
+
+model ProcessedWebhook {
+  id          String   @id @default(uuid())
+  webhookId   String   @unique // MercadoPago payment ID or webhook ID
+  source      String   @default("mercadopago") // Source system
+  processedAt DateTime @default(now())
+
+  @@index([processedAt])
+  @@map("processed_webhooks")
+}
+
+// ============ LOYALTY PROGRAM ============
+
+model LoyaltyProgram {
+  id                    String   @id @default(uuid())
+  tenantId              String   @unique
+  tenant                Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  isActive              Boolean  @default(false)
+  programName           String   @default("Programa de Puntos")
+  pointsPerBooking      Int      @default(10)
+  pointsPerCurrencyUnit Decimal? @db.Decimal(10, 2)
+  currencyPerPoint      Decimal  @db.Decimal(10, 4) @default(1.0)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  // Relations
+  tiers                 LoyaltyTier[]
+  rewards               LoyaltyReward[]
+
+  @@map("loyalty_programs")
+}
+
+model LoyaltyBalance {
+  id              String   @id @default(uuid())
+  tenantId        String
+  customerId      String
+  customer        Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  totalEarned     Int      @default(0)
+  totalRedeemed   Int      @default(0)
+  currentBalance  Int      @default(0)
+  currentTierSlug String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([tenantId, customerId])
+  @@index([tenantId, currentBalance])
+  @@map("loyalty_balances")
+}
+
+model LoyaltyTransaction {
+  id              String   @id @default(uuid())
+  tenantId        String
+  customerId      String
+  customer        Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  type            String   // EARN, REDEEM, ADJUST
+  points          Int
+  description     String
+  referenceType   String?  // BOOKING, ORDER, REWARD, MANUAL
+  referenceId     String?
+  balanceAfter    Int
+  createdAt       DateTime @default(now())
+
+  @@index([tenantId, customerId])
+  @@index([tenantId, createdAt])
+  @@map("loyalty_transactions")
+}
+
+model LoyaltyTier {
+  id                String   @id @default(uuid())
+  tenantId          String
+  programId         String
+  program           LoyaltyProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+  name              String
+  slug              String
+  minPoints         Int
+  color             String   @default("#CD7F32")
+  icon              String?
+  benefitDescription String?
+  pointsMultiplier  Decimal  @db.Decimal(3, 2) @default(1.0)
+  displayOrder      Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([programId, slug])
+  @@map("loyalty_tiers")
+}
+
+model LoyaltyReward {
+  id              String   @id @default(uuid())
+  tenantId        String
+  programId       String
+  program         LoyaltyProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+  name            String
+  description     String?
+  pointsCost      Int
+  rewardType      String   // PERCENTAGE_DISCOUNT, FIXED_DISCOUNT, FREE_SERVICE, FREE_PRODUCT
+  discountValue   Decimal? @db.Decimal(10, 2)
+  serviceId       String?
+  productId       String?
+  maxRedemptions  Int?
+  redemptionCount Int      @default(0)
+  isActive        Boolean  @default(true)
+  minTierSlug     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  redemptions     RewardRedemption[]
+
+  @@map("loyalty_rewards")
+}
+
+model RewardRedemption {
+  id          String    @id @default(uuid())
+  tenantId    String
+  customerId  String
+  customer    Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  rewardId    String
+  reward      LoyaltyReward @relation(fields: [rewardId], references: [id], onDelete: Restrict)
+  pointsSpent Int
+  couponCode  String    @unique
+  status      String    @default("ACTIVE")  // ACTIVE, USED, EXPIRED
+  usedAt      DateTime?
+  expiresAt   DateTime?
+  bookingId   String?
+  orderId     String?
+  createdAt   DateTime  @default(now())
+
+  @@index([tenantId])
+  @@index([couponCode])
+  @@map("reward_redemptions")
+}
+
+model Sorteo {
+  id                        String    @id @default(uuid())
+  tenantId                  String
+  tenant                    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  title                     String
+  description               String?
+  image                     String?
+  status                    String    @default("DRAFT")  // DRAFT, ACTIVE, COMPLETED, CANCELLED
+  allowPublicRegistration   Boolean   @default(true)
+  prizes                    String    @default("[]")
+  drawDate                  DateTime?
+  drawnAt                   DateTime?
+  winnerId                  String?
+  winnerName                String?
+  winnerEmail               String?
+  winnerPhone               String?
+  winnerPrize               String?
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+
+  // Relations
+  participants              SorteoParticipant[]
+
+  @@index([tenantId, status])
+  @@map("sorteos")
+}
+
+model SorteoParticipant {
+  id          String   @id @default(uuid())
+  sorteoId    String
+  sorteo      Sorteo   @relation(fields: [sorteoId], references: [id], onDelete: Cascade)
+  customerId  String?
+  name        String
+  phone       String
+  email       String?
+  isWinner    Boolean  @default(false)
+  wonPrize    String?  @map("won_prize")
+  registeredAt DateTime @default(now())
+
+  @@unique([sorteoId, phone])
+  @@map("sorteo_participants")
+}
+
+// ============ GASTRO SALON ============
+
+enum TableSessionStatus {
+  OCCUPIED
+  ORDERING
+  BILL_REQUESTED
+  PAYMENT_ENABLED
+  WAITING_PAYMENT
+  PAID
+  CLOSED
+}
+
+model TableSession {
+  id          String             @id @default(uuid())
+  tenantId    String
+  tenant      Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tableNumber Int
+  status      TableSessionStatus @default(OCCUPIED)
+  sessionWord String?            // Keyword shown to first scanner; others must enter it to join
+  openedAt    DateTime           @default(now())
+  closedAt    DateTime?
+  totalAmount Decimal?           @db.Decimal(10, 2)
+  tipAmount   Decimal?           @db.Decimal(10, 2)
+  tipType     String?            // "percentage" | "fixed" | "none"
+  paymentId   String?            // MP payment reference
+  review        String?            // Customer review/feedback text
+  comensalEmail String?            // Email captured at farewell screen
+  comensalName  String?            // Name captured at farewell screen
+  waiterId      String?            // Employee (mozo) attending this table
+  waiter        Employee?          @relation(fields: [waiterId], references: [id])
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  // Relations
+  orders      TableSessionOrder[]
+  comandas    KitchenComanda[]
+
+  @@index([tenantId, status])
+  @@index([tenantId, tableNumber])
+  @@index([waiterId])
+  @@map("table_sessions")
+}
+
+model TableSessionOrder {
+  id             String       @id @default(uuid())
+  tableSessionId String
+  tableSession   TableSession @relation(fields: [tableSessionId], references: [id], onDelete: Cascade)
+  orderNumber    Int          // Sequential within session (1, 2, 3...)
+  items          Json         // [{productId, name, quantity, price, options, notes}]
+  subtotal       Decimal      @db.Decimal(10, 2)
+  status         String       @default("PENDING") // PENDING, CONFIRMED, PREPARING, READY, DELIVERED
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  // Kitchen comanda relations
+  comandas       KitchenComanda[]
+
+  @@index([tableSessionId])
+  @@map("table_session_orders")
+}
+
+// ============ KITCHEN COMANDAS ============
+
+model KitchenStation {
+  id            String    @id @default(uuid())
+  tenantId      String
+  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name          String    // "Cocina Caliente", "Barra", "Postres"
+  displayName   String    // What prints on ticket header
+  printerId     String?   // Unique printer identifier (set by print agent)
+  printerName   String?   // Human-readable: "Epson TM-T20III Cocina"
+  isActive      Boolean   @default(true)
+  order         Int       @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  products      Product[]
+  comandas      KitchenComanda[]
+
+  @@index([tenantId, isActive])
+  @@map("kitchen_stations")
+}
+
+model KitchenComanda {
+  id                    String             @id @default(uuid())
+  tenantId              String
+  tenant                Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  stationId             String
+  station               KitchenStation     @relation(fields: [stationId], references: [id], onDelete: Cascade)
+  tableSessionId        String
+  tableSession          TableSession       @relation(fields: [tableSessionId], references: [id], onDelete: Cascade)
+  tableSessionOrderId   String
+  sessionOrder          TableSessionOrder  @relation(fields: [tableSessionOrderId], references: [id], onDelete: Cascade)
+  tableNumber           Int
+  orderNumber           Int
+  items                 Json               // [{name, quantity, notes, options}]
+  status                String             @default("PENDING") // PENDING, PRINTED, PRINT_FAILED, ACCEPTED, PREPARING, READY, CANCELLED
+  printAttempts         Int                @default(0)
+  printedAt             DateTime?
+  printError            String?
+  acceptedAt            DateTime?
+  startedAt             DateTime?
+  readyAt               DateTime?
+  cancelledAt           DateTime?
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+
+  @@unique([tableSessionOrderId, stationId])
+  @@index([tenantId, stationId, status])
+  @@index([tableSessionId])
+  @@index([status, createdAt])
+  @@map("kitchen_comandas")
+}
+
+// ===========================================
+// RENTAL MANAGEMENT (INMOBILIARIAS)
+// ===========================================
+
+// ============ PROPERTY OWNERS (PROPIETARIOS) ============
+
+model PropertyOwner {
+  id          String   @id @default(uuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name        String
+  phone       String?
+  email       String?
+  cuitCuil    String?
+  cbu         String?
+  bankName    String?
+  alias       String?
+  address     String?
+  notes       String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  properties    RentalProperty[]
+  liquidations  OwnerLiquidation[]
+
+  @@index([tenantId])
+  @@index([tenantId, isActive])
+  @@map("property_owners")
+}
+
+// ============ RENTAL PROPERTIES (INMUEBLES) ============
+
+model RentalProperty {
+  id              String   @id @default(uuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  ownerId         String
+  owner           PropertyOwner @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  productId       String?
+  product         Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  name            String
+  propertyType    String   @default("departamento") // departamento, casa, local, oficina, ph, cochera, terreno, galpon
+  address         String
+  city            String?
+  neighborhood    String?
+  floor           String?
+  unit            String?
+  area            Decimal? @db.Decimal(10, 2)
+  rooms           Int?
+  bathrooms       Int?
+
+  commissionType  String   @default("percentage") // percentage, fixed
+  commissionValue Decimal  @db.Decimal(10, 2) @default(5)
+
+  status          String   @default("available") // available, rented, maintenance, reserved
+  notes           String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  contracts       RentalContract[]
+  expenses        PropertyExpenseRecord[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([tenantId, ownerId])
+  @@index([ownerId])
+  @@index([productId])
+  @@map("rental_properties")
+}
+
+// ============ RENTAL TENANTS (INQUILINOS) ============
+
+model RentalTenant {
+  id              String   @id @default(uuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name            String
+  dni             String?
+  phone           String?
+  email           String?
+  employer        String?
+  monthlyIncome   Decimal? @db.Decimal(10, 2)
+  emergencyContact    String?
+  emergencyPhone      String?
+  notes           String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  contracts       RentalContract[]
+
+  @@index([tenantId])
+  @@index([tenantId, isActive])
+  @@map("rental_tenants")
+}
+
+// ============ RENTAL CONTRACTS (CONTRATOS DE ALQUILER) ============
+
+model RentalContract {
+  id                  String   @id @default(uuid())
+  tenantId            String
+  tenant              Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  propertyId          String
+  property            RentalProperty @relation(fields: [propertyId], references: [id], onDelete: Restrict)
+  rentalTenantId      String
+  rentalTenant        RentalTenant @relation(fields: [rentalTenantId], references: [id], onDelete: Restrict)
+
+  contractNumber      String?
+  startDate           DateTime
+  endDate             DateTime
+
+  monthlyRent         Decimal  @db.Decimal(10, 2)
+  currency            String   @default("ARS")
+  securityDeposit     Decimal? @db.Decimal(10, 2)
+
+  adjustmentIndex     String?  @default("ICL") // ICL, IPC, custom, none
+  adjustmentFrequency Int?     @default(12) // months
+  customAdjustmentDesc String?
+
+  commissionType      String   @default("percentage") // percentage, fixed
+  commissionValue     Decimal  @db.Decimal(10, 2) @default(5)
+
+  guaranteeType       String?  // propietaria, caucion, bancaria, personal, seguro_caucion
+
+  status              String   @default("active") // active, expired, terminated, draft
+  notes               String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  payments            RentalPayment[]
+  adjustments         ContractAdjustment[]
+  expenses            PropertyExpenseRecord[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([propertyId])
+  @@index([rentalTenantId])
+  @@index([tenantId, endDate])
+  @@map("rental_contracts")
+}
+
+// ============ RENTAL PAYMENTS (PAGOS DE ALQUILER) ============
+
+model RentalPayment {
+  id              String   @id @default(uuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contractId      String
+  contract        RentalContract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  periodMonth     Int
+  periodYear      Int
+
+  expectedAmount  Decimal  @db.Decimal(10, 2)
+  paidAmount      Decimal  @db.Decimal(10, 2) @default(0)
+  coveragePercent Decimal  @db.Decimal(5, 2)  @default(0)
+
+  paymentMethod   String?  // transferencia, efectivo, cheque, deposito
+  paymentDate     DateTime?
+  receiptNumber   String?
+
+  status          String   @default("pending") // pending, partial, paid, overdue
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([contractId, periodMonth, periodYear])
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([contractId])
+  @@index([tenantId, periodYear, periodMonth])
+  @@map("rental_payments")
+}
+
+// ============ CONTRACT ADJUSTMENTS (ACTUALIZACIONES DE PRECIO) ============
+
+model ContractAdjustment {
+  id              String   @id @default(uuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contractId      String
+  contract        RentalContract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  effectiveDate   DateTime
+  previousAmount  Decimal  @db.Decimal(10, 2)
+  newAmount       Decimal  @db.Decimal(10, 2)
+  adjustmentPercent Decimal? @db.Decimal(5, 2)
+
+  indexUsed       String?  // ICL, IPC, custom
+  indexValue      Decimal? @db.Decimal(10, 4)
+
+  isAutomatic     Boolean  @default(false)
+  notes           String?
+  createdAt       DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([contractId])
+  @@index([contractId, effectiveDate])
+  @@map("contract_adjustments")
+}
+
+// ============ PROPERTY EXPENSE RECORDS (GASTOS DE INMUEBLE) ============
+
+model PropertyExpenseRecord {
+  id              String   @id @default(uuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  propertyId      String?
+  property        RentalProperty? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  contractId      String?
+  contract        RentalContract? @relation(fields: [contractId], references: [id], onDelete: SetNull)
+
+  expenseType     String   // expensas, abl, agua, gas, luz, reparaciones, seguro, impuestos, otros
+  description     String?
+  amount          Decimal  @db.Decimal(10, 2)
+  date            DateTime @default(now())
+
+  paidBy          String   @default("owner") // owner, tenant, shared
+  sharedPercent   Decimal? @db.Decimal(5, 2)
+
+  deductFromLiquidation Boolean @default(true)
+  liquidationId   String?
+  liquidation     OwnerLiquidation? @relation(fields: [liquidationId], references: [id], onDelete: SetNull)
+
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([propertyId])
+  @@index([contractId])
+  @@index([liquidationId])
+  @@index([tenantId, date])
+  @@map("property_expense_records")
+}
+
+// ============ OWNER LIQUIDATIONS (LIQUIDACIONES A PROPIETARIOS) ============
+
+model OwnerLiquidation {
+  id              String   @id @default(uuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  ownerId         String
+  owner           PropertyOwner @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+
+  periodMonth     Int
+  periodYear      Int
+
+  grossCollected  Decimal  @db.Decimal(10, 2)
+  commissionAmount Decimal @db.Decimal(10, 2)
+  expensesAmount  Decimal  @db.Decimal(10, 2)
+  netToPay        Decimal  @db.Decimal(10, 2)
+
+  status          String   @default("draft") // draft, sent, paid
+  pdfUrl          String?
+  notes           String?
+  paidAt          DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  expenses        PropertyExpenseRecord[]
+
+  @@unique([tenantId, ownerId, periodMonth, periodYear])
+  @@index([tenantId])
+  @@index([tenantId, periodYear, periodMonth])
+  @@index([ownerId])
+  @@index([tenantId, status])
+  @@map("owner_liquidations")
+}
+
+// ===========================================
+// DEVELOPMENT PROJECTS (POZO / PREVENTA)
+// ===========================================
+
+model DevelopmentProject {
+  id                  String   @id @default(uuid())
+  tenantId            String
+  tenant              Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name                String
+  slug                String
+  description         String?
+  address             String?
+  city                String?
+  totalUnits          Int      @default(0)
+
+  progressPercent     Int      @default(0)
+  status              String   @default("planning") // planning, pre_sale, under_construction, delivered
+
+  targetFundingAmount Decimal? @db.Decimal(12, 2)
+  currentFundedAmount Decimal  @db.Decimal(12, 2) @default(0)
+
+  coverImage          String?
+  images              String   @default("[]")
+
+  // ── New fields ──
+  reservationDays     Int      @default(15)         // days a reservation lasts before auto-expiry
+  adjustmentType      String   @default("fixed_usd") // fixed_usd, fixed_ars, cac, uva, dolar_linked
+  brochureUrl         String?                        // PDF brochure URL
+  videoUrl            String?                        // YouTube/Vimeo URL
+  latitude            Decimal? @db.Decimal(10, 7)
+  longitude           Decimal? @db.Decimal(10, 7)
+  amenities           String   @default("[]")        // JSON array: pileta, sum, gym, seguridad, etc.
+  deliveryDate        DateTime?                      // estimated delivery date
+
+  isActive            Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  milestones          ProjectMilestone[]
+  units               ProjectUnit[]
+  investments         ProjectInvestment[]
+  paymentPlans        PaymentPlan[]
+  documents           ProjectDocument[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("development_projects")
+}
+
+model ProjectMilestone {
+  id              String    @id @default(uuid())
+  projectId       String
+  project         DevelopmentProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name            String
+  description     String?
+  progressPercent Int       @default(0)
+  targetDate      DateTime?
+  completionDate  DateTime?
+  photos          String    @default("[]")
+  order           Int       @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([projectId])
+  @@map("project_milestones")
+}
+
+model ProjectUnit {
+  id              String   @id @default(uuid())
+  projectId       String
+  project         DevelopmentProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  unitIdentifier  String
+  unitType        String   @default("2amb") // monoambiente, 1amb, 2amb, 3amb, local, cochera, baulera
+  floor           String?
+  orientation     String?
+  area            Decimal? @db.Decimal(10, 2)
+  supCubierta     Decimal? @db.Decimal(10, 2)  // covered area (distinct from total area)
+  price           Decimal? @db.Decimal(12, 2)
+  currency        String   @default("USD")
+  status          String   @default("available") // available, reserved, sold, escriturada
+  floorPlanUrl    String?  // URL to unit floor plan image/PDF
+
+  // ── Reservation fields ──
+  reservedAt              DateTime?
+  reservationExpiresAt    DateTime?
+  reservedByName          String?
+  reservedByPhone         String?
+  reservedByEmail         String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  investments     ProjectInvestment[]
+  documents       ProjectDocument[]
+
+  @@unique([projectId, unitIdentifier])
+  @@index([projectId])
+  @@index([projectId, status])
+  @@index([status, reservationExpiresAt])
+  @@map("project_units")
+}
+
+model ProjectInvestment {
+  id              String   @id @default(uuid())
+  projectId       String
+  project         DevelopmentProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  unitId          String?
+  unit            ProjectUnit? @relation(fields: [unitId], references: [id], onDelete: SetNull)
+
+  investorName    String
+  investorDni     String?
+  investorPhone   String?
+  investorEmail   String?
+
+  totalAmount     Decimal  @db.Decimal(12, 2)
+  paidAmount      Decimal  @db.Decimal(12, 2) @default(0)
+  currency        String   @default("USD")
+  totalInstallments Int    @default(1)
+
+  // ── Payment plan & adjustment ──
+  paymentPlanId   String?
+  paymentPlan     PaymentPlan? @relation(fields: [paymentPlanId], references: [id], onDelete: SetNull)
+  downPaymentAmount Decimal? @db.Decimal(12, 2)
+  adjustmentType  String?   // override per investment: fixed_usd, cac, uva, dolar_linked
+
+  status          String   @default("active") // active, completed, cancelled, defaulted
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  payments        InvestmentPayment[]
+  documents       ProjectDocument[]
+
+  @@index([projectId])
+  @@index([unitId])
+  @@index([projectId, status])
+  @@map("project_investments")
+}
+
+model InvestmentPayment {
+  id              String    @id @default(uuid())
+  investmentId    String
+  investment      ProjectInvestment @relation(fields: [investmentId], references: [id], onDelete: Cascade)
+  installmentNumber Int
+  dueDate         DateTime
+  amount          Decimal   @db.Decimal(12, 2)
+  paidAmount      Decimal   @db.Decimal(12, 2) @default(0)
+  paidDate        DateTime?
+  paymentMethod   String?   // transferencia, efectivo, cheque
+  status          String    @default("pending") // pending, paid, overdue, partial
+  notes           String?
+
+  // ── Adjustment & receipt ──
+  adjustedAmount  Decimal?  @db.Decimal(12, 2) // amount after CAC/UVA adjustment
+  adjustmentIndex String?                       // index value used (e.g. "CAC Mar 2026: 1.045")
+  receiptUrl      String?                       // payment receipt file URL
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([investmentId, installmentNumber])
+  @@index([investmentId])
+  @@index([investmentId, status])
+  @@index([dueDate, status])
+  @@map("investment_payments")
+}
+
+// ── Payment plans for development projects ──
+model PaymentPlan {
+  id                 String   @id @default(uuid())
+  projectId          String
+  project            DevelopmentProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name               String   // e.g. "Plan Contado", "Plan 12 Cuotas", "Plan Inversor"
+  downPaymentPercent Int      @default(30) // anticipo percentage (0-100)
+  installments       Int      @default(12) // number of monthly installments after down payment
+  discountPercent    Decimal  @db.Decimal(5, 2) @default(0) // discount for this plan (e.g. 10% contado)
+  adjustmentType     String   @default("fixed_usd") // fixed_usd, fixed_ars, cac, uva, dolar_linked
+  description        String?
+  isDefault          Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  investments        ProjectInvestment[]
+
+  @@index([projectId])
+  @@map("payment_plans")
+}
+
+// ── Documents for projects, units, and investments ──
+model ProjectDocument {
+  id              String    @id @default(uuid())
+  projectId       String
+  project         DevelopmentProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  unitId          String?
+  unit            ProjectUnit? @relation(fields: [unitId], references: [id], onDelete: SetNull)
+  investmentId    String?
+  investment      ProjectInvestment? @relation(fields: [investmentId], references: [id], onDelete: SetNull)
+  name            String
+  type            String    @default("otro") // reserva, boleto, cesion, escritura, plano, otro
+  fileUrl         String
+  createdAt       DateTime  @default(now())
+
+  @@index([projectId])
+  @@index([unitId])
+  @@index([investmentId])
+  @@map("project_documents")
+}
+
+// ============ CRM LEADS (INMOBILIARIAS) ============
+
+model Lead {
+  id              String    @id @default(uuid())
+  tenantId        String
+  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Contact info
+  name            String
+  phone           String?
+  email           String?
+  dni             String?
+
+  // Lead source & context
+  source          String    @default("manual") // manual, whatsapp, web, referido, portal
+  sourceDetail    String?   // e.g. "ZonaProp", "Referido de Juan", property ID
+
+  // Pipeline
+  stage           String    @default("nuevo") // nuevo, contactado, visita, oferta, reserva, escritura, cerrado, perdido
+  priority        String    @default("media") // baja, media, alta
+
+  // What they're looking for
+  interestType    String?   // compra, alquiler, inversion
+  interestDetail  String?   // "2amb Palermo hasta USD 120k"
+  productId       String?   // linked property if specific interest
+  unitId          String?   // linked development unit if specific interest
+  budget          Decimal?  @db.Decimal(12, 2)
+  budgetCurrency  String?   @default("USD")
+
+  // Assignment
+  assignedTo      String?   // employee/agent name
+
+  // Follow-up
+  lastContactAt   DateTime?
+  nextFollowUpAt  DateTime?
+  notes           String?
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, stage])
+  @@index([tenantId, source])
+  @@index([tenantId, assignedTo])
+  @@index([tenantId, nextFollowUpAt])
+  @@map("leads")
+}
+
+// ============ PROPERTY DEPOSITS / SEÑAS (INMOBILIARIAS) ============
+
+model PropertyDeposit {
+  id              String    @id @default(uuid())
+  tenantId        String
+  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  productId       String    // the property (Product)
+
+  // Buyer info
+  buyerName       String
+  buyerDni        String?
+  buyerPhone      String?
+  buyerEmail      String?
+
+  // Deposit details
+  amount          Decimal   @db.Decimal(12, 2)
+  currency        String    @default("USD")
+  paidAt          DateTime?
+  paymentMethod   String?   // transferencia, efectivo, cheque
+  receiptUrl      String?
+
+  // Terms
+  expiresAt       DateTime? // deadline to sign boleto
+  propertyPrice   Decimal?  @db.Decimal(12, 2) // agreed sale price
+  notes           String?
+
+  // Status
+  status          String    @default("pending") // pending, paid, expired, refunded, converted (→ boleto)
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([productId])
+  @@map("property_deposits")
+}
+
+// ============ GUARANTEE RECORDS (INMOBILIARIAS) ============
+
+model GuaranteeRecord {
+  id              String    @id @default(uuid())
+  tenantId        String
+  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  contractId      String    // linked to RentalContract
+
+  // Guarantee details
+  guaranteeType   String    // propietaria, caucion, bancaria, personal, seguro_caucion
+  provider        String?   // company name (e.g. "Porto Seguros", bank name)
+  policyNumber    String?   // policy or certificate number
+
+  // Guarantor info (for personal/propietaria)
+  guarantorName   String?
+  guarantorDni    String?
+  guarantorPhone  String?
+  guarantorEmail  String?
+  guarantorAddress String?
+
+  // Coverage
+  coverageAmount  Decimal?  @db.Decimal(12, 2)
+  currency        String    @default("ARS")
+
+  // Dates
+  startDate       DateTime?
+  expirationDate  DateTime?
+
+  // Documents
+  documentUrl     String?   // uploaded guarantee document
+
+  // Status
+  status          String    @default("active") // active, expired, released, claimed
+  notes           String?
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([tenantId])
+  @@index([contractId])
+  @@index([tenantId, status])
+  @@index([tenantId, expirationDate])
+  @@map("guarantee_records")
+}
+
+// ============ DOCUMENT TEMPLATES (INMOBILIARIAS) ============
+
+model DocumentTemplate {
+  id              String    @id @default(uuid())
+  tenantId        String
+  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  name            String    // "Contrato de alquiler", "Boleto de reserva"
+  category        String    @default("contrato") // contrato, recibo, boleto, autorizacion, liquidacion, otro
+  description     String?
+
+  // Template content — HTML with {{variable}} placeholders
+  htmlContent     String    @db.Text
+
+  // Available variables for this template (JSON array of { key, label, source })
+  variables       String    @default("[]") @db.Text
+
+  isActive        Boolean   @default(true)
+  isDefault       Boolean   @default(false) // one default per category per tenant
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, category])
+  @@index([tenantId, isActive])
+  @@map("document_templates")
 }

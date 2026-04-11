@@ -4,7 +4,7 @@ import * as path from 'path';
 
 // Configuration
 const CONFIG = {
-  baseUrl: 'https://turnolink.mubitt.com',
+  baseUrl: 'https://turnolink.com.ar',
   credentials: {
     email: 'info@bellaestetica.com',
     password: 'password123'

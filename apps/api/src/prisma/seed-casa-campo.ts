@@ -115,7 +115,7 @@ async function main() {
   console.log('✅ Tenant creado:', tenant.name, `(/${tenant.slug})`);
 
   // ─── Owner User ───
-  const ownerPassword = await bcrypt.hash('quinta123456', 12);
+  const ownerPassword = await bcrypt.hash('demo123456', 12);
 
   const owner = await prisma.user.upsert({
     where: { email: 'martin@quintalosalamos.com.ar' },
@@ -410,7 +410,7 @@ async function main() {
 
   console.log('\n🎉 ¡Perfil de Quinta Los Álamos creado exitosamente!');
   console.log('\n📋 Credenciales:');
-  console.log('   Owner: martin@quintalosalamos.com.ar / quinta123456');
+  console.log('   Owner: martin@quintalosalamos.com.ar / demo123456');
   console.log('\n🔗 URL pública:');
   console.log('   https://turnolink.app/quinta-los-alamos');
   console.log('\n📊 Datos creados:');

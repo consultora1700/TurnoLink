@@ -6,11 +6,14 @@ import {
   Logger,
   HttpCode,
   HttpStatus,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { MercadoPagoService } from './mercadopago.service';
 import { Public } from '../../common/decorators';
+import { verifyMercadoPagoSignature } from '../../common/utils/webhook-signature';
 
 interface WebhookPayload {
   id: number;
@@ -33,6 +36,7 @@ export class MercadoPagoWebhookController {
   constructor(
     private readonly mercadoPagoService: MercadoPagoService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly configService: ConfigService,
   ) {}
 
   @Post('webhook')
@@ -46,6 +50,13 @@ export class MercadoPagoWebhookController {
     @Headers('x-request-id') xRequestId: string,
   ) {
     this.logger.log(`Received webhook: type=${payload.type}, action=${payload.action}, data_id=${payload.data?.id}`);
+
+    // Verify webhook signature
+    const webhookSecret = this.configService.get<string>('MP_WEBHOOK_SECRET');
+    if (!verifyMercadoPagoSignature(xSignature, xRequestId, payload.data?.id, webhookSecret)) {
+      this.logger.warn('Invalid webhook signature');
+      throw new UnauthorizedException('Invalid webhook signature');
+    }
 
     // Handle payment notifications
     if (payload.type === 'payment' && payload.data?.id) {

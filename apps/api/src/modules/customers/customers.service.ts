@@ -1,7 +1,9 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
+import { UpdateExtraInfoDto } from './dto/update-extra-info.dto';
 
 @Injectable()
 export class CustomersService {
@@ -129,6 +131,31 @@ export class CustomersService {
       }
 
       return tx.customer.delete({ where: { id } });
+    });
+  }
+
+  async updateExtraInfo(
+    tenantId: string,
+    id: string,
+    dto: UpdateExtraInfoDto,
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      const customer = await tx.customer.findFirst({
+        where: { id, tenantId },
+      });
+
+      if (!customer) {
+        throw new NotFoundException('Customer not found');
+      }
+
+      const existingExtraInfo =
+        (customer.extraInfo as Record<string, unknown>) || {};
+      existingExtraInfo[dto.section] = dto.data;
+
+      return tx.customer.update({
+        where: { id },
+        data: { extraInfo: existingExtraInfo as Prisma.InputJsonValue },
+      });
     });
   }
 

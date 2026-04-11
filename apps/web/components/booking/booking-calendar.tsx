@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   format,
   addMonths,
@@ -25,10 +25,20 @@ interface Props {
   selectedDate: Date | null;
   onSelect: (date: Date) => void;
   maxAdvanceDays?: number;
+  unavailableDates?: Record<string, boolean>;
+  onMonthChange?: (year: number, month: number) => void;
 }
 
-export function BookingCalendar({ selectedDate, onSelect, maxAdvanceDays = 30 }: Props) {
+export function BookingCalendar({ selectedDate, onSelect, maxAdvanceDays = 30, unavailableDates, onMonthChange }: Props) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const onMonthChangeRef = useRef(onMonthChange);
+  onMonthChangeRef.current = onMonthChange;
+
+  // Fire onMonthChange on mount
+  useEffect(() => {
+    const now = new Date();
+    onMonthChangeRef.current?.(now.getFullYear(), now.getMonth() + 1);
+  }, []);
 
   const days = eachDayOfInterval({
     start: startOfMonth(currentMonth),
@@ -45,6 +55,18 @@ export function BookingCalendar({ selectedDate, onSelect, maxAdvanceDays = 30 }:
   const canGoPrev = isSameMonth(currentMonth, today) ? false : isAfter(startOfMonth(currentMonth), today) || isSameMonth(currentMonth, addMonths(today, 1));
   const canGoNext = isBefore(startOfMonth(addMonths(currentMonth, 1)), maxDate) || isSameMonth(addMonths(currentMonth, 1), maxDate);
 
+  const handlePrevMonth = () => {
+    const prev = subMonths(currentMonth, 1);
+    setCurrentMonth(prev);
+    onMonthChange?.(prev.getFullYear(), prev.getMonth() + 1);
+  };
+
+  const handleNextMonth = () => {
+    const next = addMonths(currentMonth, 1);
+    setCurrentMonth(next);
+    onMonthChange?.(next.getFullYear(), next.getMonth() + 1);
+  };
+
   return (
     <div className="bg-background border rounded-lg p-2 sm:p-4">
       {/* Header */}
@@ -52,7 +74,7 @@ export function BookingCalendar({ selectedDate, onSelect, maxAdvanceDays = 30 }:
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
+          onClick={handlePrevMonth}
           disabled={isSameMonth(currentMonth, today)}
         >
           <ChevronLeft className="h-4 w-4" />
@@ -63,7 +85,7 @@ export function BookingCalendar({ selectedDate, onSelect, maxAdvanceDays = 30 }:
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
+          onClick={handleNextMonth}
           disabled={!canGoNext}
         >
           <ChevronRight className="h-4 w-4" />
@@ -97,6 +119,8 @@ export function BookingCalendar({ selectedDate, onSelect, maxAdvanceDays = 30 }:
           const isSelected = selectedDate && isSameDay(day, selectedDate);
           const isCurrentMonth = isSameMonth(day, currentMonth);
           const isTodayDate = isToday(day);
+          const dateStr = format(day, 'yyyy-MM-dd');
+          const hasNoAvailability = unavailableDates && unavailableDates[dateStr] === false;
 
           return (
             <button
@@ -104,15 +128,21 @@ export function BookingCalendar({ selectedDate, onSelect, maxAdvanceDays = 30 }:
               onClick={() => !isDisabled && onSelect(day)}
               disabled={isDisabled}
               className={cn(
-                'h-10 rounded-md text-sm font-medium transition-colors',
+                'relative h-10 rounded-md text-sm font-medium transition-colors',
                 !isCurrentMonth && 'text-muted-foreground/50',
                 isDisabled && 'text-muted-foreground/30 cursor-not-allowed',
                 !isDisabled && !isSelected && 'hover:bg-muted',
                 isSelected && 'bg-primary text-primary-foreground',
-                isTodayDate && !isSelected && 'border border-primary'
+                isTodayDate && !isSelected && 'border border-primary',
+                !isDisabled && hasNoAvailability && !isSelected && 'opacity-40',
               )}
             >
               {format(day, 'd')}
+              {!isDisabled && hasNoAvailability && !isSelected && (
+                <span className="absolute inset-0 flex items-center justify-center pointer-events-none" aria-hidden="true">
+                  <span className="block w-5 h-px bg-current opacity-60 rotate-[-20deg]" />
+                </span>
+              )}
             </button>
           );
         })}

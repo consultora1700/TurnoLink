@@ -7,12 +7,10 @@ import {
   Body,
   Param,
   Query,
-  UseGuards,
+
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { SchedulesService } from './schedules.service';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { TenantGuard } from '../../common/guards/tenant.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { User } from '@prisma/client';
 import { UpdateScheduleDto } from './dto/update-schedule.dto';
@@ -20,7 +18,6 @@ import { CreateBlockedDateDto } from './dto/create-blocked-date.dto';
 
 @ApiTags('schedules')
 @Controller('schedules')
-@UseGuards(JwtAuthGuard, TenantGuard)
 @ApiBearerAuth()
 export class SchedulesController {
   constructor(private readonly schedulesService: SchedulesService) {}

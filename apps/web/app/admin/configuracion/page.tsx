@@ -49,7 +49,7 @@ function AdminConfiguracionContent() {
   const fetchStatus = async () => {
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'https://api-turnolink.mubitt.com'}/api/platform/status`
+        `${process.env.NEXT_PUBLIC_API_URL || 'https://api.turnolink.com.ar'}/api/platform/status`
       );
       if (response.ok) {
         const data = await response.json();
@@ -73,7 +73,7 @@ function AdminConfiguracionContent() {
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'https://api-turnolink.mubitt.com'}/api/platform/oauth/url?admin_key=${adminKey}`
+        `${process.env.NEXT_PUBLIC_API_URL || 'https://api.turnolink.com.ar'}/api/platform/oauth/url?admin_key=${adminKey}`
       );
 
       if (response.ok) {
@@ -100,7 +100,7 @@ function AdminConfiguracionContent() {
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'https://api-turnolink.mubitt.com'}/api/platform/disconnect?admin_key=${adminKey}`,
+        `${process.env.NEXT_PUBLIC_API_URL || 'https://api.turnolink.com.ar'}/api/platform/disconnect?admin_key=${adminKey}`,
         { method: 'POST' }
       );
 

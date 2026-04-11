@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 const CONFIG = {
-  baseUrl: 'https://turnolink.mubitt.com',
+  baseUrl: 'https://turnolink.com.ar',
   publicSlug: 'bella-estetica',
   outputDir: path.join(__dirname, '../apps/web/public/screenshots/mobile'),
 };

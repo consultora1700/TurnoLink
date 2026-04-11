@@ -1,243 +1,146 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
-import { createApiClient, TalentProfile, MyProfileData, ExperienceData } from '@/lib/api';
-import { useToast } from '@/hooks/use-toast';
+import { format, formatDistanceToNow } from 'date-fns';
+import { es } from 'date-fns/locale';
+import Link from 'next/link';
+import {
+  LayoutDashboard,
+  Sparkles,
+  Briefcase,
+  Send,
+  Inbox,
+  UserCog,
+  Settings,
+  ArrowRight,
+  CheckCircle2,
+  AlertCircle,
+  Eye,
+  EyeOff,
+  Loader2,
+  Share2,
+  Copy,
+  Check,
+} from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { ImageUpload } from '@/components/ui/image-upload';
-import { ZoneAutocomplete } from '@/components/ui/zone-autocomplete';
+import { createApiClient, TalentProfile, TalentProposal, JobApplication } from '@/lib/api';
 import { cn } from '@/lib/utils';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import {
-  UserCog,
-  Loader2,
-  Save,
-  Plus,
-  Trash2,
-  Pencil,
-  Eye,
-  EyeOff,
-  Briefcase,
-  Sparkles,
-  Palette,
-} from 'lucide-react';
-import { ProfileHeader } from '@/components/profile/profile-header';
-import { TEMPLATE_OPTIONS, resolveTemplate } from '@/lib/profile-templates';
-import { CATEGORY_SELECT_OPTIONS } from '@/lib/category-config';
 
-export default function MiPerfilPage() {
-  const { data: session } = useSession();
-  const { toast } = useToast();
+// --- Profile completeness calculation ---
+function calcCompleteness(profile: TalentProfile) {
+  const checks: { label: string; weight: number; done: boolean }[] = [
+    { label: 'Nombre', weight: 10, done: !!profile.name },
+    { label: 'Titular', weight: 10, done: !!profile.headline },
+    { label: 'Bio', weight: 10, done: !!profile.bio },
+    { label: 'Especialidad', weight: 10, done: !!profile.specialty },
+    { label: 'Categoria', weight: 10, done: !!profile.category },
+    { label: 'Foto', weight: 15, done: !!profile.image },
+    { label: 'Especialidades', weight: 10, done: (profile.skills?.length || 0) > 0 },
+    { label: 'Disponibilidad', weight: 5, done: !!profile.availability },
+    { label: 'Zonas', weight: 5, done: (profile.preferredZones?.length || 0) > 0 },
+    { label: 'Experiencia', weight: 10, done: (profile.experiences?.length || 0) > 0 },
+    { label: 'Certificaciones', weight: 5, done: (profile.certifications?.length || 0) > 0 },
+  ];
+  const pct = checks.reduce((acc, c) => acc + (c.done ? c.weight : 0), 0);
+  const missing = checks.filter((c) => !c.done).map((c) => c.label);
+  return { pct, missing };
+}
 
-  const [profile, setProfile] = useState<TalentProfile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [hasProfile, setHasProfile] = useState(false);
+// --- Status badge helpers ---
+const proposalStatusMap: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
+  PENDING: { label: 'Pendiente', variant: 'secondary' },
+  ACCEPTED: { label: 'Aceptada', variant: 'default' },
+  REJECTED: { label: 'Rechazada', variant: 'destructive' },
+  EXPIRED: { label: 'Expirada', variant: 'outline' },
+};
 
-  // Form state
-  const [form, setForm] = useState<MyProfileData>({
-    name: '',
-    phone: '',
-    headline: '',
-    bio: '',
-    specialty: '',
-    category: '',
-    image: '',
-    coverImage: '',
-    headerTemplate: '',
-    yearsExperience: undefined,
-    skills: [],
-    certifications: [],
-    availability: '',
-    preferredZones: [],
-    openToWork: false,
-    profileVisible: false,
-  });
+const applicationStatusMap: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
+  PENDING: { label: 'Pendiente', variant: 'secondary' },
+  REVIEWED: { label: 'Revisada', variant: 'outline' },
+  ACCEPTED: { label: 'Aceptada', variant: 'default' },
+  REJECTED: { label: 'Rechazada', variant: 'destructive' },
+  WITHDRAWN: { label: 'Retirada', variant: 'outline' },
+};
 
-  // Skills/certs input
-  const [skillInput, setSkillInput] = useState('');
-  const [certInput, setCertInput] = useState('');
+function ShareProfileButton({ profileId, profileName }: { profileId: string; profileName: string }) {
+  const [copied, setCopied] = useState(false);
+  const url = `${typeof window !== 'undefined' ? window.location.origin : ''}/profesional/${profileId}`;
 
-  // Experience dialog
-  const [expDialogOpen, setExpDialogOpen] = useState(false);
-  const [editingExpId, setEditingExpId] = useState<string | null>(null);
-  const [expForm, setExpForm] = useState<ExperienceData>({
-    businessName: '',
-    role: '',
-    startDate: '',
-    endDate: '',
-    isCurrent: false,
-    description: '',
-  });
-  const [savingExp, setSavingExp] = useState(false);
-
-  const loadProfile = useCallback(async () => {
-    if (!session?.accessToken) return;
-    setLoading(true);
-    try {
-      const api = createApiClient(session.accessToken as string);
-      const data = await api.getMyProfile();
-      if (data) {
-        setProfile(data);
-        setHasProfile(true);
-        setForm({
-          name: data.name || '',
-          phone: data.phone || '',
-          headline: data.headline || '',
-          bio: data.bio || '',
-          specialty: data.specialty || '',
-          category: data.category || '',
-          image: data.image || '',
-          coverImage: data.coverImage || '',
-          headerTemplate: data.headerTemplate || '',
-          yearsExperience: data.yearsExperience ?? undefined,
-          skills: data.skills || [],
-          certifications: data.certifications || [],
-          availability: data.availability || '',
-          preferredZones: data.preferredZones || [],
-          openToWork: data.openToWork || false,
-          profileVisible: data.profileVisible || false,
+  const handleShare = async () => {
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({
+          title: `${profileName} — TurnoLink`,
+          url,
         });
-      } else {
-        // No profile yet - prefill name from session
-        setForm((prev) => ({ ...prev, name: session.user?.name || '' }));
+        return;
+      } catch {
+        // User cancelled or share failed — fall through to clipboard
       }
-    } catch {
-      // No profile yet
-    } finally {
-      setLoading(false);
     }
-  }, [session?.accessToken, session?.user?.name]);
+
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard not available
+    }
+  };
+
+  return (
+    <Button size="sm" variant="outline" className="gap-2" onClick={handleShare}>
+      {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Share2 className="h-4 w-4" />}
+      {copied ? 'Link copiado' : 'Compartir perfil'}
+    </Button>
+  );
+}
+
+export default function MiPerfilDashboard() {
+  const { data: session } = useSession();
+  const [profile, setProfile] = useState<TalentProfile | null>(null);
+  const [proposals, setProposals] = useState<TalentProposal[]>([]);
+  const [applications, setApplications] = useState<JobApplication[]>([]);
+  const [availableJobs, setAvailableJobs] = useState(0);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadProfile();
-  }, [loadProfile]);
-
-  const handleSave = async () => {
     if (!session?.accessToken) return;
-    setSaving(true);
-    try {
-      const api = createApiClient(session.accessToken as string);
-      const payload: MyProfileData = { ...form };
-      if (payload.yearsExperience !== undefined) {
-        payload.yearsExperience = Number(payload.yearsExperience);
-      }
-      // Convert _auto back to empty string (use category default)
-      if (payload.headerTemplate === '_auto') {
-        payload.headerTemplate = '';
-      }
+    const api = createApiClient(session.accessToken as string);
 
-      let result: TalentProfile;
-      if (hasProfile) {
-        result = await api.updateMyProfile(payload);
-      } else {
-        result = await api.createMyProfile(payload);
-        setHasProfile(true);
-      }
-      setProfile(result);
-      toast({ title: hasProfile ? 'Perfil actualizado' : 'Perfil creado', description: 'Tus cambios se guardaron correctamente' });
-    } catch (err: any) {
-      toast({ title: 'Error', description: err?.message || 'No se pudo guardar', variant: 'destructive' });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  // Tag helpers
-  const addSkill = () => {
-    const val = skillInput.trim();
-    if (val && !(form.skills || []).includes(val)) {
-      setForm((prev) => ({ ...prev, skills: [...(prev.skills || []), val] }));
-    }
-    setSkillInput('');
-  };
-
-  const removeSkill = (s: string) => {
-    setForm((prev) => ({ ...prev, skills: (prev.skills || []).filter((x) => x !== s) }));
-  };
-
-  const addCert = () => {
-    const val = certInput.trim();
-    if (val && !(form.certifications || []).includes(val)) {
-      setForm((prev) => ({ ...prev, certifications: [...(prev.certifications || []), val] }));
-    }
-    setCertInput('');
-  };
-
-  const removeCert = (c: string) => {
-    setForm((prev) => ({ ...prev, certifications: (prev.certifications || []).filter((x) => x !== c) }));
-  };
-
-  // Experience handlers
-  const openNewExpDialog = () => {
-    setEditingExpId(null);
-    setExpForm({ businessName: '', role: '', startDate: '', endDate: '', isCurrent: false, description: '' });
-    setExpDialogOpen(true);
-  };
-
-  const openEditExpDialog = (exp: TalentProfile['experiences'][0]) => {
-    setEditingExpId(exp.id);
-    setExpForm({
-      businessName: exp.businessName,
-      role: exp.role,
-      startDate: exp.startDate.split('T')[0],
-      endDate: exp.endDate ? exp.endDate.split('T')[0] : '',
-      isCurrent: exp.isCurrent,
-      description: exp.description || '',
+    Promise.allSettled([
+      api.getMyProfile(),
+      api.getMyProposals(),
+      api.getMyJobApplications(),
+      api.browseJobPostings({ limit: '1' }),
+    ]).then(([profileRes, proposalsRes, applicationsRes, jobsRes]) => {
+      if (profileRes.status === 'fulfilled' && profileRes.value) setProfile(profileRes.value);
+      if (proposalsRes.status === 'fulfilled') setProposals(proposalsRes.value || []);
+      if (applicationsRes.status === 'fulfilled') setApplications(applicationsRes.value || []);
+      if (jobsRes.status === 'fulfilled') setAvailableJobs(jobsRes.value?.total || 0);
+      setLoading(false);
     });
-    setExpDialogOpen(true);
-  };
+  }, [session?.accessToken]);
 
-  const handleSaveExp = async () => {
-    if (!session?.accessToken) return;
-    setSavingExp(true);
-    try {
-      const api = createApiClient(session.accessToken as string);
-      if (editingExpId) {
-        await api.updateMyExperience(editingExpId, expForm);
-      } else {
-        await api.addMyExperience(expForm);
-      }
-      setExpDialogOpen(false);
-      toast({ title: editingExpId ? 'Experiencia actualizada' : 'Experiencia agregada' });
-      loadProfile();
-    } catch (err: any) {
-      toast({ title: 'Error', description: err?.message || 'No se pudo guardar', variant: 'destructive' });
-    } finally {
-      setSavingExp(false);
-    }
-  };
+  // --- Computed stats ---
+  const stats = useMemo(() => {
+    const pendingProposals = proposals.filter((p) => p.status === 'PENDING').length;
+    const activeApplications = applications.filter((a) => a.status === 'PENDING' || a.status === 'REVIEWED').length;
+    const accepted = proposals.filter((p) => p.status === 'ACCEPTED').length + applications.filter((a) => a.status === 'ACCEPTED').length;
+    return { pendingProposals, activeApplications, accepted, availableJobs };
+  }, [proposals, applications, availableJobs]);
 
-  const handleDeleteExp = async (id: string) => {
-    if (!session?.accessToken) return;
-    try {
-      const api = createApiClient(session.accessToken as string);
-      await api.deleteMyExperience(id);
-      toast({ title: 'Experiencia eliminada' });
-      loadProfile();
-    } catch (err: any) {
-      toast({ title: 'Error', description: err?.message || 'No se pudo eliminar', variant: 'destructive' });
-    }
+  const completeness = useMemo(() => (profile ? calcCompleteness(profile) : null), [profile]);
+
+  // --- Greeting ---
+  const greeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Buenos dias';
+    if (hour < 18) return 'Buenas tardes';
+    return 'Buenas noches';
   };
 
   if (loading) {
@@ -250,610 +153,325 @@ export default function MiPerfilPage() {
 
   return (
     <div className="space-y-6 pb-6">
-      {/* Header */}
-      <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-primary p-5 sm:p-8 text-white">
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBvcGFjaXR5PSIuMSI+PGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iMiIgZmlsbD0id2hpdGUiLz48L2c+PC9zdmc+')] opacity-30" />
-        <div className="relative flex items-center gap-3">
-          <div className="rounded-lg bg-white/20 p-2 shrink-0">
-            <UserCog className="h-5 w-5 sm:h-6 sm:w-6" />
+      {/* A. Hero header */}
+      <div className="relative overflow-hidden rounded-xl sm:rounded-2xl bg-gradient-to-r from-primary via-primary/90 to-teal-600 p-4 sm:p-6 text-white shadow-lg">
+        <div className="absolute inset-0 bg-grid opacity-10" />
+        <div className="absolute -top-24 -right-24 w-36 sm:w-48 h-36 sm:h-48 bg-white/10 rounded-full blur-2xl" />
+        <div className="absolute -bottom-12 -left-12 w-28 sm:w-36 h-28 sm:h-36 bg-white/10 rounded-full blur-xl" />
+        <div className="relative">
+          <div className="flex items-center gap-2 mb-1">
+            <Sparkles className="h-4 w-4 sm:h-5 sm:w-5" />
+            <span className="text-xs sm:text-sm font-medium text-white/80 truncate">
+              {format(new Date(), "EEEE d 'de' MMMM, yyyy", { locale: es })}
+            </span>
           </div>
-          <div>
-            <h1 className="text-xl font-bold sm:text-3xl">Mi Perfil Profesional</h1>
-            <p className="mt-0.5 sm:mt-1 text-sm sm:text-base text-white/80">
-              {hasProfile ? 'Edita tu perfil y gestiona tu visibilidad' : 'Completa tu perfil para empezar a recibir propuestas'}
-            </p>
-          </div>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">
+            {greeting()}, {session?.user?.name?.split(' ')[0] || 'Profesional'}
+          </h1>
+          <p className="mt-1 text-white/80 text-sm sm:text-base">
+            {profile ? 'Tu resumen profesional de hoy' : 'Completa tu perfil para empezar a recibir propuestas'}
+          </p>
         </div>
       </div>
 
-      {/* Visibility toggles */}
-      <Card>
-        <CardContent className="p-4 sm:p-6">
-          <div className="flex flex-col sm:flex-row gap-4 sm:gap-8">
-            <div className="flex items-center gap-3">
-              <Switch
-                id="profileVisible"
-                checked={form.profileVisible}
-                onCheckedChange={(val) => setForm((prev) => ({ ...prev, profileVisible: val }))}
-              />
-              <Label htmlFor="profileVisible" className="cursor-pointer flex items-center gap-2">
-                {form.profileVisible ? <Eye className="h-4 w-4 text-green-600" /> : <EyeOff className="h-4 w-4 text-muted-foreground" />}
-                Perfil visible
-              </Label>
+      {/* B. Profile completeness card */}
+      {profile && completeness && (
+        <Card className="border shadow-sm">
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex items-start justify-between gap-4 mb-3">
+              <div className="flex items-center gap-2">
+                {completeness.pct === 100 ? (
+                  <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                ) : (
+                  <AlertCircle className="h-5 w-5 text-amber-500" />
+                )}
+                <h3 className="font-semibold">
+                  {completeness.pct === 100 ? 'Perfil completo' : 'Completa tu perfil'}
+                </h3>
+              </div>
+              <span className="text-sm font-bold text-primary">{completeness.pct}%</span>
             </div>
-            <div className="flex items-center gap-3">
-              <Switch
-                id="openToWork"
-                checked={form.openToWork}
-                onCheckedChange={(val) => setForm((prev) => ({ ...prev, openToWork: val }))}
-              />
-              <Label htmlFor="openToWork" className="cursor-pointer flex items-center gap-2">
-                <Briefcase className="h-4 w-4" />
-                Disponible para trabajar
-              </Label>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
-      {/* Profile Form */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Datos del perfil</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Nombre completo</Label>
-              <Input
-                id="name"
-                value={form.name}
-                onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
-                placeholder="Tu nombre"
-                className="h-10"
+            {/* Progress bar */}
+            <div className="w-full h-2.5 bg-muted rounded-full overflow-hidden mb-3">
+              <div
+                className={cn(
+                  'h-full rounded-full transition-all duration-500',
+                  completeness.pct === 100
+                    ? 'bg-emerald-500'
+                    : completeness.pct >= 70
+                      ? 'bg-primary'
+                      : 'bg-amber-500'
+                )}
+                style={{ width: `${completeness.pct}%` }}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="headline">Titular</Label>
-              <Input
-                id="headline"
-                value={form.headline}
-                onChange={(e) => setForm((prev) => ({ ...prev, headline: e.target.value }))}
-                placeholder="Ej: Estilista senior con 5 años de experiencia"
-                className="h-10"
-              />
-            </div>
-          </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="phone">Teléfono de contacto</Label>
-            <Input
-              id="phone"
-              type="tel"
-              value={form.phone || ''}
-              onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))}
-              placeholder="Ej: +54 11 1234-5678"
-              className="h-10 sm:w-[280px]"
-            />
-            <p className="text-xs text-muted-foreground">
-              Se comparte solo cuando aceptás una propuesta.
+            {/* Missing items */}
+            {completeness.missing.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mb-3">
+                {completeness.missing.map((item) => (
+                  <Badge key={item} variant="outline" className="text-xs">
+                    {item}
+                  </Badge>
+                ))}
+              </div>
+            )}
+
+            {/* Visibility indicators */}
+            <div className="flex flex-wrap items-center gap-4 mb-3 text-sm">
+              <div className="flex items-center gap-1.5">
+                {profile.profileVisible ? (
+                  <Eye className="h-4 w-4 text-emerald-500" />
+                ) : (
+                  <EyeOff className="h-4 w-4 text-muted-foreground" />
+                )}
+                <span className={profile.profileVisible ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}>
+                  Perfil {profile.profileVisible ? 'visible' : 'oculto'}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Briefcase className={cn('h-4 w-4', profile.openToWork ? 'text-emerald-500' : 'text-muted-foreground')} />
+                <span className={profile.openToWork ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}>
+                  {profile.openToWork ? 'Disponible' : 'No disponible'}
+                </span>
+              </div>
+            </div>
+
+            {/* Share profile */}
+            {profile.profileVisible ? (
+              <ShareProfileButton profileId={profile.id} profileName={profile.name} />
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Activá la visibilidad para compartir tu perfil.
+              </p>
+            )}
+
+            {completeness.pct < 100 && (
+              <Link href="/mi-perfil/editar">
+                <Button size="sm" className="w-full sm:w-auto">
+                  Completar perfil
+                  <ArrowRight className="ml-1 h-4 w-4" />
+                </Button>
+              </Link>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* No profile yet — CTA */}
+      {!profile && (
+        <Card className="border-2 border-dashed border-primary/30">
+          <CardContent className="p-6 text-center">
+            <UserCog className="mx-auto h-12 w-12 text-primary/50 mb-3" />
+            <h3 className="font-semibold text-lg mb-1">Crea tu perfil profesional</h3>
+            <p className="text-muted-foreground text-sm mb-4">
+              Completa tu perfil para aparecer en las busquedas y recibir propuestas de comercios.
             </p>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="bio">Acerca de mi</Label>
-            <Textarea
-              id="bio"
-              value={form.bio}
-              onChange={(e) => setForm((prev) => ({ ...prev, bio: e.target.value }))}
-              placeholder="Contale a los negocios sobre tu experiencia y lo que te destaca..."
-              rows={4}
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="specialty">Especialidad</Label>
-              <Input
-                id="specialty"
-                value={form.specialty}
-                onChange={(e) => setForm((prev) => ({ ...prev, specialty: e.target.value }))}
-                placeholder="Ej: Colorista, Masajista..."
-                className="h-10"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="category">Categoria</Label>
-              <Select
-                value={form.category || ''}
-                onValueChange={(val) => setForm((prev) => ({ ...prev, category: val }))}
-              >
-                <SelectTrigger className="h-10">
-                  <SelectValue placeholder="Seleccionar" />
-                </SelectTrigger>
-                <SelectContent>
-                  {CATEGORY_SELECT_OPTIONS.map((cat) => (
-                    <SelectItem key={cat.value} value={cat.value}>
-                      {cat.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="yearsExperience">Años de experiencia</Label>
-              <Input
-                id="yearsExperience"
-                type="number"
-                min={0}
-                max={60}
-                value={form.yearsExperience ?? ''}
-                onChange={(e) => setForm((prev) => ({ ...prev, yearsExperience: e.target.value ? Number(e.target.value) : undefined }))}
-                className="h-10"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="availability">Disponibilidad</Label>
-            <Select
-              value={form.availability || ''}
-              onValueChange={(val) => setForm((prev) => ({ ...prev, availability: val }))}
-            >
-              <SelectTrigger className="h-10 w-full sm:w-[200px]">
-                <SelectValue placeholder="Seleccionar" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="full-time">Jornada completa</SelectItem>
-                <SelectItem value="part-time">Medio turno</SelectItem>
-                <SelectItem value="freelance">Independiente</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Profile Image & Appearance */}
-          <div className="border-t pt-4 mt-4">
-            <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-              <Palette className="h-4 w-4" />
-              Apariencia del perfil
-            </h3>
-            <div className="space-y-4">
-              {/* Profile photo */}
-              <div className="space-y-2">
-                <Label>Foto de perfil</Label>
-                <ImageUpload
-                  value={form.image}
-                  onChange={(url) => setForm((prev) => ({ ...prev, image: url }))}
-                  onUpload={(file) => createApiClient(session!.accessToken as string).uploadMedia(file, 'profiles')}
-                  variant="avatar"
-                  enableCamera={true}
-                  initials={(form.name || '?').split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Tu foto aparece en las tarjetas de búsqueda y en tu perfil público
-                </p>
-              </div>
-
-              {/* Template selector */}
-              <div className="space-y-2">
-                <Label>Estilo del header</Label>
-                <div className="grid grid-cols-3 gap-2 sm:gap-3">
-                  {/* Auto */}
-                  <button
-                    type="button"
-                    onClick={() => setForm((prev) => ({ ...prev, headerTemplate: '_auto' }))}
-                    className={cn(
-                      'rounded-lg p-1 transition-all cursor-pointer',
-                      (!form.headerTemplate || form.headerTemplate === '_auto')
-                        ? 'ring-2 ring-primary bg-primary/5'
-                        : 'border border-muted hover:border-primary/50'
-                    )}
-                  >
-                    <div className="rounded bg-gradient-to-br from-slate-100 to-slate-50 flex flex-col items-center justify-center aspect-[4/3] overflow-hidden">
-                      <Sparkles className="h-5 w-5 text-amber-500 mb-1" />
-                      <span className="text-[10px] text-muted-foreground leading-tight text-center px-1">Según tu categoría</span>
-                    </div>
-                    <p className="text-xs font-medium text-center mt-1 pb-0.5">Automático</p>
-                  </button>
-
-                  {/* Vibrant */}
-                  <button
-                    type="button"
-                    onClick={() => setForm((prev) => ({ ...prev, headerTemplate: 'vibrant' }))}
-                    className={cn(
-                      'rounded-lg p-1 transition-all cursor-pointer',
-                      form.headerTemplate === 'vibrant'
-                        ? 'ring-2 ring-primary bg-primary/5'
-                        : 'border border-muted hover:border-primary/50'
-                    )}
-                  >
-                    <div className="rounded overflow-hidden aspect-[4/3] relative">
-                      <svg viewBox="0 0 120 90" className="w-full h-full">
-                        <defs>
-                          <linearGradient id="tpl-vibrant" x1="0" y1="0" x2="1" y2="0">
-                            <stop offset="0%" stopColor="#14b8a6" />
-                            <stop offset="50%" stopColor="#06b6d4" />
-                            <stop offset="100%" stopColor="#6366f1" />
-                          </linearGradient>
-                        </defs>
-                        <rect width="120" height="50" fill="url(#tpl-vibrant)" />
-                        <rect y="50" width="120" height="40" fill="#f8fafc" />
-                        <circle cx="30" cy="50" r="14" fill="white" stroke="url(#tpl-vibrant)" strokeWidth="2" />
-                        <circle cx="30" cy="50" r="12" fill="#e2e8f0" />
-                        <rect x="52" y="54" width="45" height="4" rx="2" fill="#cbd5e1" />
-                        <rect x="52" y="62" width="30" height="3" rx="1.5" fill="#e2e8f0" />
-                      </svg>
-                    </div>
-                    <p className="text-xs font-medium text-center mt-1 pb-0.5">Vibrante</p>
-                  </button>
-
-                  {/* Clinical */}
-                  <button
-                    type="button"
-                    onClick={() => setForm((prev) => ({ ...prev, headerTemplate: 'clinical' }))}
-                    className={cn(
-                      'rounded-lg p-1 transition-all cursor-pointer',
-                      form.headerTemplate === 'clinical'
-                        ? 'ring-2 ring-primary bg-primary/5'
-                        : 'border border-muted hover:border-primary/50'
-                    )}
-                  >
-                    <div className="rounded overflow-hidden aspect-[4/3] relative">
-                      <svg viewBox="0 0 120 90" className="w-full h-full">
-                        <rect width="120" height="90" fill="#f0fdfa" />
-                        <rect width="4" height="90" fill="#14b8a6" />
-                        <rect x="16" y="12" width="28" height="28" rx="6" fill="#e2e8f0" />
-                        <rect x="52" y="16" width="50" height="5" rx="2.5" fill="#14b8a6" opacity="0.6" />
-                        <rect x="52" y="26" width="35" height="4" rx="2" fill="#cbd5e1" />
-                        <rect x="16" y="50" width="88" height="3" rx="1.5" fill="#e2e8f0" />
-                        <rect x="16" y="58" width="70" height="3" rx="1.5" fill="#e2e8f0" />
-                        <rect x="16" y="66" width="50" height="3" rx="1.5" fill="#e2e8f0" />
-                      </svg>
-                    </div>
-                    <p className="text-xs font-medium text-center mt-1 pb-0.5">Clínico</p>
-                  </button>
-
-                  {/* Corporate */}
-                  <button
-                    type="button"
-                    onClick={() => setForm((prev) => ({ ...prev, headerTemplate: 'corporate' }))}
-                    className={cn(
-                      'rounded-lg p-1 transition-all cursor-pointer',
-                      form.headerTemplate === 'corporate'
-                        ? 'ring-2 ring-primary bg-primary/5'
-                        : 'border border-muted hover:border-primary/50'
-                    )}
-                  >
-                    <div className="rounded overflow-hidden aspect-[4/3] relative">
-                      <svg viewBox="0 0 120 90" className="w-full h-full">
-                        <rect width="120" height="90" fill="#f1f5f9" />
-                        <rect width="120" height="28" fill="#1e293b" />
-                        <rect x="12" y="20" width="20" height="20" rx="2" fill="white" />
-                        <rect x="12" y="20" width="20" height="20" rx="2" fill="#94a3b8" opacity="0.5" />
-                        <rect x="40" y="10" width="55" height="5" rx="2.5" fill="white" opacity="0.8" />
-                        <rect x="40" y="19" width="35" height="3" rx="1.5" fill="white" opacity="0.4" />
-                        <rect x="12" y="48" width="96" height="3" rx="1.5" fill="#cbd5e1" />
-                        <rect x="12" y="56" width="75" height="3" rx="1.5" fill="#cbd5e1" />
-                        <rect x="12" y="64" width="55" height="3" rx="1.5" fill="#cbd5e1" />
-                      </svg>
-                    </div>
-                    <p className="text-xs font-medium text-center mt-1 pb-0.5">Corporativo</p>
-                  </button>
-
-                  {/* Modern */}
-                  <button
-                    type="button"
-                    onClick={() => setForm((prev) => ({ ...prev, headerTemplate: 'modern' }))}
-                    className={cn(
-                      'rounded-lg p-1 transition-all cursor-pointer',
-                      form.headerTemplate === 'modern'
-                        ? 'ring-2 ring-primary bg-primary/5'
-                        : 'border border-muted hover:border-primary/50'
-                    )}
-                  >
-                    <div className="rounded overflow-hidden aspect-[4/3] relative">
-                      <svg viewBox="0 0 120 90" className="w-full h-full">
-                        <defs>
-                          <linearGradient id="tpl-modern" x1="0" y1="0" x2="1" y2="1">
-                            <stop offset="0%" stopColor="#3b82f6" />
-                            <stop offset="50%" stopColor="#06b6d4" />
-                            <stop offset="100%" stopColor="#22c55e" />
-                          </linearGradient>
-                        </defs>
-                        <rect width="120" height="50" fill="url(#tpl-modern)" />
-                        <polygon points="85,0 120,0 120,50" fill="white" opacity="0.1" />
-                        <polygon points="0,50 40,20 80,50" fill="white" opacity="0.08" />
-                        <rect y="50" width="120" height="40" fill="#f8fafc" />
-                        <rect x="20" y="36" width="26" height="26" rx="8" fill="white" stroke="url(#tpl-modern)" strokeWidth="2" />
-                        <rect x="20" y="36" width="26" height="26" rx="8" fill="#e2e8f0" />
-                        <rect x="54" y="54" width="48" height="4" rx="2" fill="#cbd5e1" />
-                        <rect x="54" y="62" width="32" height="3" rx="1.5" fill="#e2e8f0" />
-                      </svg>
-                    </div>
-                    <p className="text-xs font-medium text-center mt-1 pb-0.5">Moderno</p>
-                  </button>
-
-                  {/* Minimal */}
-                  <button
-                    type="button"
-                    onClick={() => setForm((prev) => ({ ...prev, headerTemplate: 'minimal' }))}
-                    className={cn(
-                      'rounded-lg p-1 transition-all cursor-pointer',
-                      form.headerTemplate === 'minimal'
-                        ? 'ring-2 ring-primary bg-primary/5'
-                        : 'border border-muted hover:border-primary/50'
-                    )}
-                  >
-                    <div className="rounded overflow-hidden aspect-[4/3] relative">
-                      <svg viewBox="0 0 120 90" className="w-full h-full">
-                        <rect width="120" height="90" fill="#f8fafc" />
-                        <circle cx="60" cy="28" r="14" fill="#e2e8f0" />
-                        <rect x="30" y="50" width="60" height="4" rx="2" fill="#cbd5e1" />
-                        <rect x="38" y="59" width="44" height="3" rx="1.5" fill="#e2e8f0" />
-                        <rect x="20" y="72" width="20" height="6" rx="3" fill="#e2e8f0" />
-                        <rect x="44" y="72" width="20" height="6" rx="3" fill="#e2e8f0" />
-                        <rect x="68" y="72" width="20" height="6" rx="3" fill="#e2e8f0" />
-                      </svg>
-                    </div>
-                    <p className="text-xs font-medium text-center mt-1 pb-0.5">Minimal</p>
-                  </button>
-                </div>
-              </div>
-
-              {/* Cover image */}
-              <div className="space-y-2">
-                <Label>Imagen de portada</Label>
-                <ImageUpload
-                  value={form.coverImage}
-                  onChange={(url) => setForm((prev) => ({ ...prev, coverImage: url }))}
-                  onUpload={(file) => createApiClient(session!.accessToken as string).uploadMedia(file, 'covers')}
-                  aspectRatio="banner"
-                  enableCamera={false}
-                  placeholder="Subir imagen de portada"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Se muestra en el template Vibrante
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Skills */}
-          <div className="space-y-2">
-            <Label>Especialidades</Label>
-            <div className="flex gap-2">
-              <Input
-                value={skillInput}
-                onChange={(e) => setSkillInput(e.target.value)}
-                placeholder="Agregar especialidad..."
-                className="h-10"
-                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addSkill(); } }}
-              />
-              <Button type="button" variant="outline" size="sm" onClick={addSkill} className="h-10 px-3">
-                <Plus className="h-4 w-4" />
+            <Link href="/mi-perfil/editar">
+              <Button>
+                Crear perfil
+                <ArrowRight className="ml-1 h-4 w-4" />
               </Button>
-            </div>
-            {(form.skills || []).length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mt-2">
-                {(form.skills || []).map((s) => (
-                  <Badge key={s} variant="secondary" className="pr-1">
-                    {s}
-                    <button onClick={() => removeSkill(s)} className="ml-1 hover:text-destructive">
-                      <Trash2 className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                ))}
-              </div>
-            )}
-          </div>
+            </Link>
+          </CardContent>
+        </Card>
+      )}
 
-          {/* Certifications */}
-          <div className="space-y-2">
-            <Label>Certificaciones</Label>
-            <div className="flex gap-2">
-              <Input
-                value={certInput}
-                onChange={(e) => setCertInput(e.target.value)}
-                placeholder="Agregar certificación..."
-                className="h-10"
-                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCert(); } }}
-              />
-              <Button type="button" variant="outline" size="sm" onClick={addCert} className="h-10 px-3">
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
-            {(form.certifications || []).length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mt-2">
-                {(form.certifications || []).map((c) => (
-                  <Badge key={c} variant="outline" className="pr-1">
-                    {c}
-                    <button onClick={() => removeCert(c)} className="ml-1 hover:text-destructive">
-                      <Trash2 className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Preferred Zones */}
-          <div className="space-y-2">
-            <Label>Zonas preferidas</Label>
-            <ZoneAutocomplete
-              values={form.preferredZones || []}
-              onChange={(zones) => setForm((prev) => ({ ...prev, preferredZones: zones }))}
-            />
-          </div>
-
-          <Button onClick={handleSave} disabled={saving || !form.name} className="w-full sm:w-auto h-11">
-            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-            {hasProfile ? 'Guardar cambios' : 'Crear perfil'}
-          </Button>
-        </CardContent>
-      </Card>
-
-      {/* Experience Section */}
-      {hasProfile && (
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-lg">Experiencia</CardTitle>
-            <Button variant="outline" size="sm" onClick={openNewExpDialog}>
-              <Plus className="mr-1 h-4 w-4" />
-              Agregar
-            </Button>
+      {/* C. Stats grid */}
+      <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
+        <Card className="border-0 shadow-md bg-gradient-to-br from-blue-500 to-blue-600 text-white overflow-hidden relative">
+          <div className="absolute -top-8 -right-8 w-24 h-24 bg-white/10 rounded-full" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-white/90">Propuestas</CardTitle>
+            <Inbox className="h-5 w-5 text-white/80" />
           </CardHeader>
           <CardContent>
-            {profile?.experiences && profile.experiences.length > 0 ? (
-              <div className="space-y-4">
-                {profile.experiences.map((exp) => (
-                  <div
-                    key={exp.id}
-                    className="relative pl-6 border-l-2 border-muted pb-4 last:pb-0"
-                  >
-                    <div className="absolute left-[-5px] top-1 h-2 w-2 rounded-full bg-primary" />
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <div className="font-medium">{exp.role}</div>
-                        <div className="text-sm text-muted-foreground">{exp.businessName}</div>
-                        <div className="text-xs text-muted-foreground mt-1">
-                          {new Date(exp.startDate).toLocaleDateString('es-AR', { month: 'short', year: 'numeric' })}
-                          {' — '}
-                          {exp.isCurrent ? 'Actual' : exp.endDate ? new Date(exp.endDate).toLocaleDateString('es-AR', { month: 'short', year: 'numeric' }) : ''}
-                        </div>
-                        {exp.description && <p className="text-sm text-muted-foreground mt-1">{exp.description}</p>}
+            <div className="text-3xl font-bold">{stats.pendingProposals}</div>
+            <p className="text-xs text-white/70 mt-1">pendientes</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-md bg-gradient-to-br from-emerald-500 to-emerald-600 text-white overflow-hidden relative">
+          <div className="absolute -top-8 -right-8 w-24 h-24 bg-white/10 rounded-full" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-white/90">Postulaciones</CardTitle>
+            <Send className="h-5 w-5 text-white/80" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{stats.activeApplications}</div>
+            <p className="text-xs text-white/70 mt-1">activas</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-md bg-gradient-to-br from-violet-500 to-violet-600 text-white overflow-hidden relative">
+          <div className="absolute -top-8 -right-8 w-24 h-24 bg-white/10 rounded-full" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-white/90">Aceptadas</CardTitle>
+            <CheckCircle2 className="h-5 w-5 text-white/80" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{stats.accepted}</div>
+            <p className="text-xs text-white/70 mt-1">total</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-md bg-gradient-to-br from-amber-500 to-orange-500 text-white overflow-hidden relative">
+          <div className="absolute -top-8 -right-8 w-24 h-24 bg-white/10 rounded-full" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-white/90">Ofertas</CardTitle>
+            <Briefcase className="h-5 w-5 text-white/80" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{stats.availableJobs}</div>
+            <p className="text-xs text-white/70 mt-1">disponibles</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* D. Two-column grid: proposals + applications */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Recent Proposals */}
+        <Card className="border shadow-sm bg-white/80 dark:bg-neutral-800/80 backdrop-blur-sm">
+          <CardHeader className="flex flex-row items-center justify-between border-b bg-slate-50/50 dark:bg-neutral-700/50">
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg bg-blue-500/10 dark:bg-blue-500/20 flex items-center justify-center">
+                <Inbox className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              </div>
+              <CardTitle className="text-base">Propuestas Recientes</CardTitle>
+            </div>
+            <Link href="/mi-perfil/propuestas">
+              <Button variant="ghost" size="sm" className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30">
+                Ver todas
+                <ArrowRight className="ml-1 h-4 w-4" />
+              </Button>
+            </Link>
+          </CardHeader>
+          <CardContent className="p-0">
+            {proposals.length > 0 ? (
+              <div className="divide-y">
+                {proposals.slice(0, 3).map((proposal) => {
+                  const st = proposalStatusMap[proposal.status] || proposalStatusMap.PENDING;
+                  return (
+                    <div key={proposal.id} className="flex items-center justify-between p-4 hover:bg-slate-50/50 dark:hover:bg-neutral-700/50 transition-colors">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium truncate">{proposal.senderTenant?.name || 'Comercio'}</p>
+                        <p className="text-sm text-muted-foreground truncate">{proposal.role}</p>
                       </div>
-                      <div className="flex gap-1 shrink-0">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditExpDialog(exp)}>
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => handleDeleteExp(exp.id)}>
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
+                      <div className="text-right shrink-0 ml-3">
+                        <Badge variant={st.variant}>{st.label}</Badge>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {formatDistanceToNow(new Date(proposal.createdAt), { addSuffix: true, locale: es })}
+                        </p>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <Briefcase className="mx-auto h-10 w-10 text-muted-foreground/50 mb-3" />
-                <p>No hay experiencia laboral</p>
-                <p className="text-sm mt-1">Agrega tu experiencia para destacar tu perfil</p>
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="h-12 w-12 rounded-full bg-slate-100 dark:bg-neutral-700 flex items-center justify-center mb-3">
+                  <Inbox className="h-6 w-6 text-slate-400 dark:text-neutral-500" />
+                </div>
+                <p className="text-muted-foreground">Sin propuestas aun</p>
+                <p className="text-sm text-muted-foreground/70 mt-1">Completa tu perfil para recibir propuestas</p>
               </div>
             )}
           </CardContent>
         </Card>
-      )}
 
-      {/* Profile Preview */}
-      {hasProfile && profile && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Eye className="h-5 w-5" />
-              Vista previa del perfil
-            </CardTitle>
+        {/* Recent Applications */}
+        <Card className="border shadow-sm bg-white/80 dark:bg-neutral-800/80 backdrop-blur-sm">
+          <CardHeader className="flex flex-row items-center justify-between border-b bg-slate-50/50 dark:bg-neutral-700/50">
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg bg-emerald-500/10 dark:bg-emerald-500/20 flex items-center justify-center">
+                <Send className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <CardTitle className="text-base">Postulaciones Recientes</CardTitle>
+            </div>
+            <Link href="/mi-perfil/postulaciones">
+              <Button variant="ghost" size="sm" className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/30">
+                Ver todas
+                <ArrowRight className="ml-1 h-4 w-4" />
+              </Button>
+            </Link>
           </CardHeader>
-          <CardContent className="p-0 overflow-hidden rounded-b-lg">
-            <ProfileHeader
-              compact
-              profile={{
-                ...profile,
-                name: form.name || profile.name,
-                headline: form.headline || profile.headline,
-                bio: form.bio || profile.bio,
-                specialty: form.specialty || profile.specialty,
-                category: form.category || profile.category,
-                image: form.image || profile.image,
-                coverImage: form.coverImage || profile.coverImage,
-                headerTemplate: (form.headerTemplate === '_auto' ? '' : form.headerTemplate) || profile.headerTemplate,
-                skills: form.skills || profile.skills,
-                certifications: form.certifications || profile.certifications,
-                availability: form.availability || profile.availability,
-                preferredZones: form.preferredZones || profile.preferredZones,
-                openToWork: form.openToWork ?? profile.openToWork,
-              }}
-            />
+          <CardContent className="p-0">
+            {applications.length > 0 ? (
+              <div className="divide-y">
+                {applications.slice(0, 3).map((app) => {
+                  const st = applicationStatusMap[app.status] || applicationStatusMap.PENDING;
+                  return (
+                    <div key={app.id} className="flex items-center justify-between p-4 hover:bg-slate-50/50 dark:hover:bg-neutral-700/50 transition-colors">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium truncate">{app.posting?.title || 'Oferta'}</p>
+                        <p className="text-sm text-muted-foreground truncate">{app.posting?.tenant?.name || 'Comercio'}</p>
+                      </div>
+                      <div className="text-right shrink-0 ml-3">
+                        <Badge variant={st.variant}>{st.label}</Badge>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {formatDistanceToNow(new Date(app.createdAt), { addSuffix: true, locale: es })}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="h-12 w-12 rounded-full bg-slate-100 dark:bg-neutral-700 flex items-center justify-center mb-3">
+                  <Send className="h-6 w-6 text-slate-400 dark:text-neutral-500" />
+                </div>
+                <p className="text-muted-foreground">Sin postulaciones aun</p>
+                <Link href="/mi-perfil/ofertas" className="mt-2">
+                  <Button variant="link" size="sm" className="text-primary">
+                    Explorar ofertas
+                  </Button>
+                </Link>
+              </div>
+            )}
           </CardContent>
         </Card>
-      )}
+      </div>
 
-      {/* Experience Dialog */}
-      <Dialog open={expDialogOpen} onOpenChange={setExpDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{editingExpId ? 'Editar experiencia' : 'Agregar experiencia'}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Empresa / Negocio</Label>
-              <Input
-                value={expForm.businessName}
-                onChange={(e) => setExpForm((prev) => ({ ...prev, businessName: e.target.value }))}
-                placeholder="Nombre de la empresa"
-                className="h-10"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Puesto / Rol</Label>
-              <Input
-                value={expForm.role}
-                onChange={(e) => setExpForm((prev) => ({ ...prev, role: e.target.value }))}
-                placeholder="Ej: Estilista senior"
-                className="h-10"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label>Fecha inicio</Label>
-                <Input
-                  type="date"
-                  value={expForm.startDate}
-                  onChange={(e) => setExpForm((prev) => ({ ...prev, startDate: e.target.value }))}
-                  className="h-10"
-                />
+      {/* E. Quick actions */}
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
+        <Link href="/mi-perfil/ofertas" className="group">
+          <Card className="border shadow-sm hover:shadow-md transition-all cursor-pointer group-hover:scale-[1.02]">
+            <CardContent className="p-6 text-center">
+              <div className="h-12 w-12 mx-auto rounded-xl bg-amber-500/10 dark:bg-amber-500/20 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                <Briefcase className="h-6 w-6 text-amber-600 dark:text-amber-400" />
               </div>
-              <div className="space-y-2">
-                <Label>Fecha fin</Label>
-                <Input
-                  type="date"
-                  value={expForm.endDate || ''}
-                  onChange={(e) => setExpForm((prev) => ({ ...prev, endDate: e.target.value }))}
-                  disabled={expForm.isCurrent}
-                  className="h-10"
-                />
+              <h3 className="font-semibold">Buscar ofertas</h3>
+              <p className="text-sm text-muted-foreground mt-1">Explora oportunidades laborales</p>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href="/mi-perfil/editar" className="group">
+          <Card className="border shadow-sm hover:shadow-md transition-all cursor-pointer group-hover:scale-[1.02]">
+            <CardContent className="p-6 text-center">
+              <div className="h-12 w-12 mx-auto rounded-xl bg-primary/10 dark:bg-primary/20 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                <UserCog className="h-6 w-6 text-primary" />
               </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Switch
-                id="isCurrent"
-                checked={expForm.isCurrent}
-                onCheckedChange={(val) => setExpForm((prev) => ({ ...prev, isCurrent: val, endDate: val ? '' : prev.endDate }))}
-              />
-              <Label htmlFor="isCurrent" className="cursor-pointer">Trabajo actual</Label>
-            </div>
-            <div className="space-y-2">
-              <Label>Descripcion <span className="text-muted-foreground font-normal">(opcional)</span></Label>
-              <Textarea
-                value={expForm.description || ''}
-                onChange={(e) => setExpForm((prev) => ({ ...prev, description: e.target.value }))}
-                placeholder="Describe tus responsabilidades..."
-                rows={3}
-              />
-            </div>
-          </div>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setExpDialogOpen(false)}>Cancelar</Button>
-            <Button
-              onClick={handleSaveExp}
-              disabled={savingExp || !expForm.businessName || !expForm.role || !expForm.startDate}
-            >
-              {savingExp ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-              Guardar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+              <h3 className="font-semibold">Editar perfil</h3>
+              <p className="text-sm text-muted-foreground mt-1">Actualiza tu informacion profesional</p>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href="/seguridad" className="group">
+          <Card className="border shadow-sm hover:shadow-md transition-all cursor-pointer group-hover:scale-[1.02]">
+            <CardContent className="p-6 text-center">
+              <div className="h-12 w-12 mx-auto rounded-xl bg-slate-500/10 dark:bg-slate-500/20 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                <Settings className="h-6 w-6 text-slate-600 dark:text-slate-400" />
+              </div>
+              <h3 className="font-semibold">Configuracion</h3>
+              <p className="text-sm text-muted-foreground mt-1">Seguridad y ajustes de cuenta</p>
+            </CardContent>
+          </Card>
+        </Link>
+      </div>
     </div>
   );
 }

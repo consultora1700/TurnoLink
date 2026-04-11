@@ -33,6 +33,9 @@
     "puppeteer": "^24.36.0"
   },
   "dependencies": {
+    "form-data": "^4.0.5",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.2.1",
     "pg": "^8.18.0"
   }
 }

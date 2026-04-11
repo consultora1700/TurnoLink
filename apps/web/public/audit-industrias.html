@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TurnoLink — Auditoría de Industrias</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --surface: #1e293b;
+    --surface2: #334155;
+    --border: #475569;
+    --text: #f1f5f9;
+    --text2: #94a3b8;
+    --accent: #3b82f6;
+    --green: #22c55e;
+    --red: #ef4444;
+    --amber: #f59e0b;
+    --teal: #14b8a6;
+    --purple: #a855f7;
+    --pink: #ec4899;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    padding: 0;
+  }
+
+  /* ── NAV ── */
+  .topbar {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(15,23,42,0.92); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 32px;
+    display: flex; align-items: center; gap: 24px;
+    overflow-x: auto;
+  }
+  .topbar a {
+    color: var(--text2); text-decoration: none; font-size: 13px; font-weight: 500;
+    white-space: nowrap; padding: 6px 12px; border-radius: 6px; transition: all .2s;
+  }
+  .topbar a:hover { color: var(--text); background: var(--surface); }
+  .topbar .logo { color: var(--accent); font-weight: 700; font-size: 15px; margin-right: 16px; }
+
+  /* ── LAYOUT ── */
+  .container { max-width: 1400px; margin: 0 auto; padding: 32px 24px; }
+
+  /* ── HEADER ── */
+  .hero {
+    text-align: center; padding: 48px 24px 40px;
+    background: linear-gradient(135deg, rgba(59,130,246,0.1), rgba(168,85,247,0.1));
+    border-bottom: 1px solid var(--border);
+  }
+  .hero h1 { font-size: 32px; font-weight: 800; margin-bottom: 8px; }
+  .hero p { color: var(--text2); font-size: 16px; max-width: 700px; margin: 0 auto; }
+  .hero .date { display: inline-block; margin-top: 12px; background: var(--surface); padding: 4px 14px; border-radius: 20px; font-size: 12px; color: var(--teal); }
+
+  /* ── SECTIONS ── */
+  section { margin-bottom: 48px; }
+  section h2 {
+    font-size: 22px; font-weight: 700; margin-bottom: 6px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  section h2 .badge {
+    font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 12px;
+    background: var(--accent); color: white;
+  }
+  section .subtitle { color: var(--text2); font-size: 14px; margin-bottom: 20px; }
+
+  /* ── TABLES ── */
+  .table-wrap {
+    overflow-x: auto; border-radius: 12px; border: 1px solid var(--border);
+    background: var(--surface);
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead { background: var(--surface2); }
+  th {
+    text-align: left; padding: 10px 14px; font-weight: 600; font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.5px; color: var(--text2);
+    white-space: nowrap; border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: 10px 14px; border-bottom: 1px solid rgba(71,85,105,0.4);
+    vertical-align: top;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover { background: rgba(59,130,246,0.05); }
+  .emoji { font-size: 18px; }
+  .check { color: var(--green); font-weight: 700; }
+  .cross { color: var(--red); font-weight: 700; opacity: 0.5; }
+  .warn { color: var(--amber); font-weight: 700; }
+  .tag {
+    display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 11px;
+    font-weight: 600; margin: 1px 2px;
+  }
+  .tag-green { background: rgba(34,197,94,0.15); color: var(--green); }
+  .tag-red { background: rgba(239,68,68,0.15); color: var(--red); }
+  .tag-amber { background: rgba(245,158,11,0.15); color: var(--amber); }
+  .tag-blue { background: rgba(59,130,246,0.15); color: var(--accent); }
+  .tag-purple { background: rgba(168,85,247,0.15); color: var(--purple); }
+  .tag-teal { background: rgba(20,184,166,0.15); color: var(--teal); }
+  .tag-pink { background: rgba(236,72,153,0.15); color: var(--pink); }
+
+  /* ── CARDS GRID ── */
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 20px; transition: border-color .2s;
+  }
+  .card:hover { border-color: var(--accent); }
+  .card h3 { font-size: 16px; font-weight: 700; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+  .card .desc { color: var(--text2); font-size: 12px; margin-bottom: 12px; }
+  .card .meta { display: flex; flex-wrap: wrap; gap: 4px; }
+
+  /* ── STATS ROW ── */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 32px; }
+  .stat {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 20px; text-align: center;
+  }
+  .stat .num { font-size: 36px; font-weight: 800; }
+  .stat .label { font-size: 12px; color: var(--text2); margin-top: 4px; }
+
+  /* ── PROBLEM LIST ── */
+  .problems { list-style: none; }
+  .problems li {
+    padding: 12px 16px; border-left: 3px solid var(--amber);
+    background: rgba(245,158,11,0.05); margin-bottom: 8px; border-radius: 0 8px 8px 0;
+    font-size: 13px;
+  }
+  .problems li.ok { border-left-color: var(--green); background: rgba(34,197,94,0.05); }
+  .problems li strong { color: var(--amber); }
+  .problems li.ok strong { color: var(--green); }
+
+  /* ── NICHOS ── */
+  .nicho-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+  .nicho {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px 16px; display: flex; align-items: center; gap: 12px;
+  }
+  .nicho .icon { font-size: 24px; width: 40px; text-align: center; flex-shrink: 0; }
+  .nicho .info h4 { font-size: 14px; font-weight: 600; }
+  .nicho .info p { font-size: 11px; color: var(--text2); }
+
+  /* ── FILES ── */
+  .file-list { list-style: none; }
+  .file-list li {
+    padding: 8px 14px; font-size: 13px; font-family: 'JetBrains Mono', monospace;
+    border-bottom: 1px solid rgba(71,85,105,0.3);
+    display: flex; gap: 12px; align-items: baseline;
+  }
+  .file-list .path { color: var(--teal); }
+  .file-list .purpose { color: var(--text2); font-family: 'Inter', sans-serif; }
+
+  @media (max-width: 768px) {
+    .container { padding: 16px 12px; }
+    .hero h1 { font-size: 24px; }
+    .cards { grid-template-columns: 1fr; }
+    .stats { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="topbar">
+  <span class="logo">TurnoLink</span>
+  <a href="#resumen">Resumen</a>
+  <a href="#rubros">18 Rubros</a>
+  <a href="#funcionalidades">Funcionalidades</a>
+  <a href="#fichas">Fichas</a>
+  <a href="#terminologia">Terminología</a>
+  <a href="#planes">Planes</a>
+  <a href="#problemas">Problemas</a>
+  <a href="#nichos">Nichos Nuevos</a>
+  <a href="#archivos">Archivos</a>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <h1>Auditoría de Industrias</h1>
+  <p>Relevamiento exhaustivo de rubros, funcionalidades activas, terminología, fichas y oportunidades de expansión.</p>
+  <span class="date">24 de marzo de 2026</span>
+</div>
+
+<div class="container">
+
+<!-- STATS -->
+<div class="stats">
+  <div class="stat"><div class="num" style="color:var(--accent)">18</div><div class="label">Rubros actuales</div></div>
+  <div class="stat"><div class="num" style="color:var(--teal)">7</div><div class="label">Grupos de suscripción</div></div>
+  <div class="stat"><div class="num" style="color:var(--purple)">21</div><div class="label">Campos de terminología</div></div>
+  <div class="stat"><div class="num" style="color:var(--green)">6</div><div class="label">Archivos a modificar</div></div>
+  <div class="stat"><div class="num" style="color:var(--amber)">7</div><div class="label">Rubros con videollamada mal configurada</div></div>
+  <div class="stat"><div class="num" style="color:var(--pink)">15+</div><div class="label">Nichos nuevos posibles</div></div>
+</div>
+
+<!-- RUBROS ACTUALES -->
+<section id="rubros">
+  <h2>Rubros Actuales <span class="badge">18 industrias</span></h2>
+  <p class="subtitle">Cada rubro tiene terminología, fichas, funcionalidades y planes personalizados.</p>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th></th><th>Rubro</th><th>Etiqueta</th><th>Cliente</th><th>Turno/Reserva</th><th>Servicio</th><th>Empleado</th><th>Acción</th><th>Modo</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="emoji">💇</td><td>estetica-belleza</td><td>Estética y Belleza</td><td>Cliente</td><td>Turno</td><td>Servicio</td><td>Profesional</td><td>Reservar</td><td><span class="tag tag-blue">HOURLY</span></td></tr>
+        <tr><td class="emoji">✂️</td><td>barberia</td><td>Barbería</td><td>Cliente</td><td>Turno</td><td>Servicio</td><td>Barbero</td><td>Reservar</td><td><span class="tag tag-blue">HOURLY</span></td></tr>
+        <tr><td class="emoji">💆</td><td>masajes-spa</td><td>Masajes y Spa</td><td>Cliente</td><td>Sesión</td><td>Servicio</td><td>Terapeuta</td><td>Reservar</td><td><span class="tag tag-blue">HOURLY</span></td></tr>
+        <tr><td class="emoji">🎨</td><td>tatuajes-piercing</td><td>Tatuajes y Piercing</td><td>Cliente</td><td>Sesión</td><td>Servicio</td><td>Artista</td><td>Reservar</td><td><span class="tag tag-blue">HOURLY</span></td></tr>
+        <tr><td class="emoji">🩺</td><td>salud</td><td>Salud</td><td>Paciente</td><td>Consulta</td><td>Servicio</td><td>Profesional</td><td>Agendar</td><td><span class="tag tag-blue">HOURLY</span></td></tr>
+        <tr><td class="emoji">🦷</td><td>odontologia</td><td>Odontología</td><td>Paciente</td><td>Turno</td><td>Servicio</td><td>Odontólogo</td><td>Agendar</td><td><span class="tag tag-blue">HOURLY</span></td></tr>
+        <tr><td class="emoji">🧠</td><td>psicologia</td><td>Psicología y Terapia</td><td>Paciente</td><td>Sesión</td><td>Servicio</td><td>Profesional</td><td>Agendar</td><td><span class="tag tag-blue">HOURLY</span></td></tr>
+        <tr><td class="emoji">🥗</td><td>nutricion</td><td>Nutrición</td><td>Paciente</td><td>Consulta</td><td>Servicio</td><td>Nutricionista</td><td>Agendar</td><td><span class="tag tag-blue">HOURLY</span></td></tr>
+        <tr><td class="emoji">🐾</td><td>veterinaria</td><td>Veterinaria</td><td>Paciente</td><td>Turno</td><td>Servicio</td><td>Veterinario</td><td>Agendar</td><td><span class="tag tag-blue">HOURLY</span></td></tr>
+        <tr><td class="emoji">💪</td><td>fitness</td><td>Fitness y Deporte</td><td>Alumno</td><td>Clase</td><td>Clase</td><td>Instructor</td><td>Reservar</td><td><span class="tag tag-blue">HOURLY</span></td></tr>
+        <tr><td class="emoji">⚽</td><td>deportes</td><td>Deportes</td><td>Cliente</td><td>Reserva</td><td>Cancha</td><td>Encargado</td><td>Reservar</td><td><span class="tag tag-blue">HOURLY</span></td></tr>
+        <tr><td class="emoji">📚</td><td>educacion</td><td>Educación y Clases</td><td>Alumno</td><td>Clase</td><td>Curso</td><td>Profesor</td><td>Inscribirse</td><td><span class="tag tag-blue">HOURLY</span></td></tr>
+        <tr><td class="emoji">💼</td><td>consultoria</td><td>Consultoría</td><td>Cliente</td><td>Consulta</td><td>Servicio</td><td>Profesional</td><td>Agendar</td><td><span class="tag tag-blue">HOURLY</span></td></tr>
+        <tr><td class="emoji">🏨</td><td>hospedaje</td><td>Hospedaje</td><td>Huésped</td><td>Reserva</td><td>Habitación</td><td>Staff</td><td>Reservar</td><td><span class="tag tag-purple">DAILY</span></td></tr>
+        <tr><td class="emoji">🏠</td><td>alquiler</td><td>Alquiler</td><td>Cliente</td><td>Reserva</td><td>Propiedad</td><td>Encargado</td><td>Reservar</td><td><span class="tag tag-purple">DAILY</span></td></tr>
+        <tr><td class="emoji">🏢</td><td>espacios</td><td>Espacios</td><td>Usuario</td><td>Reserva</td><td>Espacio</td><td>Encargado</td><td>Reservar</td><td><span class="tag tag-blue">HOURLY</span></td></tr>
+        <tr><td class="emoji">🛍️</td><td>mercado</td><td>Mercado & Catálogos</td><td>Cliente</td><td>Consulta</td><td>Producto</td><td>Vendedor</td><td>Consultar</td><td><span class="tag tag-teal">CATALOG</span></td></tr>
+        <tr><td class="emoji">📋</td><td>otro</td><td>Otro</td><td>Cliente</td><td>Turno</td><td>Servicio</td><td>Profesional</td><td>Reservar</td><td><span class="tag tag-blue">HOURLY</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- FUNCIONALIDADES -->
+<section id="funcionalidades">
+  <h2>Funcionalidades Activas por Rubro</h2>
+  <p class="subtitle">✅ = activa por defecto &nbsp; ❌ = oculta &nbsp; ⚠️ = debería revisarse</p>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Rubro</th><th>Turnos</th><th>Servicios</th><th>Empleados</th><th>Especial.</th><th>Formularios</th><th>Horarios</th><th>Video</th><th>Autogest.</th><th>Catálogo</th><th>Fideliz.</th><th>Sucursales</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>💇 Estética</td><td class="check">✅</td><td class="check">✅</td><td class="check">✅</td><td class="cross">❌</td><td class="check">✅</td><td class="check">✅</td><td class="cross">❌</td><td class="check">✅</td><td class="cross">❌</td><td class="check">✅</td><td class="cross">❌</td></tr>
+        <tr><td>✂️ Barbería</td><td class="check">✅</td><td class="check">✅</td><td class="check">✅</td><td class="cross">❌</td><td class="check">✅</td><td class="check">✅</td><td class="cross">❌</td><td class="check">✅</td><td class="cross">❌</td><td class="check">✅</td><td class="cross">❌</td></tr>
+        <tr><td>💆 Masajes/Spa</td><td class="check">✅</td><td class="check">✅</td><td class="check">✅</td><td class="cross">❌</td><td class="check">✅</td><td class="check">✅</td><td class="cross">❌</td><td class="check">✅</td><td class="cross">❌</td><td class="check">✅</td><td class="cross">❌</td></tr>
+        <tr><td>🎨 Tatuajes</td><td class="check">✅</td><td class="check">✅</td><td class="check">✅</td><td class="cross">❌</td><td class="cross">❌</td><td class="check">✅</td><td class="cross">❌</td><td class="check">✅</td><td class="cross">❌</td><td class="check">✅</td><td class="cross">❌</td></tr>
+        <tr><td>🩺 Salud</td><td class="check">✅</td><td class="check">✅</td><td class="check">✅</td><td class="check">✅</td><td class="check">✅</td><td class="check">✅</td><td class="check">✅</td><td class="check">✅</td><td class="cross">❌</td><td class="check">✅</td><td class="cross">❌</td></tr>
+        <tr><td>🦷 Odontología</td><td class="check">✅</td><td class="check">✅</td><td class="check">✅</td><td class="cross">❌</td><td class="check">✅</td><td class="check">✅</td><td class="warn">⚠️</td><td class="check">✅</td><td class="cross">❌</td><td class="check">✅</td><td class="cross">❌</td></tr>
+        <tr><td>🧠 Psicología</td><td class="check">✅</td><td class="check">✅</td><td class="cross">❌</td><td class="cross">❌</td><td class="check">✅</td><td class="check">✅</td><td class="check">✅</td><td class="check">✅</td><td class="cross">❌</td><td class="check">✅</td><td class="cross">❌</td></tr>
+        <tr><td>🥗 Nutrición</td><td class="check">✅</td><td class="check">✅</td><td class="cross">❌</td><td class="cross">❌</td><td class="check">✅</td><td class="check">✅</td><td class="check">✅</td><td class="check">✅</td><td class="cross">❌</td><td class="check">✅</td><td class="cross">❌</td></tr>
+        <tr><td>🐾 Veterinaria</td><td class="check">✅</td><td class="check">✅</td><td class="check">✅</td><td class="cross">❌</td><td class="check">✅</td><td class="check">✅</td><td class="warn">⚠️</td><td class="check">✅</td><td class="cross">❌</td><td class="check">✅</td><td class="cross">❌</td></tr>
+        <tr><td>💪 Fitness</td><td class="check">✅</td><td class="check">✅</td><td class="check">✅</td><td class="cross">❌</td><td class="cross">❌</td><td class="check">✅</td><td class="warn">⚠️</td><td class="check">✅</td><td class="cross">❌</td><td class="check">✅</td><td class="cross">❌</td></tr>
+        <tr><td>⚽ Deportes</td><td class="check">✅</td><td class="check">✅</td><td class="cross">❌</td><td class="cross">❌</td><td class="cross">❌</td><td class="check">✅</td><td class="cross">❌</td><td class="check">✅</td><td class="cross">❌</td><td class="check">✅</td><td class="cross">❌</td></tr>
+        <tr><td>📚 Educación</td><td class="check">✅</td><td class="check">✅</td><td class="check">✅</td><td class="cross">❌</td><td class="check">✅</td><td class="check">✅</td><td class="check">✅</td><td class="check">✅</td><td class="cross">❌</td><td class="check">✅</td><td class="cross">❌</td></tr>
+        <tr><td>💼 Consultoría</td><td class="check">✅</td><td class="check">✅</td><td class="check">✅</td><td class="check">✅</td><td class="check">✅</td><td class="check">✅</td><td class="check">✅</td><td class="check">✅</td><td class="cross">❌</td><td class="check">✅</td><td class="cross">❌</td></tr>
+        <tr><td>🏨 Hospedaje</td><td class="check">✅</td><td class="check">✅</td><td class="cross">❌</td><td class="cross">❌</td><td class="cross">❌</td><td class="check">✅</td><td class="cross">❌</td><td class="check">✅</td><td class="cross">❌</td><td class="cross">❌</td><td class="cross">❌</td></tr>
+        <tr><td>🏠 Alquiler</td><td class="check">✅</td><td class="check">✅</td><td class="cross">❌</td><td class="cross">❌</td><td class="cross">❌</td><td class="check">✅</td><td class="cross">❌</td><td class="check">✅</td><td class="cross">❌</td><td class="cross">❌</td><td class="cross">❌</td></tr>
+        <tr><td>🏢 Espacios</td><td class="check">✅</td><td class="check">✅</td><td class="cross">❌</td><td class="cross">❌</td><td class="cross">❌</td><td class="check">✅</td><td class="cross">❌</td><td class="check">✅</td><td class="cross">❌</td><td class="check">✅</td><td class="cross">❌</td></tr>
+        <tr><td>🛍️ Mercado (cat.)</td><td class="cross">❌</td><td class="cross">❌</td><td class="cross">❌</td><td class="cross">❌</td><td class="cross">❌</td><td class="cross">❌</td><td class="cross">❌</td><td class="cross">❌</td><td class="check">✅</td><td class="check">✅</td><td class="cross">❌</td></tr>
+        <tr><td>🛍️ Mercado (ecom.)</td><td class="cross">❌</td><td class="cross">❌</td><td class="cross">❌</td><td class="cross">❌</td><td class="cross">❌</td><td class="cross">❌</td><td class="cross">❌</td><td class="cross">❌</td><td class="check">✅</td><td class="check">✅</td><td class="cross">❌</td></tr>
+        <tr><td>📋 Otro</td><td class="check">✅</td><td class="check">✅</td><td class="check">✅</td><td class="check">✅</td><td class="check">✅</td><td class="check">✅</td><td class="check">✅</td><td class="check">✅</td><td class="cross">❌</td><td class="check">✅</td><td class="cross">❌</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- FICHAS -->
+<section id="fichas">
+  <h2>Fichas de Cliente por Rubro</h2>
+  <p class="subtitle">Módulos de ficha habilitados en la gestión de clientes/pacientes.</p>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Rubro</th><th>Datos Personales</th><th>Ficha Belleza</th><th>Ficha Clínica</th><th>Ficha Fitness</th><th>Notas Seguimiento</th><th>Derivaciones</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>💇 Estética / ✂️ Barbería / 💆 Masajes / 🎨 Tatuajes</td><td class="check">✅</td><td class="check">✅</td><td class="cross">❌</td><td class="cross">❌</td><td class="check">✅</td><td class="cross">❌</td></tr>
+        <tr><td>🩺 Salud / 🦷 Odontología / 🐾 Veterinaria</td><td class="check">✅</td><td class="cross">❌</td><td class="check">✅</td><td class="cross">❌</td><td class="check">✅</td><td class="check">✅</td></tr>
+        <tr><td>🧠 Psicología</td><td class="check">✅</td><td class="cross">❌</td><td class="check">✅</td><td class="cross">❌</td><td class="check">✅</td><td class="check">✅</td></tr>
+        <tr><td>🥗 Nutrición</td><td class="check">✅</td><td class="cross">❌</td><td class="check">✅</td><td class="check">✅</td><td class="check">✅</td><td class="check">✅</td></tr>
+        <tr><td>💪 Fitness</td><td class="check">✅</td><td class="cross">❌</td><td class="cross">❌</td><td class="check">✅</td><td class="check">✅</td><td class="cross">❌</td></tr>
+        <tr><td>📚 Educación / 💼 Consultoría / ⚽ Deportes / 🏢 Espacios / 🏨 Hospedaje / 🏠 Alquiler / 🛍️ Mercado / 📋 Otro</td><td class="check">✅</td><td class="cross">❌</td><td class="cross">❌</td><td class="cross">❌</td><td class="check">✅</td><td class="cross">❌</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- TERMINOLOGÍA -->
+<section id="terminologia">
+  <h2>Terminología Completa <span class="badge">21 campos por rubro</span></h2>
+  <p class="subtitle">Cada rubro adapta el lenguaje en toda la app: emails, formularios, placeholders, fichas, botones.</p>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Rubro</th><th>Depósito</th><th>Verbo reservar</th><th>Verbo atender</th><th>Credenciales</th><th>Placeholder notas</th><th>Amenidades</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>💇 Estética</td><td>Seña</td><td>reservar</td><td>atender</td><td>Certificaciones</td><td>Ej: Alergia a tinturas, piel sensible...</td><td>Comodidades del salón</td></tr>
+        <tr><td>✂️ Barbería</td><td>Seña</td><td>reservar</td><td>atender</td><td>—</td><td>Ej: Largo preferido, estilo...</td><td>Comodidades de la barbería</td></tr>
+        <tr><td>💆 Masajes</td><td>Seña</td><td>reservar</td><td>atender</td><td>—</td><td>Ej: Zona de dolor, lesiones previas...</td><td>Comodidades del spa</td></tr>
+        <tr><td>🩺 Salud</td><td>Seña</td><td>agendar</td><td>atender</td><td>Matrícula profesional</td><td>Ej: Motivo de consulta, síntomas...</td><td>Comodidades del consultorio</td></tr>
+        <tr><td>🦷 Odontología</td><td>Seña</td><td>agendar</td><td>atender</td><td>Matrícula profesional</td><td>Ej: Dolor dental, zona afectada...</td><td>Comodidades del consultorio</td></tr>
+        <tr><td>🧠 Psicología</td><td>Seña</td><td>agendar</td><td>atender</td><td>Matrícula profesional</td><td>Ej: Motivo de consulta...</td><td>Comodidades del consultorio</td></tr>
+        <tr><td>🥗 Nutrición</td><td>Seña</td><td>agendar</td><td>atender</td><td>Matrícula profesional</td><td>Ej: Objetivos, alergias, dieta actual...</td><td>Comodidades del consultorio</td></tr>
+        <tr><td>🐾 Veterinaria</td><td>Seña</td><td>agendar</td><td>atender</td><td>Matrícula profesional</td><td>Ej: Especie, raza, síntomas...</td><td>Comodidades de la veterinaria</td></tr>
+        <tr><td>💪 Fitness</td><td>Seña</td><td>reservar</td><td>dictar</td><td>Certificaciones</td><td>Ej: Lesiones, nivel, objetivos...</td><td>Instalaciones del gimnasio</td></tr>
+        <tr><td>⚽ Deportes</td><td>Seña</td><td>reservar</td><td>recibir</td><td>—</td><td>Ej: Cantidad de jugadores, torneo...</td><td>Instalaciones del complejo</td></tr>
+        <tr><td>📚 Educación</td><td>Matrícula</td><td>inscribirse</td><td>dictar</td><td>Credenciales educativas</td><td>Ej: Nivel actual, objetivos...</td><td>Facilidades del espacio</td></tr>
+        <tr><td>💼 Consultoría</td><td>Adelanto</td><td>agendar</td><td>atender</td><td>Matrícula profesional</td><td>Ej: Tipo de consulta, documentación...</td><td>Comodidades del estudio</td></tr>
+        <tr><td>🏨 Hospedaje</td><td>Depósito</td><td>reservar</td><td>recibir</td><td>—</td><td>Ej: Cantidad de personas, hora llegada...</td><td>Amenidades del alojamiento</td></tr>
+        <tr><td>🏠 Alquiler</td><td>Depósito</td><td>reservar</td><td>recibir</td><td>—</td><td>Ej: Cantidad de personas, mascotas...</td><td>Amenidades de la propiedad</td></tr>
+        <tr><td>🏢 Espacios</td><td>Seña</td><td>reservar</td><td>recibir</td><td>—</td><td>Ej: Tipo de evento, equipamiento...</td><td>Equipamiento del espacio</td></tr>
+        <tr><td>🛍️ Mercado</td><td>—</td><td>consultar</td><td>atender</td><td>—</td><td>Ej: Talle, color, variante...</td><td>—</td></tr>
+        <tr><td>📋 Otro</td><td>Seña</td><td>reservar</td><td>atender</td><td>—</td><td>Ej: Información adicional...</td><td>—</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- PLANES -->
+<section id="planes">
+  <h2>Grupos de Suscripción <span class="badge">7 grupos</span></h2>
+  <p class="subtitle">Cada grupo tiene planes con límites y features adaptados a la industria.</p>
+  <div class="cards">
+    <div class="card">
+      <h3>💇 Belleza</h3>
+      <div class="desc">Peluquerías, barberías, estética, uñas, pestañas, depilación, spa, masajes, bronceado, cosmetología</div>
+      <div class="meta">
+        <span class="tag tag-green">Gratis</span>
+        <span class="tag tag-blue">Profesional $14.999</span>
+        <span class="tag tag-purple">Business $29.999</span>
+      </div>
+    </div>
+    <div class="card">
+      <h3>🩺 Salud</h3>
+      <div class="desc">Consultorios médicos, odontólogos, nutricionistas, kinesiólogos, fonoaudiólogos, psicólogos, abogados, contadores</div>
+      <div class="meta">
+        <span class="tag tag-blue">Starter $16.990</span>
+        <span class="tag tag-purple">Profesional $29.990</span>
+        <span class="tag tag-pink">Clínica $49.990</span>
+      </div>
+    </div>
+    <div class="card">
+      <h3>⚽ Deportes</h3>
+      <div class="desc">Canchas de fútbol, pádel, tenis, básquet, danza, gimnasios, entrenadores, salas de ensayo, estudios grabación</div>
+      <div class="meta">
+        <span class="tag tag-green">Gratis</span>
+        <span class="tag tag-blue">Profesional $14.999</span>
+        <span class="tag tag-purple">Business $29.999</span>
+      </div>
+    </div>
+    <div class="card">
+      <h3>🏨 Hospedaje</h3>
+      <div class="desc">Albergues transitorios, hoteles por turno, hostels, habitaciones 12hs, boxes privados</div>
+      <div class="meta">
+        <span class="tag tag-green">Gratis</span>
+        <span class="tag tag-blue">Profesional $14.999</span>
+        <span class="tag tag-purple">Business $29.999</span>
+      </div>
+    </div>
+    <div class="card">
+      <h3>🏠 Alquiler</h3>
+      <div class="desc">Casas quinta, cabañas, departamentos temporarios, campos, salones de eventos, quinchos</div>
+      <div class="meta">
+        <span class="tag tag-green">Gratis</span>
+        <span class="tag tag-blue">Profesional $14.999</span>
+        <span class="tag tag-purple">Business $29.999</span>
+      </div>
+    </div>
+    <div class="card">
+      <h3>🏢 Espacios</h3>
+      <div class="desc">Coworking, oficinas por hora, salas de reuniones, boxes profesionales, estudios compartidos</div>
+      <div class="meta">
+        <span class="tag tag-green">Gratis</span>
+        <span class="tag tag-blue">Profesional $14.999</span>
+        <span class="tag tag-purple">Business $29.999</span>
+      </div>
+    </div>
+    <div class="card">
+      <h3>🛍️ Mercado</h3>
+      <div class="desc">Tiendas online, ropa, inmobiliarias, alimentos, artesanías, productos naturales, electrónica, joyería</div>
+      <div class="meta">
+        <span class="tag tag-green">Vitrina gratis</span>
+        <span class="tag tag-blue">Comercio $9.990</span>
+        <span class="tag tag-purple">Tienda Pro $19.990</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PROBLEMAS -->
+<section id="problemas">
+  <h2>Problemas Detectados <span class="badge" style="background:var(--amber)">7 issues</span></h2>
+  <p class="subtitle">Funcionalidades mal configuradas o con oportunidad de mejora.</p>
+  <ul class="problems">
+    <li><strong>Odontología:</strong> Videollamadas OCULTAS — pero podría ofrecer consulta previa virtual (foto de radiografía, evaluar urgencia). Recomendación: ACTIVAR como "Teleconsulta".</li>
+    <li><strong>Veterinaria:</strong> Videollamadas OCULTAS — pero teleconsulta veterinaria es un nicho creciente (evaluar síntomas, seguimiento post-operatorio). Recomendación: ACTIVAR como "Teleconsulta".</li>
+    <li><strong>Fitness:</strong> Videollamadas OCULTAS — clases online y entrenamiento virtual son estándar post-pandemia. Recomendación: ACTIVAR como "Clase online".</li>
+    <li><strong>Educación:</strong> Videollamadas ACTIVAS — correcto, clases virtuales tienen sentido total.</li>
+    <li class="ok"><strong>Psicología/Nutrición:</strong> Videollamadas ACTIVAS — correcto, sesiones online son standard en estas profesiones.</li>
+    <li class="ok"><strong>Salud/Consultoría:</strong> Videollamadas ACTIVAS — correcto, telemedicina y consultas virtuales son esenciales.</li>
+    <li><strong>UX Registro:</strong> Selector de industria es una grilla plana sin agrupación, sin subtextos descriptivos, solo 10 de 18 visibles. Nichos importantes están ocultos.</li>
+  </ul>
+</section>
+
+<!-- NICHOS NUEVOS -->
+<section id="nichos">
+  <h2>Nichos Nuevos Propuestos <span class="badge" style="background:var(--teal)">expansión</span></h2>
+  <p class="subtitle">Industrias que podemos cubrir con la infraestructura existente (venden tiempo, servicios o productos).</p>
+
+  <h3 style="margin: 24px 0 12px; font-size: 16px; color: var(--accent);">Automotriz & Hogar</h3>
+  <div class="nicho-grid">
+    <div class="nicho"><div class="icon">🔧</div><div class="info"><h4>Taller Mecánico</h4><p>Service, diagnóstico, reparaciones. Turno + formulario de vehículo.</p></div></div>
+    <div class="nicho"><div class="icon">✨</div><div class="info"><h4>Detailing Automotriz</h4><p>Pulido, coating, PPF. Turno + galería de resultados.</p></div></div>
+    <div class="nicho"><div class="icon">🧹</div><div class="info"><h4>Limpieza del Hogar</h4><p>Limpieza profunda, mantenimiento. Reserva + formulario de espacio.</p></div></div>
+    <div class="nicho"><div class="icon">🔑</div><div class="info"><h4>Cerrajería / Plomería / Electricista</h4><p>Servicios a domicilio. Turno + zona de cobertura.</p></div></div>
+    <div class="nicho"><div class="icon">👕</div><div class="info"><h4>Lavandería / Tintorería</h4><p>Lavado, planchado, teñido. Turno de retiro/entrega.</p></div></div>
+  </div>
+
+  <h3 style="margin: 24px 0 12px; font-size: 16px; color: var(--accent);">Gastronomía</h3>
+  <div class="nicho-grid">
+    <div class="nicho"><div class="icon">🍰</div><div class="info"><h4>Repostería / Pastelería</h4><p>Tortas, tartas, dulces. Catálogo + pedidos con fecha entrega.</p></div></div>
+    <div class="nicho"><div class="icon">🍕</div><div class="info"><h4>Restaurante / Dark Kitchen</h4><p>Menú, delivery, reserva de mesa. Catálogo + pedidos.</p></div></div>
+    <div class="nicho"><div class="icon">🍷</div><div class="info"><h4>Vinoteca / Cervecería Artesanal</h4><p>Catálogo de productos + degustaciones con reserva.</p></div></div>
+  </div>
+
+  <h3 style="margin: 24px 0 12px; font-size: 16px; color: var(--accent);">Creativos & Profesionales</h3>
+  <div class="nicho-grid">
+    <div class="nicho"><div class="icon">📸</div><div class="info"><h4>Fotografía / Videografía</h4><p>Sesiones fotográficas, eventos. Turno + galería portfolio.</p></div></div>
+    <div class="nicho"><div class="icon">🎵</div><div class="info"><h4>Música / Clases de Instrumento</h4><p>Clases particulares, ensayos. Clase + nivel del alumno.</p></div></div>
+    <div class="nicho"><div class="icon">🎭</div><div class="info"><h4>Coaching / Mentoría</h4><p>Sesiones de coaching personal, empresarial. Sesión + videollamada.</p></div></div>
+    <div class="nicho"><div class="icon">🖥️</div><div class="info"><h4>Diseño / Desarrollo Web</h4><p>Consultas, cotizaciones, seguimiento de proyectos.</p></div></div>
+    <div class="nicho"><div class="icon">🏗️</div><div class="info"><h4>Arquitectura / Interiorismo</h4><p>Consultas, relevamientos, presentación de proyecto.</p></div></div>
+  </div>
+
+  <h3 style="margin: 24px 0 12px; font-size: 16px; color: var(--accent);">Salud & Bienestar (expansión)</h3>
+  <div class="nicho-grid">
+    <div class="nicho"><div class="icon">🦶</div><div class="info"><h4>Podología</h4><p>Tratamientos podológicos. Turno + ficha clínica.</p></div></div>
+    <div class="nicho"><div class="icon">🏃</div><div class="info"><h4>Kinesiología / Fisioterapia</h4><p>Rehabilitación, sesiones. Ficha clínica + evolución.</p></div></div>
+    <div class="nicho"><div class="icon">🐕</div><div class="info"><h4>Peluquería Canina / Pet Grooming</h4><p>Baño, corte, spa para mascotas. Turno + ficha mascota.</p></div></div>
+    <div class="nicho"><div class="icon">👶</div><div class="info"><h4>Pediatría / Obstetricia</h4><p>Consultas especializadas. Ficha clínica + derivaciones.</p></div></div>
+  </div>
+
+  <h3 style="margin: 24px 0 12px; font-size: 16px; color: var(--accent);">Servicios Profesionales (expansión)</h3>
+  <div class="nicho-grid">
+    <div class="nicho"><div class="icon">⚖️</div><div class="info"><h4>Abogados (separado de Consultoría)</h4><p>Consultas legales, mediaciones. Matrícula + especialidad.</p></div></div>
+    <div class="nicho"><div class="icon">📊</div><div class="info"><h4>Contadores / Asesores Fiscales</h4><p>Liquidaciones, consultas impositivas. Consulta + documentación.</p></div></div>
+    <div class="nicho"><div class="icon">🏦</div><div class="info"><h4>Seguros / Asesoría Financiera</h4><p>Cotizaciones, consultas. Sesión + videollamada.</p></div></div>
+    <div class="nicho"><div class="icon">📝</div><div class="info"><h4>Escribanía / Notaría</h4><p>Trámites, escrituras, certificaciones. Turno + documentación.</p></div></div>
+  </div>
+</section>
+
+<!-- ARCHIVOS -->
+<section id="archivos">
+  <h2>Archivos a Modificar</h2>
+  <p class="subtitle">Para agregar o modificar un rubro, estos son los archivos involucrados.</p>
+  <div class="table-wrap">
+    <ul class="file-list">
+      <li><span class="path">apps/web/lib/tenant-config.ts</span><span class="purpose">RUBROS, RUBRO_TERMS (21 campos), RUBRO_UI_CONFIG, FICHA_MODULES</span></li>
+      <li><span class="path">apps/web/lib/rubro-labels.ts</span><span class="purpose">Labels de notas de sesión (placeholder, observaciones, progreso)</span></li>
+      <li><span class="path">apps/web/app/(auth)/register/page.tsx</span><span class="purpose">RUBRO_ICONS, FEATURED_RUBRO_KEYS, RUBRO_SUBTEXTS, UI selector</span></li>
+      <li><span class="path">apps/api/src/modules/auth/auth.service.ts</span><span class="purpose">RUBRO_LAYOUT, RUBRO_HIDDEN_SECTIONS, RUBRO_DEFAULTS, INDUSTRY_CONFIG</span></li>
+      <li><span class="path">apps/api/src/common/utils/rubro-terms.ts</span><span class="purpose">RUBRO_TERMS backend (8 campos para emails/notificaciones)</span></li>
+      <li><span class="path">apps/api/src/prisma/seed-industry-plans.ts</span><span class="purpose">IndustryGroup + planes de suscripción por grupo</span></li>
+    </ul>
+  </div>
+</section>
+
+<!-- SELECTOR UX -->
+<section>
+  <h2>Selector Actual vs Propuesto</h2>
+  <p class="subtitle">El selector actual es una grilla plana. La propuesta es agrupar por categorías con subtextos y búsqueda.</p>
+  <div class="cards">
+    <div class="card" style="border-color: var(--red);">
+      <h3 style="color: var(--red);">Actual</h3>
+      <div class="desc">
+        - Grilla plana de 3 columnas<br>
+        - Solo 10 de 18 visibles<br>
+        - Sin descripción ni subtexto<br>
+        - Sin agrupación por categoría<br>
+        - Sin búsqueda<br>
+        - "Ver más" esconde nichos importantes<br>
+        - Solo iconos de Lucide genéricos
+      </div>
+    </div>
+    <div class="card" style="border-color: var(--green);">
+      <h3 style="color: var(--green);">Propuesto</h3>
+      <div class="desc">
+        - Agrupado por categorías: Belleza, Salud, Profesionales, Fitness, Gastronomía, Automotriz, Servicios, Productos<br>
+        - Subtexto descriptivo en cada rubro<br>
+        - Buscador con filtro en tiempo real<br>
+        - Todos visibles sin "Ver más"<br>
+        - Cards más grandes con emoji + nombre + descripción<br>
+        - Categorías colapsables<br>
+        - Destacados según el país/región
+      </div>
+    </div>
+  </div>
+</section>
+
+</div>
+
+</body>
+</html>

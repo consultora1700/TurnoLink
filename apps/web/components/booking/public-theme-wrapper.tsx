@@ -166,6 +166,8 @@ export function PublicThemeWrapper({
       applyThemeToDOM(theme);
       if (canToggle) {
         localStorage.setItem(STORAGE_KEY, theme);
+        // Also set a cookie so the server can read theme preference (prevents flash on SSR pages)
+        document.cookie = `${STORAGE_KEY}=${theme};path=/;max-age=${60 * 60 * 24 * 365};SameSite=Lax`;
       }
     }
   }, [theme, mounted, STORAGE_KEY, canToggle]);
@@ -183,6 +185,29 @@ export function PublicThemeWrapper({
       applyThemeToDOM(dashboardTheme || 'light');
     };
   }, []);
+
+  // Sync tenant color variables to <html> so position:fixed elements (BackgroundStyles) inherit them
+  useEffect(() => {
+    const root = document.documentElement;
+    const primaryH = hexToHSL(colors.primaryColor || DEFAULT_PRIMARY);
+    const secondaryH = hexToHSL(colors.secondaryColor || DEFAULT_SECONDARY);
+    const accentH = hexToHSL(colors.accentColor || DEFAULT_ACCENT);
+    if (primaryH) {
+      root.style.setProperty('--primary', `${primaryH.h} ${primaryH.s}% ${primaryH.l}%`);
+    }
+    if (secondaryH) {
+      root.style.setProperty('--secondary', `${secondaryH.h} ${secondaryH.s}% ${secondaryH.l}%`);
+    }
+    if (accentH) {
+      root.style.setProperty('--accent', `${accentH.h} ${accentH.s}% ${accentH.l}%`);
+    }
+    return () => {
+      // Restore defaults on unmount
+      root.style.removeProperty('--primary');
+      root.style.removeProperty('--secondary');
+      root.style.removeProperty('--accent');
+    };
+  }, [colors.primaryColor, colors.secondaryColor, colors.accentColor]);
 
   // Generate CSS variables from custom colors (always, using defaults when not configured)
   const effectivePrimary = colors.primaryColor || DEFAULT_PRIMARY;

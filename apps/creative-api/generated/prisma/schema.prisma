@@ -1,0 +1,85 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Template {
+  id        String   @id @default(cuid())
+  name      String
+  category  String // "social_post", "story", "banner", "mockup", "email_header"
+  width     Int
+  height    Int
+  layers    String // JSON: Konva node tree
+  thumbnail String?
+  isSystem  Boolean  @default(false)
+  tenantId  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  creatives Creative[]
+}
+
+model Creative {
+  id         String   @id @default(cuid())
+  tenantId   String
+  templateId String?
+  name       String
+  type       String // "screenshot", "mockup", "composition", "animation"
+  status     String   @default("pending") // pending, processing, completed, failed
+  inputData  String // JSON: generation parameters
+  outputPath String?
+  outputUrl  String?
+  format     String   @default("png") // png, jpg, webp, mp4, gif
+  width      Int?
+  height     Int?
+  fileSize   Int?
+  errorMsg   String?
+  jobId      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  template Template? @relation(fields: [templateId], references: [id])
+  exports  Export[]
+}
+
+model Export {
+  id         String   @id @default(cuid())
+  creativeId String
+  format     String // png, jpg, webp, pdf, mp4, gif
+  width      Int
+  height     Int
+  quality    Int      @default(90)
+  outputPath String?
+  status     String   @default("pending")
+  createdAt  DateTime @default(now())
+
+  creative Creative @relation(fields: [creativeId], references: [id])
+}
+
+model DeviceFrame {
+  id           String @id @default(cuid())
+  name         String // "iPhone 15 Pro", "MacBook Air", "iPad Pro"
+  category     String // "phone", "tablet", "laptop", "desktop"
+  framePath    String
+  screenX      Int
+  screenY      Int
+  screenW      Int
+  screenH      Int
+  cornerRadius Int    @default(0)
+}
+
+model AiCopyResult {
+  id        String   @id @default(cuid())
+  tenantId  String
+  prompt    String
+  context   String? // JSON: business info
+  result    String // JSON: array of generated variants
+  model     String   @default("claude-sonnet-4-6")
+  tokens    Int?
+  createdAt DateTime @default(now())
+}

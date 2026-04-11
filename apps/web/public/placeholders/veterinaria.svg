@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#c8e0b8"/>
+      <stop offset="100%" style="stop-color:#a4ca90"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="400" rx="16" fill="url(#g)"/>
+  <g transform="translate(200,132)" fill="#fff" opacity="0.85">
+    <!-- Paw print clean -->
+    <ellipse cx="-10" cy="-16" rx="5.5" ry="6.5"/>
+    <ellipse cx="10" cy="-16" rx="5.5" ry="6.5"/>
+    <ellipse cx="-18" cy="0" rx="5" ry="6"/>
+    <ellipse cx="18" cy="0" rx="5" ry="6"/>
+    <ellipse cx="0" cy="12" rx="12" ry="13"/>
+  </g>
+  <text x="200" y="218" text-anchor="middle" fill="#fff" font-family="system-ui,sans-serif" font-size="16" font-weight="600" opacity="0.95">Agrega tu imagen</text>
+  <text x="200" y="240" text-anchor="middle" fill="#fff" font-family="system-ui,sans-serif" font-size="12" font-weight="400" opacity="0.65">Enamora a los duenos</text>
+</svg>

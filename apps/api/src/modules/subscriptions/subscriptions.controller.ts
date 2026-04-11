@@ -5,16 +5,15 @@ import {
   Patch,
   Body,
   Param,
-  UseGuards,
+
   Request,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { SubscriptionsService } from './subscriptions.service';
 import { PlatformService } from '../platform/platform.service';
 
 @Controller('subscriptions')
-@UseGuards(JwtAuthGuard)
 export class SubscriptionsController {
   constructor(
     private readonly subscriptionsService: SubscriptionsService,
@@ -48,8 +47,9 @@ export class SubscriptionsController {
   }
 
   @Post('free')
-  async startFree(@Request() req: any) {
-    return this.subscriptionsService.createFreeSubscription(req.user.tenantId);
+  async startFree(@Request() req: any, @Body('planSlug') planSlug?: string) {
+    // Legacy endpoint — prefer POST /subscriptions/change-plan
+    return this.subscriptionsService.createFreeSubscription(req.user.tenantId, true);
   }
 
   @Post('upgrade')
@@ -57,11 +57,33 @@ export class SubscriptionsController {
     return this.subscriptionsService.upgradePlan(req.user.tenantId, planSlug);
   }
 
+  /**
+   * Unified plan change endpoint.
+   * Handles: new subscription, V1 migration, upgrade, downgrade, free↔paid.
+   * Returns { subscription, action, message }
+   */
+  @Post('change-plan')
+  async changePlan(
+    @Request() req: any,
+    @Body('planSlug') planSlug: string,
+  ) {
+    if (!planSlug) {
+      throw new BadRequestException('planSlug es requerido');
+    }
+    return this.subscriptionsService.changePlan(req.user.tenantId, planSlug);
+  }
+
   @Post('activate')
   async activate(
     @Request() req: any,
     @Body('billingPeriod') billingPeriod?: 'MONTHLY' | 'YEARLY',
   ) {
+    // Solo SUPER_ADMIN puede activar manualmente (la activación normal es vía webhook de pago)
+    if (req.user.role !== 'SUPER_ADMIN') {
+      throw new ForbiddenException(
+        'La activación se realiza automáticamente al confirmar el pago.',
+      );
+    }
     return this.subscriptionsService.activateSubscription(
       req.user.tenantId,
       billingPeriod,
@@ -70,12 +92,14 @@ export class SubscriptionsController {
 
   @Patch('cancel')
   async cancel(@Request() req: any, @Body('reason') reason?: string) {
+    // Cancel in MercadoPago first (stops recurring charges)
+    await this.platformService.cancelRecurringSubscription(req.user.tenantId);
     return this.subscriptionsService.cancelSubscription(req.user.tenantId, reason);
   }
 
   /**
-   * Create payment preference for plan upgrade
-   * This creates a MercadoPago checkout for the user to pay
+   * Create recurring subscription via MercadoPago Preapproval
+   * The user authorizes once and gets charged automatically every billing period
    */
   @Post('create-payment')
   async createPayment(
@@ -99,8 +123,8 @@ export class SubscriptionsController {
       throw new BadRequestException('Email del usuario no disponible');
     }
 
-    // Create payment preference
-    const result = await this.platformService.createSubscriptionPreference(
+    // Create recurring subscription (MercadoPago Preapproval)
+    const result = await this.platformService.createRecurringSubscription(
       req.user.tenantId,
       planSlug,
       billingPeriod,
@@ -109,9 +133,9 @@ export class SubscriptionsController {
 
     return {
       success: true,
-      preferenceId: result.preferenceId,
+      preapprovalId: result.preapprovalId,
       initPoint: result.initPoint,
-      message: 'Redirigiendo al pago...',
+      message: 'Redirigiendo a MercadoPago para autorizar el débito automático...',
     };
   }
 

@@ -13,9 +13,13 @@ import {
   BarChart3,
   MapPin,
   Settings,
+  Palette,
   ChevronLeft,
   ChevronRight,
   X,
+  Newspaper,
+  ListChecks,
+  Tag,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -25,11 +29,17 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
+interface SubItem {
+  label: string;
+  href: string;
+}
+
 interface NavItem {
   label: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   badge?: number;
+  subItems?: SubItem[];
 }
 
 const navItems: NavItem[] = [
@@ -47,6 +57,16 @@ const navItems: NavItem[] = [
     label: 'Suscripciones',
     href: '/admin/suscripciones',
     icon: CreditCard,
+  },
+  {
+    label: 'Planes',
+    href: '/admin/planes',
+    icon: ListChecks,
+  },
+  {
+    label: 'Códigos Promo',
+    href: '/admin/codigos-promo',
+    icon: Tag,
   },
   {
     label: 'Pagos',
@@ -72,6 +92,21 @@ const navItems: NavItem[] = [
     label: 'Mapa',
     href: '/admin/mapa',
     icon: MapPin,
+  },
+  {
+    label: 'Creative Studio',
+    href: '/admin/creative-studio',
+    icon: Palette,
+    subItems: [
+      { label: 'Crear contenido', href: '/admin/creative-studio' },
+      { label: 'Copy con IA', href: '/admin/creative-studio/ai-copy' },
+      { label: 'Animaciones', href: '/admin/creative-studio/animations' },
+    ],
+  },
+  {
+    label: 'Landings',
+    href: '/admin/landings',
+    icon: Newspaper,
   },
   {
     label: 'Configuracion',
@@ -231,9 +266,40 @@ export function AdminSidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }:
 
         {/* Navigation */}
         <nav className="flex flex-col gap-1 p-3 overflow-y-auto h-[calc(100vh-140px)]">
-          {navItems.map((item, index) => (
-            <NavLink key={item.href} item={item} index={index} />
-          ))}
+          {navItems.map((item, index) => {
+            const isParentActive =
+              pathname === item.href ||
+              (item.href !== '/admin/dashboard' && pathname.startsWith(item.href));
+            const showSubItems = item.subItems && isParentActive && !isCollapsed;
+
+            return (
+              <div key={item.href}>
+                <NavLink item={item} index={index} />
+                {showSubItems && (
+                  <div className="ml-8 mt-0.5 space-y-0.5 hidden lg:block">
+                    {item.subItems!.map((sub) => {
+                      const isSubActive = pathname === sub.href;
+                      return (
+                        <Link
+                          key={sub.href}
+                          href={sub.href}
+                          onClick={onClose}
+                          className={cn(
+                            'block rounded-lg px-3 py-1.5 text-xs transition-colors',
+                            isSubActive
+                              ? 'text-primary font-medium bg-primary/10'
+                              : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+                          )}
+                        >
+                          {sub.label}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </nav>
 
         {/* Footer */}

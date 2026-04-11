@@ -10,21 +10,23 @@ export class GetOAuthUrlDto {
   @IsBoolean()
   isSandbox?: boolean = false;
 
-  @ApiProperty({
-    description: 'TOTP code for 2FA verification',
+  @ApiPropertyOptional({
+    description: 'TOTP code for 2FA verification (required only when reconnecting)',
     example: '123456',
   })
+  @IsOptional()
   @IsString()
-  totpCode: string;
+  totpCode?: string;
 }
 
 export class DisconnectMercadoPagoDto {
-  @ApiProperty({
-    description: 'TOTP code for 2FA verification',
+  @ApiPropertyOptional({
+    description: 'TOTP code for 2FA verification (optional)',
     example: '123456',
   })
+  @IsOptional()
   @IsString()
-  totpCode: string;
+  totpCode?: string;
 }
 
 export class CreateDepositPreferenceDto {

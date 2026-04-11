@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Black background with rounded corners -->
+  <rect width="512" height="512" rx="96" fill="#0A0A0A"/>
+
+  <!-- "T" white -->
+  <text
+    x="16" y="355"
+    text-anchor="start"
+    font-family="Arial Black, Impact, Arial, Helvetica, sans-serif"
+    font-weight="900"
+    font-size="175"
+    fill="white"
+  >T</text>
+
+  <!-- "Link" teal -->
+  <text
+    x="140" y="355"
+    text-anchor="start"
+    font-family="Arial Black, Impact, Arial, Helvetica, sans-serif"
+    font-weight="900"
+    font-size="175"
+    fill="#14B8A6"
+  >Link</text>
+</svg>

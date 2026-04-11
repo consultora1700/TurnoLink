@@ -23,6 +23,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { createApiClient } from '@/lib/api';
 import { toast } from '@/hooks/use-toast';
+import { useRubroTerms } from '@/contexts/tenant-config-context';
 
 type DisplayMode = 'inline' | 'modal' | 'floating-button';
 
@@ -50,6 +51,7 @@ const MODES: { value: DisplayMode; label: string; description: string; icon: typ
 
 export default function IntegracionPage() {
   const { data: session } = useSession();
+  const terms = useRubroTerms();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [slug, setSlug] = useState('');
@@ -113,7 +115,7 @@ export default function IntegracionPage() {
       attrs.push(`data-mode="${settings.embedDisplayMode}"`);
     }
     if (settings.embedDisplayMode === 'floating-button') {
-      if (settings.embedButtonText !== 'Reservar turno') {
+      if (settings.embedButtonText !== 'Reservar turno' && settings.embedButtonText !== `${terms.bookAction} ${terms.bookingSingular.toLowerCase()}`) {
         attrs.push(`data-button-text="${settings.embedButtonText}"`);
       }
       if (settings.embedButtonColor !== '#3F8697') {
@@ -158,7 +160,7 @@ export default function IntegracionPage() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Widget web</h1>
         <p className="text-muted-foreground">
-          Embebe tu sistema de reservas en cualquier sitio web con una linea de codigo.
+          Embebé tu página de turnos en cualquier sitio web con una línea de código.
         </p>
       </div>
 
@@ -228,7 +230,7 @@ export default function IntegracionPage() {
                   <Input
                     value={settings.embedButtonText}
                     onChange={(e) => setSettings(s => ({ ...s, embedButtonText: e.target.value }))}
-                    placeholder="Reservar turno"
+                    placeholder={`${terms.bookAction} ${terms.bookingSingular.toLowerCase()}`}
                   />
                 </div>
                 <div className="space-y-2">

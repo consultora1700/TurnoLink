@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
+import NextImage from 'next/image';
 import { Upload, Trash2, Loader2, Image as ImageIcon, Camera } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from './button';
@@ -63,8 +64,8 @@ export function ImageUpload({
         file.name.toLowerCase().endsWith('.heif');
       if (!isValidType) { setError('Solo se permiten imágenes (JPG, PNG, GIF, WebP, HEIC)'); return; }
 
-      const maxSize = isMobile ? 10 * 1024 * 1024 : 5 * 1024 * 1024;
-      if (file.size > maxSize) { setError(`La imagen no puede superar ${isMobile ? '10' : '5'}MB`); return; }
+      const maxSize = 20 * 1024 * 1024; // 20MB
+      if (file.size > maxSize) { setError('La imagen no puede superar 20MB'); return; }
 
       setIsUploading(true);
       setUploadProgress('Preparando...');
@@ -216,7 +217,7 @@ export function ImageUpload({
             onDrop={!disabled ? handleDrop : undefined}
           >
             {value ? (
-              <img src={value} alt="Avatar" className={cn('w-full h-full object-cover', isUploading && 'opacity-40')} />
+              <NextImage src={value} alt="Avatar" className={cn('w-full h-full object-cover', isUploading && 'opacity-40')} fill sizes="96px" />
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-teal-500 to-cyan-600 text-white">
                 {initials ? (
@@ -242,7 +243,7 @@ export function ImageUpload({
           <div className="flex flex-col gap-1.5 pt-1 min-w-0">
             {actionButtons('col')}
             <p className="text-xs text-muted-foreground mt-0.5">
-              JPG, PNG, WebP{isMobile ? ' (max 10MB)' : ''}
+              JPG, PNG, WebP (max 20MB)
             </p>
           </div>
         </div>
@@ -272,7 +273,7 @@ export function ImageUpload({
             onDragLeave={!disabled ? handleDragLeave : undefined}
             onDrop={!disabled ? handleDrop : undefined}
           >
-            <img src={value} alt="Preview" className={cn('w-full h-full object-cover transition-opacity', isUploading && 'opacity-40')} />
+            <NextImage src={value} alt="Preview" className={cn('w-full h-full object-cover transition-opacity', isUploading && 'opacity-40')} fill sizes="(max-width: 768px) 100vw, 400px" />
 
             {/* Upload progress overlay */}
             {isUploading && (
@@ -361,7 +362,7 @@ export function ImageUpload({
                 )}
 
                 <p className="text-xs text-slate-400">
-                  JPG, PNG, WebP, HEIC (max {isMobile ? '10' : '5'}MB)
+                  JPG, PNG, WebP, HEIC (max 20MB)
                 </p>
               </>
             )}

@@ -2,14 +2,12 @@ import {
   Controller,
   Get,
   Query,
-  UseGuards,
+
   ForbiddenException,
   Res,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Response } from 'express';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { TenantGuard } from '../../common/guards/tenant.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { User } from '@prisma/client';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
@@ -18,7 +16,6 @@ import { ReportsQueryDto } from './dto/reports-query.dto';
 
 @ApiTags('reports')
 @Controller('reports')
-@UseGuards(JwtAuthGuard, TenantGuard)
 @ApiBearerAuth()
 export class ReportsController {
   constructor(
@@ -224,6 +221,102 @@ export class ReportsController {
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename=reportes-turnos.csv');
     res.send('\uFEFF' + csv); // BOM for Excel UTF-8
+  }
+
+  // ============ ORDER-BASED REPORTS (mercado/ecommerce) ============
+
+  @Get('orders/overview')
+  @ApiOperation({ summary: 'Order KPIs: total orders, revenue, rates (current month)' })
+  async getOrderOverview(@CurrentUser() user: User) {
+    await this.requireFeature(user.tenantId!, 'basic_reports');
+    return this.reportsService.getOrderOverview(user.tenantId!);
+  }
+
+  @Get('orders/by-status')
+  @ApiOperation({ summary: 'Orders grouped by status (current month)' })
+  async getOrdersByStatus(@CurrentUser() user: User) {
+    await this.requireFeature(user.tenantId!, 'basic_reports');
+    return this.reportsService.getOrdersByStatus(user.tenantId!);
+  }
+
+  @Get('orders/by-day')
+  @ApiOperation({ summary: 'Orders by day of week (current month)' })
+  async getOrdersByDay(@CurrentUser() user: User) {
+    await this.requireFeature(user.tenantId!, 'basic_reports');
+    return this.reportsService.getOrdersByDay(user.tenantId!);
+  }
+
+  @Get('orders/top-products')
+  @ApiOperation({ summary: 'Top 5 products by order count (current month)' })
+  async getTopProducts(@CurrentUser() user: User) {
+    await this.requireFeature(user.tenantId!, 'basic_reports');
+    return this.reportsService.getTopProducts(user.tenantId!);
+  }
+
+  @Get('orders/top-customers')
+  @ApiOperation({ summary: 'Top 5 customers by order count (current month)' })
+  async getTopOrderCustomers(@CurrentUser() user: User) {
+    await this.requireFeature(user.tenantId!, 'basic_reports');
+    return this.reportsService.getTopOrderCustomers(user.tenantId!);
+  }
+
+  // ============ ORDER ADVANCED REPORTS ============
+
+  @Get('orders/revenue')
+  @ApiOperation({ summary: 'Order revenue over time' })
+  async getOrderRevenue(@CurrentUser() user: User, @Query() query: ReportsQueryDto) {
+    await this.requireFeature(user.tenantId!, 'advanced_reports');
+    return this.reportsService.getOrderRevenue(user.tenantId!, query.period, query.startDate, query.endDate);
+  }
+
+  @Get('orders/trends')
+  @ApiOperation({ summary: 'Order trends over time by status' })
+  async getOrderTrends(@CurrentUser() user: User, @Query() query: ReportsQueryDto) {
+    await this.requireFeature(user.tenantId!, 'advanced_reports');
+    return this.reportsService.getOrderTrends(user.tenantId!, query.period, query.startDate, query.endDate);
+  }
+
+  @Get('orders/peak-hours')
+  @ApiOperation({ summary: 'Order peak hours heatmap' })
+  async getOrderPeakHours(@CurrentUser() user: User, @Query() query: ReportsQueryDto) {
+    await this.requireFeature(user.tenantId!, 'advanced_reports');
+    return this.reportsService.getOrderPeakHours(user.tenantId!, query.period, query.startDate, query.endDate);
+  }
+
+  @Get('orders/cancellation-trends')
+  @ApiOperation({ summary: 'Order cancellation rate trends' })
+  async getOrderCancellationTrends(@CurrentUser() user: User, @Query() query: ReportsQueryDto) {
+    await this.requireFeature(user.tenantId!, 'advanced_reports');
+    return this.reportsService.getOrderCancellationTrends(user.tenantId!, query.period, query.startDate, query.endDate);
+  }
+
+  @Get('orders/customer-retention')
+  @ApiOperation({ summary: 'Order customer retention (new vs returning)' })
+  async getOrderCustomerRetention(@CurrentUser() user: User, @Query() query: ReportsQueryDto) {
+    await this.requireFeature(user.tenantId!, 'advanced_reports');
+    return this.reportsService.getOrderCustomerRetention(user.tenantId!, query.period, query.startDate, query.endDate);
+  }
+
+  @Get('orders/product-performance')
+  @ApiOperation({ summary: 'Product performance metrics' })
+  async getProductPerformance(@CurrentUser() user: User, @Query() query: ReportsQueryDto) {
+    await this.requireFeature(user.tenantId!, 'advanced_reports');
+    return this.reportsService.getProductPerformance(user.tenantId!, query.period, query.startDate, query.endDate);
+  }
+
+  @Get('orders/export/csv')
+  @ApiOperation({ summary: 'Export orders as CSV' })
+  async exportOrdersCsv(
+    @CurrentUser() user: User,
+    @Query() query: ReportsQueryDto,
+    @Res() res: Response,
+  ) {
+    await this.requireFeature(user.tenantId!, 'advanced_reports');
+    const csv = await this.reportsService.exportOrdersCsv(user.tenantId!, query.period, query.startDate, query.endDate);
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename=reportes-pedidos.csv');
+    res.send('\uFEFF' + csv);
   }
 
   // ============ COMPLETE REPORTS (complete_reports) ============

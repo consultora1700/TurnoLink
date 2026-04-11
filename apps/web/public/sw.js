@@ -1,4 +1,4 @@
-// TurnoLink Service Worker — push notifications only (no caching)
+// TurnoLink Service Worker v2 — push notifications only (no caching)
 
 self.addEventListener('push', (event) => {
   if (!event.data) return;

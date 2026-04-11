@@ -45,7 +45,7 @@ function getCellStyle(count: number, max: number): { className: string; style?: 
   };
 }
 
-export function PeakHoursHeatmap({ data }: { data: PeakHoursReport }) {
+export function PeakHoursHeatmap({ data, subtitle }: { data: PeakHoursReport; subtitle?: string }) {
   const dayOrder = [1, 2, 3, 4, 5, 6, 0];
 
   // Find peak
@@ -70,7 +70,7 @@ export function PeakHoursHeatmap({ data }: { data: PeakHoursReport }) {
           <div>
             <CardTitle className="text-base">Horarios Pico</CardTitle>
             <CardDescription className="text-xs">
-              Distribución de reservas por día y hora
+              {subtitle || 'Distribución de reservas por día y hora'}
             </CardDescription>
           </div>
           {peakCount > 0 && (

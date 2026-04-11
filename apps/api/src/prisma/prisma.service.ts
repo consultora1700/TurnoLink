@@ -8,11 +8,19 @@ export class PrismaService
   implements OnModuleInit, OnModuleDestroy
 {
   constructor() {
+    // In cluster mode, limit connections per instance.
+    // 25 connections × 2 instances = 50 total (within PostgreSQL default of 100, leaves 50 for tools/backups).
+    const baseUrl = process.env.DATABASE_URL || '';
+    const datasourceUrl = baseUrl
+      ? `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}connection_limit=25&pool_timeout=30`
+      : undefined;
+
     super({
       log:
         process.env.NODE_ENV === 'development'
           ? ['query', 'info', 'warn', 'error']
-          : ['error'],
+          : ['warn', 'error'],
+      ...(datasourceUrl ? { datasourceUrl } : {}),
     });
 
     // Apply soft delete middleware

@@ -81,8 +81,8 @@ export function ProductShowcase({ className }: ProductShowcaseProps) {
             <span className="text-gradient">crecer tu negocio</span>
           </h2>
           <p className="text-lg text-muted-foreground">
-            Un dashboard completo e intuitivo con todas las herramientas que necesitas
-            para gestionar tu agenda de forma profesional.
+            Un dashboard completo e intuitivo con todas las herramientas que necesitás
+            para operar tu negocio de forma profesional.
           </p>
         </div>
 

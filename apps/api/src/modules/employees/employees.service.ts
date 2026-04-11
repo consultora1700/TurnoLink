@@ -4,6 +4,8 @@ import { EmailNotificationsService } from '../notifications/email-notifications.
 import { ProfessionalProfilesService } from '../professional-profiles/professional-profiles.service';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
+import { Decimal } from '@prisma/client/runtime/library';
+import { getTermsForTenant } from '@common/utils/rubro-terms';
 
 @Injectable()
 export class EmployeesService {
@@ -15,10 +17,14 @@ export class EmployeesService {
     private readonly professionalProfilesService: ProfessionalProfilesService,
   ) {}
 
-  async findAll(tenantId: string) {
+  async findAll(tenantId: string, page?: number, limit?: number) {
+    const take = limit || 100;
+    const skip = page ? (page - 1) * take : 0;
     return this.prisma.employee.findMany({
       where: { tenantId },
       orderBy: [{ order: 'asc' }, { name: 'asc' }],
+      skip,
+      take,
     });
   }
 
@@ -39,6 +45,26 @@ export class EmployeesService {
     }
 
     return employee;
+  }
+
+  async findDeliveryStaff(tenantId: string) {
+    return this.prisma.employee.findMany({
+      where: {
+        tenantId,
+        isDelivery: true,
+        isActive: true,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+        name: true,
+        phone: true,
+        deliveryVehicle: true,
+        deliveryZone: true,
+        image: true,
+      },
+      orderBy: { name: 'asc' },
+    });
   }
 
   async create(tenantId: string, dto: CreateEmployeeDto) {
@@ -172,12 +198,15 @@ export class EmployeesService {
     // Generate profile access token
     const profileToken = await this.professionalProfilesService.generateToken(employee.id);
 
+    const terms = getTermsForTenant(tenant.settings);
+
     await this.emailNotificationsService.sendEmployeeWelcomeEmail(
       employee.email,
       employee.name,
       tenant.name,
       tenant.slug,
       profileToken,
+      terms,
     );
 
     await this.prisma.employee.update({
@@ -189,7 +218,7 @@ export class EmployeesService {
   }
 
   /**
-   * Get services assigned to an employee.
+   * Get services assigned to an employee with custom pricing.
    */
   async getEmployeeServices(tenantId: string, employeeId: string) {
     await this.findById(tenantId, employeeId);
@@ -204,22 +233,41 @@ export class EmployeesService {
       },
     });
 
-    return employeeServices.map((es) => es.service);
+    return employeeServices.map((es) => ({
+      ...es.service,
+      price: Number(es.service.price),
+      customPrice: es.customPrice ? Number(es.customPrice) : null,
+      customDuration: es.customDuration,
+      employeeServiceId: es.id,
+    }));
   }
 
   /**
    * Update services assigned to an employee (bulk).
+   * Supports simple serviceIds array (backwards-compatible) or rich objects with customPrice/customDuration.
    */
-  async updateEmployeeServices(tenantId: string, employeeId: string, serviceIds: string[]) {
+  async updateEmployeeServices(
+    tenantId: string,
+    employeeId: string,
+    services: string[] | { serviceId: string; customPrice?: number; customDuration?: number }[],
+  ) {
     await this.findById(tenantId, employeeId);
 
+    // Normalize to rich format
+    const normalized = services.map((s) =>
+      typeof s === 'string'
+        ? { serviceId: s, customPrice: undefined, customDuration: undefined }
+        : s,
+    );
+
     // Verify all services belong to tenant
-    if (serviceIds.length > 0) {
-      const services = await this.prisma.service.findMany({
+    if (normalized.length > 0) {
+      const serviceIds = normalized.map((s) => s.serviceId);
+      const found = await this.prisma.service.findMany({
         where: { id: { in: serviceIds }, tenantId },
       });
 
-      if (services.length !== serviceIds.length) {
+      if (found.length !== serviceIds.length) {
         throw new NotFoundException('Algunos servicios no fueron encontrados');
       }
     }
@@ -230,16 +278,85 @@ export class EmployeesService {
         where: { employeeId },
       });
 
-      if (serviceIds.length > 0) {
+      if (normalized.length > 0) {
         await tx.employeeService.createMany({
-          data: serviceIds.map((serviceId) => ({
+          data: normalized.map((s) => ({
             employeeId,
-            serviceId,
+            serviceId: s.serviceId,
+            customPrice: s.customPrice != null ? new Decimal(s.customPrice) : null,
+            customDuration: s.customDuration ?? null,
           })),
         });
       }
     });
 
     return this.getEmployeeServices(tenantId, employeeId);
+  }
+
+  /**
+   * Get specialties assigned to an employee.
+   */
+  async getEmployeeSpecialties(tenantId: string, employeeId: string) {
+    await this.findById(tenantId, employeeId);
+
+    const employeeSpecialties = await this.prisma.employeeSpecialty.findMany({
+      where: { employeeId },
+      include: {
+        specialty: true,
+      },
+      orderBy: {
+        specialty: { order: 'asc' },
+      },
+    });
+
+    return employeeSpecialties.map((es) => ({
+      ...es.specialty,
+      seniorityLevel: es.seniorityLevel,
+      customRate: es.customRate ? Number(es.customRate) : null,
+      employeeSpecialtyId: es.id,
+    }));
+  }
+
+  /**
+   * Update specialties assigned to an employee (bulk).
+   */
+  async updateEmployeeSpecialties(
+    tenantId: string,
+    employeeId: string,
+    specialties: { specialtyId: string; seniorityLevel?: string; customRate?: number }[],
+  ) {
+    await this.findById(tenantId, employeeId);
+
+    // Verify all specialties belong to tenant
+    if (specialties.length > 0) {
+      const specialtyIds = specialties.map((s) => s.specialtyId);
+      const found = await this.prisma.specialty.findMany({
+        where: { id: { in: specialtyIds }, tenantId },
+        select: { id: true },
+      });
+
+      if (found.length !== specialtyIds.length) {
+        throw new NotFoundException('Algunas especialidades no fueron encontradas');
+      }
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.employeeSpecialty.deleteMany({
+        where: { employeeId },
+      });
+
+      if (specialties.length > 0) {
+        await tx.employeeSpecialty.createMany({
+          data: specialties.map((s) => ({
+            employeeId,
+            specialtyId: s.specialtyId,
+            seniorityLevel: s.seniorityLevel || null,
+            customRate: s.customRate != null ? new Decimal(s.customRate) : null,
+          })),
+        });
+      }
+    });
+
+    return this.getEmployeeSpecialties(tenantId, employeeId);
   }
 }

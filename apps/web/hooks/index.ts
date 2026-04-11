@@ -12,6 +12,8 @@ export type { UseAvailabilityReturn } from './use-availability';
 export { useDailyAvailability } from './use-daily-availability';
 export type { UseDailyAvailabilityReturn, DailyAvailabilityDay } from './use-daily-availability';
 
+export { useMonthlyAvailability } from './use-monthly-availability';
+
 export { useBooking } from './use-booking';
 export type { UseBookingReturn, BookingStatus } from './use-booking';
 

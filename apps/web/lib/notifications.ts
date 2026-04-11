@@ -29,6 +29,43 @@ export const notifications = {
       description: 'El servicio ha sido eliminado.',
     }),
 
+  // Products
+  productCreated: () =>
+    toast({
+      title: 'Producto creado',
+      description: 'El producto se ha creado correctamente.',
+    }),
+
+  productUpdated: () =>
+    toast({
+      title: 'Producto actualizado',
+      description: 'Los cambios se han guardado correctamente.',
+    }),
+
+  productDeleted: () =>
+    toast({
+      title: 'Producto eliminado',
+      description: 'El producto ha sido eliminado.',
+    }),
+
+  categoryCreated: () =>
+    toast({
+      title: 'Categoría creada',
+      description: 'La categoría se ha creado correctamente.',
+    }),
+
+  categoryDeleted: () =>
+    toast({
+      title: 'Categoría eliminada',
+      description: 'La categoría ha sido eliminada.',
+    }),
+
+  stockAdjusted: () =>
+    toast({
+      title: 'Stock actualizado',
+      description: 'El stock se ha ajustado correctamente.',
+    }),
+
   // Customers
   customerCreated: () =>
     toast({
@@ -72,6 +109,12 @@ export const notifications = {
     toast({
       title: 'Turno creado',
       description: 'El turno se ha registrado correctamente.',
+    }),
+
+  saleCreated: () =>
+    toast({
+      title: 'Venta registrada',
+      description: 'La venta se ha registrado correctamente.',
     }),
 
   bookingConfirmed: () =>
@@ -259,32 +302,134 @@ export const errorNotifications = {
 // Helper to handle API errors
 // =============================================================================
 
-export function handleApiError(error: unknown): void {
-  if (error instanceof Response) {
-    switch (error.status) {
-      case 401:
-        errorNotifications.unauthorized();
-        break;
-      case 403:
-        errorNotifications.forbidden();
-        break;
-      case 404:
-        errorNotifications.notFound();
-        break;
-      case 409:
-        errorNotifications.conflict();
-        break;
-      case 422:
-        errorNotifications.validationError();
-        break;
-      default:
-        errorNotifications.generic();
+// Subscription error codes from the backend
+const SUBSCRIPTION_ERRORS: Record<string, { title: string; description: string }> = {
+  SUBSCRIPTION_PAST_DUE: {
+    title: 'Pago pendiente',
+    description: 'Tu suscripción tiene un pago pendiente. Regularizá el pago para seguir operando.',
+  },
+  SUBSCRIPTION_EXPIRED: {
+    title: 'Suscripción vencida',
+    description: 'Tu suscripción venció. Renová tu plan para seguir usando TurnoLink.',
+  },
+  TRIAL_EXPIRED: {
+    title: 'Período de prueba finalizado',
+    description: 'Tu período de prueba terminó. Elegí un plan para seguir usando TurnoLink.',
+  },
+  NO_SUBSCRIPTION: {
+    title: 'Sin suscripción',
+    description: 'No tenés una suscripción activa. Elegí un plan para continuar.',
+  },
+  SUBSCRIPTION_INACTIVE: {
+    title: 'Suscripción inactiva',
+    description: 'Tu suscripción no está activa. Reactivá tu plan para continuar.',
+  },
+};
+
+/**
+ * Handles any API error and shows an appropriate toast notification.
+ * Works with ApiRequestError from the API client and also with
+ * raw Response objects, network errors, and generic errors.
+ *
+ * Usage: } catch (error) { handleApiError(error); }
+ */
+export function handleApiError(error: unknown, context?: string): void {
+  // ApiRequestError — thrown by createApiClient
+  if (error && typeof error === 'object' && 'statusCode' in error && 'originalError' in error) {
+    const apiError = error as { statusCode: number; originalError?: string; message: string; validationDetails?: string[] };
+
+    // Subscription-specific errors (403 with known codes)
+    if (apiError.originalError && SUBSCRIPTION_ERRORS[apiError.originalError]) {
+      const sub = SUBSCRIPTION_ERRORS[apiError.originalError];
+      toast({ title: sub.title, description: sub.description, variant: 'destructive' });
+      return;
     }
-  } else if (error instanceof TypeError && error.message === 'Failed to fetch') {
-    errorNotifications.networkError();
-  } else if (error instanceof Error) {
-    errorNotifications.generic(error.message);
-  } else {
-    errorNotifications.generic();
+
+    // 401 Unauthorized
+    if (apiError.statusCode === 401) {
+      errorNotifications.unauthorized();
+      return;
+    }
+
+    // 403 Forbidden (non-subscription)
+    if (apiError.statusCode === 403) {
+      toast({
+        title: 'Acceso denegado',
+        description: apiError.message || 'No tenés permisos para realizar esta acción.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // 404 Not Found
+    if (apiError.statusCode === 404) {
+      toast({
+        title: 'No encontrado',
+        description: apiError.message || 'El recurso solicitado no existe.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // 409 Conflict
+    if (apiError.statusCode === 409) {
+      toast({
+        title: 'Conflicto',
+        description: apiError.message || 'Ya existe un registro con esos datos.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // 400/422 Validation error
+    if (apiError.statusCode === 400 || apiError.statusCode === 422) {
+      const details = apiError.validationDetails;
+      const description = details && details.length > 0
+        ? details.join('. ')
+        : apiError.message || 'Por favor revisá los datos ingresados.';
+      toast({
+        title: 'Datos inválidos',
+        description,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // 5xx Server error
+    if (apiError.statusCode >= 500) {
+      toast({
+        title: 'Error del servidor',
+        description: 'Ocurrió un error interno. Por favor intentá de nuevo en unos minutos.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Other API errors — show the actual message
+    toast({
+      title: context ? `Error: ${context}` : 'Error',
+      description: apiError.message || 'Ocurrió un error inesperado.',
+      variant: 'destructive',
+    });
+    return;
   }
+
+  // Network error (fetch failed)
+  if (error instanceof TypeError && (error.message === 'Failed to fetch' || error.message.includes('fetch'))) {
+    errorNotifications.networkError();
+    return;
+  }
+
+  // Generic Error with message
+  if (error instanceof Error && error.message) {
+    toast({
+      title: context ? `Error: ${context}` : 'Error',
+      description: error.message,
+      variant: 'destructive',
+    });
+    return;
+  }
+
+  // Unknown error
+  errorNotifications.generic();
 }

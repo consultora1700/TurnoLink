@@ -2,27 +2,43 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsNotEmpty,
   IsString,
-  IsUUID,
   IsOptional,
   IsEmail,
+  IsIn,
+  IsInt,
+  Min,
   Matches,
   MaxLength,
+  ValidateIf,
 } from 'class-validator';
 
 export class CreateBookingDto {
-  @ApiProperty()
-  @IsUUID()
-  @IsNotEmpty()
-  serviceId: string;
+  @ApiPropertyOptional({ description: 'ID del servicio (requerido si no hay productId)' })
+  @ValidateIf((o) => !o.productId)
+  @IsString()
+  @IsNotEmpty({ message: 'serviceId o productId es requerido' })
+  serviceId?: string;
+
+  @ApiPropertyOptional({ description: 'ID del producto (requerido si no hay serviceId)' })
+  @ValidateIf((o) => !o.serviceId)
+  @IsString()
+  @IsNotEmpty({ message: 'productId o serviceId es requerido' })
+  productId?: string;
+
+  @ApiPropertyOptional({ description: 'Cantidad (para bookings de producto)', default: 1 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  quantity?: number;
 
   @ApiPropertyOptional({ description: 'ID de la sucursal' })
   @IsOptional()
-  @IsUUID()
+  @IsString()
   branchId?: string;
 
   @ApiPropertyOptional({ description: 'ID del empleado asignado' })
   @IsOptional()
-  @IsUUID()
+  @IsString()
   employeeId?: string;
 
   @ApiProperty({ example: '2024-01-15', description: 'Date in YYYY-MM-DD format' })
@@ -63,4 +79,10 @@ export class CreateBookingDto {
   @IsString()
   @MaxLength(500)
   notes?: string;
+
+  @ApiPropertyOptional({ example: 'online', description: 'Booking mode: presencial or online' })
+  @IsOptional()
+  @IsString()
+  @IsIn(['presencial', 'online'])
+  bookingMode?: string;
 }

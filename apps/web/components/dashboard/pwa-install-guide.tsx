@@ -17,13 +17,13 @@ const STEPS = [
     color: 'from-teal-500 to-teal-600',
     instructions: {
       android: [
-        'Abrí turnolink.mubitt.com en Chrome',
+        'Abrí turnolink.com.ar en Chrome',
         'Tocá el menú (tres puntos arriba a la derecha)',
         'Seleccioná "Instalar aplicación" o "Agregar a pantalla de inicio"',
         'Confirmá tocando "Instalar"',
       ],
       ios: [
-        'Abrí turnolink.mubitt.com en Safari',
+        'Abrí turnolink.com.ar en Safari',
         'Tocá el botón de compartir (cuadrado con flecha)',
         'Buscá y tocá "Agregar a la pantalla de inicio"',
         'Confirmá tocando "Agregar"',

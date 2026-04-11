@@ -5,31 +5,32 @@ import {
   Delete,
   Param,
   Query,
-  UseGuards,
+  ForbiddenException,
   UseInterceptors,
   UploadedFile,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
 import { MediaService } from './media.service';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { TenantGuard } from '../../common/guards/tenant.guard';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { User } from '@prisma/client';
 
 @ApiTags('media')
 @Controller('media')
-@UseGuards(JwtAuthGuard, TenantGuard)
 @ApiBearerAuth()
 export class MediaController {
-  constructor(private readonly mediaService: MediaService) {}
+  constructor(
+    private readonly mediaService: MediaService,
+    private readonly subscriptionsService: SubscriptionsService,
+  ) {}
 
   @Post('upload')
   @ApiOperation({ summary: 'Upload an image' })
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(
     FileInterceptor('file', {
-      limits: { fileSize: 10 * 1024 * 1024 }, // 10MB for mobile
+      limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
     }),
   )
   async upload(
@@ -37,6 +38,17 @@ export class MediaController {
     @UploadedFile() file: Express.Multer.File,
     @Query('folder') folder?: string,
   ) {
+    // Check photo quota before upload
+    const { hasReachedLimit, current, limit } = await this.subscriptionsService.checkLimit(user.tenantId!, 'photos');
+    if (hasReachedLimit) {
+      throw new ForbiddenException(
+        `Llegaste al límite de ${limit} fotos (tenés ${current}). Podés liberar espacio borrando imágenes o mejorar tu plan.`,
+      );
+    }
+
+    if (this.mediaService.storageDriver === 's3') {
+      return this.mediaService.uploadToS3(user.tenantId!, file, folder);
+    }
     return this.mediaService.upload(user.tenantId!, file, folder);
   }
 

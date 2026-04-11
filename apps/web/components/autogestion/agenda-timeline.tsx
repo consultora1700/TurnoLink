@@ -2,8 +2,8 @@
 
 import { useMemo } from 'react';
 import { isToday } from 'date-fns';
-import { Plus, CalendarX, User } from 'lucide-react';
-import { cn, formatDuration } from '@/lib/utils';
+import { Plus, CalendarX, User, ShoppingBag } from 'lucide-react';
+import { cn, formatDuration, formatPrice } from '@/lib/utils';
 import { BookingCard, statusConfig } from './booking-card';
 import type { Booking } from '@/lib/api';
 
@@ -14,6 +14,7 @@ interface AgendaTimelineProps {
   onSlotClick: (time: string) => void;
   scheduleStart?: number; // hour e.g. 8
   scheduleEnd?: number;   // hour e.g. 21
+  isMercado?: boolean;
 }
 
 function parseTime(t: string): number {
@@ -53,6 +54,7 @@ export function AgendaTimeline({
   onSlotClick,
   scheduleStart = 8,
   scheduleEnd = 21,
+  isMercado = false,
 }: AgendaTimelineProps) {
   const sortedBookings = useMemo(
     () => [...bookings].sort((a, b) => a.startTime.localeCompare(b.startTime)),
@@ -132,11 +134,39 @@ export function AgendaTimeline({
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
         <div className="h-16 w-16 rounded-full bg-slate-100 dark:bg-neutral-800 flex items-center justify-center mb-4">
-          <CalendarX className="h-8 w-8 text-muted-foreground" />
+          {isMercado ? <ShoppingBag className="h-8 w-8 text-muted-foreground" /> : <CalendarX className="h-8 w-8 text-muted-foreground" />}
         </div>
-        <p className="font-medium text-muted-foreground mb-1">Sin turnos para este día</p>
-        <p className="text-sm text-muted-foreground/70">Hacé click en &quot;Nuevo Turno&quot; para crear uno</p>
+        <p className="font-medium text-muted-foreground mb-1">{isMercado ? 'Sin ventas para este día' : 'Sin turnos para este día'}</p>
+        <p className="text-sm text-muted-foreground/70">{isMercado ? 'Hacé click en "Nueva Venta" para registrar una' : 'Hacé click en "Nuevo Turno" para crear uno'}</p>
       </div>
+    );
+  }
+
+  // ====== MERCADO: Sales list view (no timeline) ======
+  if (isMercado) {
+    const totalSold = sortedBookings
+      .filter((b) => b.status !== 'CANCELLED')
+      .reduce((sum, b) => sum + Number(b.totalPrice ?? 0), 0);
+
+    return (
+      <>
+        {/* Summary bar */}
+        <div className="flex items-center justify-between mb-3 px-1">
+          <p className="text-xs text-muted-foreground">
+            {sortedBookings.length} {sortedBookings.length === 1 ? 'venta' : 'ventas'} registradas
+          </p>
+          <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+            Total: {formatPrice(totalSold)}
+          </p>
+        </div>
+
+        {/* Sales list */}
+        <div className="space-y-2">
+          {sortedBookings.map((b) => (
+            <BookingCard key={b.id} booking={b} onClick={() => onBookingClick(b)} />
+          ))}
+        </div>
+      </>
     );
   }
 
@@ -265,7 +295,7 @@ export function AgendaTimeline({
                     </span>
                   </div>
                   <span className="text-xs text-muted-foreground truncate hidden lg:inline">
-                    {booking.service.name} · {formatDuration(booking.service.duration)}
+                    {(booking.service?.name ?? booking.product?.name ?? 'Sin detalle')}{booking.service?.duration ? ` · ${formatDuration(booking.service.duration)}` : ''}
                   </span>
                 </div>
                 <span

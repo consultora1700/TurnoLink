@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
+import { EmailNotificationsService } from '../notifications/email-notifications.service';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -15,6 +16,7 @@ export class EmailVerificationService {
   constructor(
     private prisma: PrismaService,
     private configService: ConfigService,
+    private emailNotifications: EmailNotificationsService,
   ) {}
 
   /**
@@ -106,6 +108,23 @@ export class EmailVerificationService {
 
     this.logger.log(`Email verified for user ${verification.userId}`);
 
+    // Send welcome email (fire-and-forget)
+    const user = verification.user;
+    if (user.tenantId) {
+      this.prisma.tenant.findUnique({ where: { id: user.tenantId } }).then(tenant => {
+        if (tenant) {
+          this.emailNotifications.sendWelcomeEmail(
+            user.email,
+            user.name,
+            tenant.name,
+            tenant.slug,
+          ).catch(err => {
+            this.logger.error(`Failed to send welcome email to ${user.email}: ${err.message}`);
+          });
+        }
+      }).catch(() => {});
+    }
+
     return { success: true, message: 'Email verified successfully' };
   }
 
@@ -136,10 +155,10 @@ export class EmailVerificationService {
     const isProfessional = tenantType === 'PROFESSIONAL';
     const previewText = isProfessional
       ? 'Activa tu cuenta de TurnoLink y comienza a recibir propuestas'
-      : 'Activa tu cuenta de TurnoLink y comienza a gestionar tus turnos';
+      : 'Activá tu cuenta de TurnoLink y empezá a gestionar tu negocio';
     const bodyText = isProfessional
       ? 'Gracias por unirte a TurnoLink. Estás a un paso de activar tu cuenta y comenzar a recibir propuestas de negocios que buscan tu talento.'
-      : 'Gracias por unirte a TurnoLink. Estás a un paso de activar tu cuenta y comenzar a gestionar tus turnos de forma profesional.';
+      : 'Gracias por unirte a TurnoLink. Estás a un paso de activar tu cuenta y empezar a gestionar tu negocio desde un solo lugar.';
 
     const html = `
 <!DOCTYPE html>
@@ -172,30 +191,25 @@ export class EmailVerificationService {
         <!-- Container -->
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width: 480px;">
 
-          <!-- Logo -->
-          <tr>
-            <td align="center" style="padding-bottom: 24px;">
-              <img src="https://turnolink.mubitt.com/claro2.png" alt="TurnoLink" width="140" style="display: block; height: auto; border: 0;" />
-            </td>
-          </tr>
-
           <!-- Card -->
           <tr>
             <td style="background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);">
 
-              <!-- Header gradient -->
+              <!-- Header with integrated logo -->
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                 <tr>
-                  <td align="center" style="background: linear-gradient(135deg, #3F8697 0%, #346E7D 100%); padding: 40px 32px;">
+                  <td align="center" style="background: linear-gradient(135deg, #3F8697 0%, #346E7D 100%); padding: 32px 32px 36px;">
+                    <!-- Logo -->
+                    <img src="https://turnolink.com.ar/logo-email-white.png" alt="TurnoLink" width="120" style="display: block; height: auto; border: 0; margin: 0 auto 24px; opacity: 0.9;" />
                     <!-- Icon circle -->
                     <table role="presentation" cellspacing="0" cellpadding="0" border="0">
                       <tr>
-                        <td align="center" width="72" height="72" style="background-color: rgba(255,255,255,0.2); border-radius: 36px; vertical-align: middle;">
-                          <img src="https://turnolink.mubitt.com/email-verify-icon.png" alt="" width="36" height="36" style="display: block;" onerror="this.style.display='none'" />
+                        <td align="center" width="52" height="52" style="background-color: rgba(255,255,255,0.15); border-radius: 26px; vertical-align: middle; font-size: 26px;">
+                          ✉️
                         </td>
                       </tr>
                     </table>
-                    <h1 style="margin: 20px 0 0 0; padding: 0; color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; font-size: 22px; font-weight: 600; line-height: 1.3;">
+                    <h1 style="margin: 14px 0 0 0; padding: 0; color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; font-size: 21px; font-weight: 600; line-height: 1.3;">
                       Verifica tu email
                     </h1>
                   </td>

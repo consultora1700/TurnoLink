@@ -5,12 +5,20 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import Link from 'next/link';
 
-const FEATURES = [
+const BOOKING_FEATURES = [
   { icon: TrendingUp, text: 'Ingresos en el tiempo', desc: 'Visualiza la evolución de tus ganancias' },
   { icon: Clock, text: 'Horarios pico', desc: 'Descubre cuándo tienes más demanda' },
   { icon: Users, text: 'Retención de clientes', desc: 'Mide qué tan fieles son tus clientes' },
   { icon: BarChart3, text: 'Rendimiento del equipo', desc: 'Evalúa a cada miembro de tu equipo' },
   { icon: Download, text: 'Exportar a CSV', desc: 'Descarga datos para tu contador' },
+];
+
+const MERCADO_FEATURES = [
+  { icon: TrendingUp, text: 'Ventas en el tiempo', desc: 'Visualiza la evolución de tus ingresos' },
+  { icon: Clock, text: 'Horarios pico de compra', desc: 'Descubre cuándo compran tus clientes' },
+  { icon: Users, text: 'Retención de compradores', desc: 'Mide qué tan fieles son tus compradores' },
+  { icon: BarChart3, text: 'Rendimiento por producto', desc: 'Analiza qué productos venden más' },
+  { icon: Download, text: 'Exportar pedidos a CSV', desc: 'Descarga datos para tu contador' },
 ];
 
 // Fake chart data for the blurred preview
@@ -72,7 +80,8 @@ function FakeHeatmap() {
   );
 }
 
-export function LockedReportPreview() {
+export function LockedReportPreview({ isMercado = false }: { isMercado?: boolean }) {
+  const FEATURES = isMercado ? MERCADO_FEATURES : BOOKING_FEATURES;
   return (
     <div className="relative mt-10">
       {/* Section divider */}

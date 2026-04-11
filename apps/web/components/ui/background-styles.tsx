@@ -2,7 +2,7 @@
 
 import { cn } from '@/lib/utils';
 
-export type BackgroundStyle = 'minimal' | 'modern' | 'elegant' | 'fresh' | 'vibrant';
+export type BackgroundStyle = 'none' | 'minimal' | 'modern' | 'elegant' | 'fresh' | 'vibrant';
 
 interface BackgroundStylesProps {
   style: BackgroundStyle;
@@ -10,6 +10,8 @@ interface BackgroundStylesProps {
 }
 
 export function BackgroundStyles({ style, className }: BackgroundStylesProps) {
+  if (style === 'none') return null;
+
   return (
     <div className={cn('fixed inset-0 pointer-events-none overflow-hidden', className)}>
       {/* Base background layer */}
@@ -136,8 +138,8 @@ function VibrantStyle() {
       {/* Main gradient background */}
       <div
         className="absolute inset-0
-          bg-gradient-to-br from-primary/25 via-transparent to-teal-500/20
-          dark:from-primary/35 dark:via-transparent dark:to-teal-500/30"
+          bg-gradient-to-br from-primary/25 via-transparent to-secondary/20
+          dark:from-primary/35 dark:via-transparent dark:to-secondary/30"
       />
       {/* Geometric circles - larger and more visible */}
       <div
@@ -164,14 +166,14 @@ function VibrantStyle() {
       {/* Top left accent blob */}
       <div
         className="absolute -top-24 -left-24 w-96 h-96 rounded-full blur-3xl
-          bg-gradient-to-br from-primary/35 to-teal-500/25
-          dark:from-primary/50 dark:to-teal-500/40"
+          bg-gradient-to-br from-primary/35 to-secondary/25
+          dark:from-primary/50 dark:to-secondary/40"
       />
       {/* Bottom right accent blob */}
       <div
         className="absolute -bottom-24 -right-24 w-96 h-96 rounded-full blur-3xl
-          bg-gradient-to-tl from-primary/35 to-teal-500/25
-          dark:from-primary/50 dark:to-teal-500/40"
+          bg-gradient-to-tl from-primary/35 to-secondary/25
+          dark:from-primary/50 dark:to-secondary/40"
       />
     </>
   );
@@ -194,6 +196,12 @@ export function BackgroundStylePreview({
   // Get icon for each style
   const getStyleIcon = () => {
     switch (style) {
+      case 'none':
+        return (
+          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+          </svg>
+        );
       case 'minimal':
         return (
           <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -289,6 +297,7 @@ export function BackgroundStylePreview({
 }
 
 export const BACKGROUND_STYLE_OPTIONS: { value: BackgroundStyle; label: string; description: string }[] = [
+  { value: 'none', label: 'Ninguno', description: 'Sin fondo decorativo' },
   { value: 'minimal', label: 'Minimal', description: 'Limpio y profesional' },
   { value: 'modern', label: 'Moderno', description: 'Orbes suaves estilo tech' },
   { value: 'elegant', label: 'Elegante', description: 'Gradiente con textura sutil' },

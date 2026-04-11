@@ -10,6 +10,6 @@ import { AuditLogInterceptor } from './interceptors/audit-log.interceptor';
   imports: [PrismaModule, ConfigModule],
   controllers: [AdminController],
   providers: [AdminService, AdminKeyGuard, AuditLogInterceptor],
-  exports: [AdminService],
+  exports: [AdminService, AdminKeyGuard],
 })
 export class AdminModule {}

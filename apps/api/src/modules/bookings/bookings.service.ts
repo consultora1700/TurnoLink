@@ -13,7 +13,9 @@ import {
   BookingEvent,
   BookingCreatedPayload,
   BookingCancelledPayload,
+  BookingVideoNeededPayload,
 } from '../../common/events';
+import { Prisma } from '@prisma/client';
 
 // Booking status constants
 const BookingStatus = {
@@ -28,6 +30,8 @@ import { ServicesService } from '../services/services.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { CreateDailyBookingDto } from './dto/create-daily-booking.dto';
 import { UpdateBookingDto } from './dto/update-booking.dto';
+import { VideoIntegrationService } from '../video-integration/video-integration.service';
+import { CacheService } from '../../common/cache';
 
 @Injectable()
 export class BookingsService {
@@ -39,6 +43,8 @@ export class BookingsService {
     private readonly eventEmitter: EventEmitter2,
     private readonly logger: AppLoggerService,
     private readonly timeUtils: TimeUtilsService,
+    private readonly videoIntegrationService: VideoIntegrationService,
+    private readonly cacheService: CacheService,
   ) {
     this.logger.setContext('BookingsService');
   }
@@ -47,71 +53,218 @@ export class BookingsService {
     // Temporal validation: reject past dates/times (skip advance check for dashboard bookings)
     await this.validateBookingTime(tenantId, createBookingDto.date, createBookingDto.startTime, skipAdvanceCheck);
 
-    // Validate service exists
-    const service = await this.servicesService.findById(
-      tenantId,
-      createBookingDto.serviceId,
-    );
-
-    // Check if slot is available (skip schedule bounds check for dashboard bookings)
-    const isAvailable = await this.isSlotAvailable(
-      tenantId,
-      createBookingDto.date,
-      createBookingDto.startTime,
-      service.duration,
-      skipAdvanceCheck,
-    );
-
-    if (!isAvailable) {
-      throw new ConflictException('This time slot is not available');
-    }
-
-    // Calculate end time
-    const endTime = this.timeUtils.calculateEndTime(
-      createBookingDto.startTime,
-      service.duration,
-    );
-
-    // Find or create customer
-    let customer = await this.customersService.findByPhone(
-      tenantId,
-      createBookingDto.customerPhone,
-    );
-
-    if (!customer) {
-      customer = await this.customersService.create(tenantId, {
-        name: createBookingDto.customerName,
-        phone: createBookingDto.customerPhone,
-        email: createBookingDto.customerEmail,
+    // Auto-resolve branchId: if not provided, use the tenant's first (or only) branch
+    if (!createBookingDto.branchId) {
+      const defaultBranch = await this.prisma.branch.findFirst({
+        where: { tenantId, isActive: true },
+        select: { id: true },
+        orderBy: { order: 'asc' },
       });
+      if (defaultBranch) {
+        createBookingDto.branchId = defaultBranch.id;
+        this.logger.warn(`[AutoBranch] Resolved branchId=${defaultBranch.id} for tenant=${tenantId}`);
+      } else {
+        this.logger.warn(`[AutoBranch] No active branch found for tenant=${tenantId}`);
+      }
     }
 
-    // Create booking
-    const booking = await this.prisma.booking.create({
-      data: {
-        tenantId,
-        branchId: createBookingDto.branchId || null,
-        serviceId: createBookingDto.serviceId,
-        customerId: customer.id,
-        employeeId: createBookingDto.employeeId || null,
-        date: new Date(createBookingDto.date + 'T12:00:00Z'),
-        startTime: createBookingDto.startTime,
-        endTime,
-        notes: createBookingDto.notes,
-        status: skipAdvanceCheck ? BookingStatus.CONFIRMED : BookingStatus.PENDING,
-        depositAmount: depositAmount || null,
-        depositPaid: false,
-      },
-      include: {
-        service: true,
-        customer: true,
-        employee: true,
-        branch: true,
-      },
-    });
+    // Resolve service or product (outside tx — read-only, needed for duration/price)
+    const DEFAULT_PRODUCT_BOOKING_DURATION = 15; // minutes
+    let service: any = null;
+    let product: any = null;
+    let endTime: string;
 
-    // Update customer stats
-    await this.customersService.incrementBookings(customer.id);
+    if (createBookingDto.serviceId) {
+      service = await this.servicesService.findById(tenantId, createBookingDto.serviceId);
+      endTime = this.timeUtils.calculateEndTime(createBookingDto.startTime, service.duration);
+    } else if (createBookingDto.productId) {
+      product = await this.prisma.product.findFirst({
+        where: { id: createBookingDto.productId, tenantId, isActive: true },
+      });
+      if (!product) {
+        throw new NotFoundException('Product not found');
+      }
+      endTime = this.timeUtils.calculateEndTime(createBookingDto.startTime, DEFAULT_PRODUCT_BOOKING_DURATION);
+    } else {
+      throw new BadRequestException('serviceId or productId is required');
+    }
+
+    // Serializable transaction with retry: handles concurrent slot conflicts gracefully
+    const MAX_TX_RETRIES = 3;
+    let txAttempt = 0;
+    let booking: any;
+
+    while (txAttempt < MAX_TX_RETRIES) {
+      try {
+        booking = await this.prisma.$transaction(async (tx) => {
+      let hourlyPromoActive = false;
+
+      if (service) {
+        // Re-read service inside tx for atomic promo check (prevents race condition on promoBookingCount)
+        const freshSvc = await tx.service.findUniqueOrThrow({ where: { id: createBookingDto.serviceId! } });
+        const now = new Date();
+        hourlyPromoActive = freshSvc.promoPrice != null
+          && (!freshSvc.promoStartDate || freshSvc.promoStartDate <= now)
+          && (!freshSvc.promoEndDate || freshSvc.promoEndDate >= now)
+          && (freshSvc.promoMaxBookings == null || freshSvc.promoBookingCount < freshSvc.promoMaxBookings);
+
+        // Check slot availability inside transaction
+        const isAvailable = await this.isSlotAvailableTx(
+          tx,
+          tenantId,
+          createBookingDto.date,
+          createBookingDto.startTime,
+          service.duration,
+          skipAdvanceCheck,
+          service.capacity || 1,
+          createBookingDto.branchId,
+        );
+
+        if (!isAvailable) {
+          throw new ConflictException('This time slot is not available');
+        }
+      }
+      // Product bookings: no slot availability check (sales don't block time slots)
+
+      // Find or create customer inside transaction
+      let customer = await tx.customer.findFirst({
+        where: { tenantId, phone: createBookingDto.customerPhone },
+      });
+
+      if (!customer) {
+        customer = await tx.customer.create({
+          data: {
+            tenantId,
+            name: createBookingDto.customerName,
+            phone: createBookingDto.customerPhone,
+            email: createBookingDto.customerEmail,
+          },
+        });
+      } else if (!customer.email && createBookingDto.customerEmail) {
+        // Enrich: fill empty email, never overwrite existing
+        customer = await tx.customer.update({
+          where: { id: customer.id },
+          data: { email: createBookingDto.customerEmail },
+        });
+      }
+
+      // The email for THIS booking's notifications: use what was provided at booking time,
+      // fallback to customer record email
+      const bookingEmail = createBookingDto.customerEmail || customer.email || null;
+
+      // Calculate totalPrice for product bookings
+      const quantity = createBookingDto.quantity || 1;
+      const totalPrice = product ? Number(product.price) * quantity : null;
+
+      // Create booking
+      const newBooking = await tx.booking.create({
+        data: {
+          tenantId,
+          branchId: createBookingDto.branchId || null,
+          serviceId: createBookingDto.serviceId || null,
+          productId: createBookingDto.productId || null,
+          quantity,
+          customerId: customer.id,
+          employeeId: createBookingDto.employeeId || null,
+          date: new Date(createBookingDto.date + 'T12:00:00Z'),
+          startTime: createBookingDto.startTime,
+          endTime,
+          notes: createBookingDto.notes,
+          status: skipAdvanceCheck ? BookingStatus.CONFIRMED : BookingStatus.PENDING,
+          depositAmount: depositAmount || null,
+          depositPaid: false,
+          bookingMode: createBookingDto.bookingMode || null,
+          customerEmail: bookingEmail,
+          assignedBy: (createBookingDto as any).assignedBy || 'client',
+          assignmentReason: (createBookingDto as any).assignmentReason || null,
+          ...(totalPrice != null ? { totalPrice } : {}),
+        },
+        include: {
+          service: true,
+          product: true,
+          customer: true,
+          employee: true,
+          branch: true,
+        },
+      });
+
+      // Increment customer bookings inside transaction
+      await tx.customer.update({
+        where: { id: customer.id },
+        data: { totalBookings: { increment: 1 }, lastBookingAt: new Date() },
+      });
+
+      // Increment promo booking counter if promo was used (service bookings only)
+      if (hourlyPromoActive && createBookingDto.serviceId) {
+        await tx.service.update({
+          where: { id: createBookingDto.serviceId },
+          data: { promoBookingCount: { increment: 1 } },
+        });
+      }
+
+      return newBooking;
+        }, {
+          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+          timeout: 10000,
+        });
+        break; // Transaction succeeded, exit retry loop
+      } catch (error: any) {
+        txAttempt++;
+        // Retry on serialization failures (P2034) or write conflicts
+        const isSerializationError = error?.code === 'P2034' ||
+          error?.message?.includes('could not serialize') ||
+          error?.message?.includes('deadlock');
+
+        if (isSerializationError && txAttempt < MAX_TX_RETRIES) {
+          this.logger.warn(`Booking tx serialization conflict, retry ${txAttempt}/${MAX_TX_RETRIES}`, { tenantId });
+          // Exponential backoff with jitter: 100-300ms, 200-600ms, 400-1200ms
+          const delay = Math.min(100 * Math.pow(2, txAttempt) + Math.random() * 200, 2000);
+          await new Promise(r => setTimeout(r, delay));
+          continue;
+        }
+        // ConflictException (slot taken) or non-retriable error: throw immediately
+        throw error;
+      }
+    }
+
+    // Video meeting creation — sync before notifications so email includes the link (service bookings only)
+    const isOnlineBooking = service && (createBookingDto.bookingMode === 'online' || service.mode === 'online');
+    if (isOnlineBooking) {
+      try {
+        const videoData = await this.videoIntegrationService.createMeeting(tenantId, {
+          topic: `${service.name} - ${createBookingDto.customerName}`,
+          startTime: `${createBookingDto.date}T${createBookingDto.startTime}:00`,
+          duration: service.duration,
+          customerEmail: createBookingDto.customerEmail || undefined,
+        });
+
+        if (videoData) {
+          await this.prisma.booking.update({
+            where: { id: booking.id },
+            data: {
+              bookingMode: createBookingDto.bookingMode || 'online',
+              videoProvider: videoData.provider,
+              videoMeetingId: videoData.meetingId,
+              videoJoinUrl: videoData.joinUrl,
+            },
+          });
+          // Attach video data to booking object for notifications
+          (booking as any).videoJoinUrl = videoData.joinUrl;
+          (booking as any).videoProvider = videoData.provider;
+          (booking as any).videoMeetingId = videoData.meetingId;
+
+          this.logger.log('Video meeting created', {
+            bookingId: booking.id, tenantId, provider: videoData.provider,
+          });
+        }
+      } catch (error: any) {
+        this.logger.error(`Failed to create video meeting for booking=${booking.id}: ${error?.message}`);
+        // Non-blocking: booking still created, just without video link
+      }
+    }
+
+    // Invalidate availability cache for this date
+    await this.cacheService.invalidateAvailability(tenantId, createBookingDto.date);
 
     // Emit booking created event (notifications handled by listener)
     const eventPayload: BookingCreatedPayload = {
@@ -125,7 +278,7 @@ export class BookingsService {
       tenantId,
       bookingId: booking.id,
       serviceId: createBookingDto.serviceId,
-      customerId: customer.id,
+      customerId: booking.customerId,
       action: 'booking.create',
     });
 
@@ -182,6 +335,7 @@ export class BookingsService {
         where: where as any,
         include: {
           service: true,
+          product: true,
           customer: true,
         },
         orderBy: [{ date: 'asc' }, { startTime: 'asc' }],
@@ -207,6 +361,7 @@ export class BookingsService {
       where: { id, tenantId },
       include: {
         service: true,
+        product: true,
         customer: true,
         employee: true,
       },
@@ -227,6 +382,7 @@ export class BookingsService {
       data: updateBookingDto,
       include: {
         service: true,
+        product: true,
         customer: true,
         employee: true,
       },
@@ -250,6 +406,7 @@ export class BookingsService {
       data: { status },
       include: {
         service: true,
+        product: true,
         customer: true,
         employee: true,
       },
@@ -257,11 +414,15 @@ export class BookingsService {
   }
 
   async cancel(tenantId: string, id: string) {
+    // Verify booking belongs to this tenant before cancelling
+    await this.findById(tenantId, id);
+
     const booking = await this.prisma.booking.update({
-      where: { id },
+      where: { id, tenantId },
       data: { status: BookingStatus.CANCELLED },
       include: {
         service: true,
+        product: true,
         customer: true,
         employee: true,
       },
@@ -289,7 +450,13 @@ export class BookingsService {
     date: string,
     serviceId?: string,
     branchId?: string,
+    employeeId?: string,
   ): Promise<{ time: string; available: boolean }[]> {
+    // Check cache first (include employeeId in cache key)
+    const cacheKey = employeeId ? `${serviceId}:emp:${employeeId}` : serviceId;
+    const cached = await this.cacheService.getAvailability(tenantId, date, cacheKey);
+    if (cached) return cached;
+
     // Get schedule for this day (use noon UTC for correct day-of-week calculation)
     const dayDate = new Date(date + 'T12:00:00Z');
     const dayOfWeek = dayDate.getUTCDay() === 0 ? 6 : dayDate.getUTCDay() - 1;
@@ -300,28 +467,13 @@ export class BookingsService {
       lte: new Date(date + 'T23:59:59.999Z'),
     };
 
-    let schedule: { startTime: string; endTime: string; isActive: boolean } | null = null;
-
-    // If branchId provided, use branch schedule
-    if (branchId) {
-      const branchSchedule = await this.prisma.branchSchedule.findUnique({
-        where: { branchId_dayOfWeek: { branchId, dayOfWeek } },
-      });
-      if (branchSchedule) {
-        schedule = branchSchedule;
-      }
-    }
-
-    // Fallback to tenant schedule if no branch schedule
-    if (!schedule) {
-      schedule = await this.schedulesService.findByDay(tenantId, dayOfWeek);
-    }
-
-    if (!schedule || !schedule.isActive) {
+    // Check if date is blocked at tenant level
+    const isBlocked = await this.schedulesService.isDateBlocked(tenantId, date);
+    if (isBlocked) {
       return [];
     }
 
-    // Check if date is blocked (branch or tenant level)
+    // Check if date is blocked at branch level
     if (branchId) {
       const branchBlocked = await this.prisma.branchBlockedDate.findFirst({
         where: { branchId, date: { gte: dayRange.gte, lte: dayRange.lte } },
@@ -330,78 +482,41 @@ export class BookingsService {
         return [];
       }
     }
-    const isBlocked = await this.schedulesService.isDateBlocked(tenantId, date);
-    if (isBlocked) {
-      return [];
-    }
 
-    // Get service duration (default 30 min)
+    // Get service duration and capacity (default 30 min, capacity 1)
     let duration = 30;
+    let capacity = 1;
     if (serviceId) {
       try {
         const service = await this.servicesService.findById(tenantId, serviceId);
         duration = service.duration;
+        capacity = service.capacity || 1;
       } catch {
-        // Use default duration
+        // Use default duration and capacity
       }
     }
-
-    // Get existing bookings for this date (filter by branch if provided)
-    const bookingWhere: any = {
-      tenantId,
-      date: { gte: dayRange.gte, lte: dayRange.lte },
-      status: { in: [BookingStatus.PENDING, BookingStatus.CONFIRMED] },
-    };
-    if (branchId) {
-      bookingWhere.branchId = branchId;
-    }
-
-    const existingBookings = await this.prisma.booking.findMany({
-      where: bookingWhere,
-      select: { startTime: true, endTime: true },
-    });
 
     // Get booking constraints (buffer, advance hours, etc.)
     const constraints = await this.getBookingConstraints(tenantId);
 
-    // Detect full-day schedule (23+ hours, e.g. 00:00-23:59)
-    const startMinutes = this.timeUtils.toMinutes(schedule.startTime);
-    const endMinutes = this.timeUtils.toMinutes(schedule.endTime);
-    const isFullDay = (endMinutes - startMinutes) >= 23 * 60;
-
-    // For full-day schedules, fetch next-day early morning bookings
-    // to detect cross-midnight conflicts (e.g. booking at 22:00 today
-    // ending at 01:00 should not overlap with a 00:30 booking tomorrow)
-    let nextDayBookings: { startTime: string; endTime: string }[] = [];
-    if (isFullDay && duration > 30) {
-      const nextDate = new Date(dayDate);
-      nextDate.setUTCDate(nextDate.getUTCDate() + 1);
-      const nextDateStr = nextDate.toISOString().split('T')[0];
-      const nextDayWhere: any = {
-        tenantId,
-        date: {
-          gte: new Date(nextDateStr + 'T00:00:00Z'),
-          lte: new Date(nextDateStr + 'T23:59:59.999Z'),
-        },
-        status: { in: [BookingStatus.PENDING, BookingStatus.CONFIRMED] },
-      };
-      if (branchId) nextDayWhere.branchId = branchId;
-      nextDayBookings = await this.prisma.booking.findMany({
-        where: nextDayWhere,
-        select: { startTime: true, endTime: true },
-      });
-    }
-
-    // Generate time slots (with buffer between bookings)
-    const slots = this.generateTimeSlots(
-      schedule.startTime,
-      schedule.endTime,
-      duration,
-      existingBookings,
-      constraints.bookingBuffer,
-      isFullDay,
-      nextDayBookings,
+    // Determine eligible employees for per-employee availability
+    const eligibleEmployees = await this.getEligibleEmployeesForAvailability(
+      tenantId, serviceId, branchId, employeeId,
     );
+
+    let slots: { time: string; available: boolean }[];
+
+    if (eligibleEmployees.length === 0) {
+      // No employees → fallback to capacity-based system (retrocompatible)
+      slots = await this.getCapacityBasedAvailability(
+        tenantId, date, dayOfWeek, dayRange, branchId, duration, capacity, constraints,
+      );
+    } else {
+      // Per-employee availability
+      slots = await this.getEmployeeBasedAvailability(
+        tenantId, date, dayOfWeek, dayRange, branchId, duration, constraints, eligibleEmployees,
+      );
+    }
 
     // Filter past slots for today
     const nowUtc = new Date();
@@ -422,6 +537,298 @@ export class BookingsService {
       }
     }
 
+    // Cache the result
+    await this.cacheService.setAvailability(tenantId, date, slots, cacheKey);
+
+    return slots;
+  }
+
+  /**
+   * Get eligible employee IDs for availability calculation.
+   * Returns empty array if no employees exist (fallback to capacity-based).
+   */
+  private async getEligibleEmployeesForAvailability(
+    tenantId: string,
+    serviceId?: string,
+    branchId?: string,
+    employeeId?: string,
+  ): Promise<string[]> {
+    // If a specific employee is requested, return just that one
+    if (employeeId) {
+      const emp = await this.prisma.employee.findFirst({
+        where: { id: employeeId, tenantId, isActive: true },
+        select: { id: true },
+      });
+      return emp ? [emp.id] : [];
+    }
+
+    // Check if the service has explicit employee assignments
+    if (serviceId) {
+      const assignments = await this.prisma.employeeService.findMany({
+        where: {
+          serviceId,
+          isActive: true,
+          employee: { tenantId, isActive: true, isPubliclyVisible: true },
+        },
+        select: { employeeId: true },
+      });
+
+      if (assignments.length > 0) {
+        let employeeIds = assignments.map((a) => a.employeeId);
+
+        // Filter by branch if specified
+        if (branchId) {
+          const branchEmployees = await this.prisma.branchEmployee.findMany({
+            where: { branchId, isActive: true, employeeId: { in: employeeIds } },
+            select: { employeeId: true },
+          });
+          if (branchEmployees.length > 0) {
+            const branchSet = new Set(branchEmployees.map((be) => be.employeeId));
+            employeeIds = employeeIds.filter((id) => branchSet.has(id));
+          }
+        }
+
+        return employeeIds;
+      }
+    }
+
+    // Check if tenant has any active employees at all
+    const allEmployees = await this.prisma.employee.findMany({
+      where: { tenantId, isActive: true, isPubliclyVisible: true },
+      select: { id: true },
+    });
+
+    if (allEmployees.length === 0) {
+      return []; // No employees → capacity-based fallback
+    }
+
+    let employeeIds = allEmployees.map((e) => e.id);
+
+    // Filter by branch if specified
+    if (branchId) {
+      const branchEmployees = await this.prisma.branchEmployee.findMany({
+        where: { branchId, isActive: true, employeeId: { in: employeeIds } },
+        select: { employeeId: true },
+      });
+      if (branchEmployees.length > 0) {
+        const branchSet = new Set(branchEmployees.map((be) => be.employeeId));
+        employeeIds = employeeIds.filter((id) => branchSet.has(id));
+      }
+    }
+
+    return employeeIds;
+  }
+
+  /**
+   * Original capacity-based availability (for tenants without employees).
+   */
+  private async getCapacityBasedAvailability(
+    tenantId: string,
+    date: string,
+    dayOfWeek: number,
+    dayRange: { gte: Date; lte: Date },
+    branchId: string | undefined,
+    duration: number,
+    capacity: number,
+    constraints: { bookingBuffer: number },
+  ): Promise<{ time: string; available: boolean }[]> {
+    let schedule: { startTime: string; endTime: string; isActive: boolean } | null = null;
+
+    if (branchId) {
+      const branchSchedule = await this.prisma.branchSchedule.findUnique({
+        where: { branchId_dayOfWeek: { branchId, dayOfWeek } },
+      });
+      if (branchSchedule) schedule = branchSchedule;
+    }
+    if (!schedule) {
+      schedule = await this.schedulesService.findByDay(tenantId, dayOfWeek);
+    }
+    if (!schedule || !schedule.isActive) return [];
+
+    const bookingWhere: any = {
+      tenantId,
+      date: { gte: dayRange.gte, lte: dayRange.lte },
+      status: { in: [BookingStatus.PENDING, BookingStatus.CONFIRMED] },
+    };
+    if (branchId) bookingWhere.branchId = branchId;
+
+    const existingBookings = await this.prisma.booking.findMany({
+      where: bookingWhere,
+      select: { startTime: true, endTime: true },
+    });
+
+    const startMinutes = this.timeUtils.toMinutes(schedule.startTime);
+    let endMinutes = this.timeUtils.toMinutes(schedule.endTime);
+    // Handle "00:00" meaning midnight end-of-day when start is later (e.g. 12:00-00:00)
+    if (endMinutes <= startMinutes) endMinutes += 24 * 60;
+    const isFullDay = (endMinutes - startMinutes) >= 23 * 60;
+
+    let nextDayBookings: { startTime: string; endTime: string }[] = [];
+    if (isFullDay && duration > 30) {
+      const dayDate = new Date(date + 'T12:00:00Z');
+      const nextDate = new Date(dayDate);
+      nextDate.setUTCDate(nextDate.getUTCDate() + 1);
+      const nextDateStr = nextDate.toISOString().split('T')[0];
+      const nextDayWhere: any = {
+        tenantId,
+        date: { gte: new Date(nextDateStr + 'T00:00:00Z'), lte: new Date(nextDateStr + 'T23:59:59.999Z') },
+        status: { in: [BookingStatus.PENDING, BookingStatus.CONFIRMED] },
+      };
+      if (branchId) nextDayWhere.branchId = branchId;
+      nextDayBookings = await this.prisma.booking.findMany({
+        where: nextDayWhere,
+        select: { startTime: true, endTime: true },
+      });
+    }
+
+    return this.generateTimeSlots(
+      schedule.startTime, schedule.endTime, duration,
+      existingBookings, constraints.bookingBuffer, isFullDay, nextDayBookings, capacity,
+    );
+  }
+
+  /**
+   * Per-employee availability: union of all employee time windows.
+   * A slot is available if at least 1 employee can take it.
+   */
+  private async getEmployeeBasedAvailability(
+    tenantId: string,
+    date: string,
+    dayOfWeek: number,
+    dayRange: { gte: Date; lte: Date },
+    branchId: string | undefined,
+    duration: number,
+    constraints: { bookingBuffer: number },
+    employeeIds: string[],
+  ): Promise<{ time: string; available: boolean }[]> {
+    // Batch fetch: all employee schedules for this day
+    const empSchedules = await this.prisma.employeeSchedule.findMany({
+      where: { employeeId: { in: employeeIds }, dayOfWeek },
+    });
+    const empScheduleMap = new Map(empSchedules.map((s) => [s.employeeId, s]));
+
+    // Batch fetch: employee blocked dates
+    const empBlockedDates = await this.prisma.employeeBlockedDate.findMany({
+      where: { employeeId: { in: employeeIds }, date: { gte: dayRange.gte, lte: dayRange.lte } },
+    });
+    const blockedEmployeeIds = new Set(empBlockedDates.map((b) => b.employeeId));
+
+    // Batch fetch: all bookings for these employees on this date
+    const empBookings = await this.prisma.booking.findMany({
+      where: {
+        tenantId,
+        employeeId: { in: employeeIds },
+        date: { gte: dayRange.gte, lte: dayRange.lte },
+        status: { in: [BookingStatus.PENDING, BookingStatus.CONFIRMED] },
+      },
+      select: { employeeId: true, startTime: true, endTime: true },
+    });
+    const bookingsByEmployee = new Map<string, { startTime: string; endTime: string }[]>();
+    for (const b of empBookings) {
+      if (!b.employeeId) continue;
+      if (!bookingsByEmployee.has(b.employeeId)) bookingsByEmployee.set(b.employeeId, []);
+      bookingsByEmployee.get(b.employeeId)!.push({ startTime: b.startTime, endTime: b.endTime });
+    }
+
+    // Get fallback schedules (branch → tenant)
+    let fallbackSchedule: { startTime: string; endTime: string; isActive: boolean } | null = null;
+    if (branchId) {
+      const branchSched = await this.prisma.branchSchedule.findUnique({
+        where: { branchId_dayOfWeek: { branchId, dayOfWeek } },
+      });
+      if (branchSched) fallbackSchedule = branchSched;
+    }
+    if (!fallbackSchedule) {
+      fallbackSchedule = await this.schedulesService.findByDay(tenantId, dayOfWeek);
+    }
+
+    // Resolve effective schedule per employee and determine global time window
+    let globalStartMin = Infinity;
+    let globalEndMin = -Infinity;
+
+    interface EmployeeWindow {
+      employeeId: string;
+      startMin: number;
+      endMin: number;
+      bookings: { startTime: string; endTime: string }[];
+    }
+
+    const activeWindows: EmployeeWindow[] = [];
+
+    for (const empId of employeeIds) {
+      // Skip blocked employees
+      if (blockedEmployeeIds.has(empId)) continue;
+
+      // Resolve schedule: employee → fallback
+      const empSched = empScheduleMap.get(empId);
+      const effectiveSchedule = empSched || fallbackSchedule;
+      if (!effectiveSchedule || !effectiveSchedule.isActive) continue;
+
+      const startMin = this.timeUtils.toMinutes(effectiveSchedule.startTime);
+      let endMin = this.timeUtils.toMinutes(effectiveSchedule.endTime);
+      // Handle "00:00" meaning midnight end-of-day
+      if (endMin <= startMin) endMin += 24 * 60;
+
+      if (startMin < globalStartMin) globalStartMin = startMin;
+      if (endMin > globalEndMin) globalEndMin = endMin;
+
+      activeWindows.push({
+        employeeId: empId,
+        startMin,
+        endMin,
+        bookings: bookingsByEmployee.get(empId) || [],
+      });
+    }
+
+    if (activeWindows.length === 0) return [];
+
+    // Generate slots across the union of all employee windows
+    const slots: { time: string; available: boolean }[] = [];
+    const slotInterval = 30;
+    let currentMinutes = globalStartMin;
+
+    const isFullDay = (globalEndMin - globalStartMin) >= 23 * 60;
+
+    while (isFullDay
+      ? currentMinutes <= globalEndMin
+      : currentMinutes + duration <= globalEndMin
+    ) {
+      const time = this.timeUtils.fromMinutes(currentMinutes);
+      const slotEndMinutes = currentMinutes + duration;
+
+      // Check if at least 1 employee can take this slot
+      let anyAvailable = false;
+      for (const win of activeWindows) {
+        // Check slot fits within this employee's window
+        if (isFullDay) {
+          if (currentMinutes < win.startMin || currentMinutes > win.endMin) continue;
+        } else {
+          if (currentMinutes < win.startMin || slotEndMinutes > win.endMin) continue;
+        }
+
+        // Check no conflicting booking for this employee
+        const hasConflict = win.bookings.some((booking) => {
+          const bufferedEnd = constraints.bookingBuffer > 0
+            ? this.timeUtils.calculateEndTime(booking.endTime, constraints.bookingBuffer)
+            : booking.endTime;
+
+          let bStart = this.timeUtils.toMinutes(booking.startTime);
+          let bEnd = this.timeUtils.toMinutes(bufferedEnd);
+          if (bEnd <= bStart) bEnd += 24 * 60;
+
+          return currentMinutes < bEnd && bStart < slotEndMinutes;
+        });
+
+        if (!hasConflict) {
+          anyAvailable = true;
+          break;
+        }
+      }
+
+      slots.push({ time, available: anyAvailable });
+      currentMinutes += slotInterval;
+    }
+
     return slots;
   }
 
@@ -433,6 +840,10 @@ export class BookingsService {
     maxAdvanceBookingDays: number;
     bookingBuffer: number;
   }> {
+    // Check cache first
+    const cached = await this.cacheService.getTenantSettings(tenantId);
+    if (cached?.bookingConstraints) return cached.bookingConstraints;
+
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: tenantId },
       select: { settings: true },
@@ -445,11 +856,16 @@ export class BookingsService {
         : (tenant.settings as Record<string, unknown>);
     }
 
-    return {
+    const constraints = {
       minAdvanceBookingHours: settings.minAdvanceBookingHours != null ? Number(settings.minAdvanceBookingHours) : 1,
       maxAdvanceBookingDays: settings.maxAdvanceBookingDays != null ? Number(settings.maxAdvanceBookingDays) : 30,
       bookingBuffer: settings.bookingBuffer != null ? Number(settings.bookingBuffer) : 0,
     };
+
+    // Cache with all parsed settings
+    await this.cacheService.setTenantSettings(tenantId, { bookingConstraints: constraints, dailySettings: null, raw: settings });
+
+    return constraints;
   }
 
   /**
@@ -516,6 +932,7 @@ export class BookingsService {
     startTime: string,
     duration: number,
     skipScheduleCheck = false,
+    serviceId?: string,
   ): Promise<boolean> {
     const dayDate = new Date(date + 'T12:00:00Z');
     const endTime = this.timeUtils.calculateEndTime(startTime, duration);
@@ -557,8 +974,19 @@ export class BookingsService {
       }
     }
 
-    // Check for overlapping bookings
-    const overlapping = await this.prisma.booking.findFirst({
+    // Get service capacity
+    let capacity = 1;
+    if (serviceId) {
+      try {
+        const service = await this.servicesService.findById(tenantId, serviceId);
+        capacity = service.capacity || 1;
+      } catch {
+        // Use default capacity
+      }
+    }
+
+    // Count overlapping bookings and compare against capacity
+    const overlappingCount = await this.prisma.booking.count({
       where: {
         tenantId,
         date: {
@@ -589,7 +1017,110 @@ export class BookingsService {
       },
     });
 
-    return !overlapping;
+    return overlappingCount < capacity;
+  }
+
+  /**
+   * Transaction-safe slot availability check.
+   * Uses the transaction client to ensure serializable isolation.
+   * Supports employee-aware checking when employeeId is provided.
+   */
+  private async isSlotAvailableTx(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    date: string,
+    startTime: string,
+    duration: number,
+    skipScheduleCheck = false,
+    capacity = 1,
+    branchId?: string | null,
+    employeeId?: string | null,
+  ): Promise<boolean> {
+    const dayDate = new Date(date + 'T12:00:00Z');
+    const endTime = this.timeUtils.calculateEndTime(startTime, duration);
+
+    if (!skipScheduleCheck) {
+      const dayOfWeek = dayDate.getUTCDay() === 0 ? 6 : dayDate.getUTCDay() - 1;
+
+      let schedule: { startTime: string; endTime: string; isActive: boolean } | null = null;
+
+      // If employeeId provided, check employee schedule first
+      if (employeeId) {
+        const empSchedule = await tx.employeeSchedule.findUnique({
+          where: { employeeId_dayOfWeek: { employeeId, dayOfWeek } },
+        });
+        if (empSchedule) schedule = empSchedule;
+      }
+
+      // Fallback: branch schedule, then tenant schedule
+      if (!schedule && branchId) {
+        schedule = await tx.branchSchedule.findUnique({
+          where: { branchId_dayOfWeek: { branchId, dayOfWeek } },
+        });
+      }
+      if (!schedule) {
+        schedule = await this.schedulesService.findByDay(tenantId, dayOfWeek);
+      }
+
+      if (!schedule || !schedule.isActive) {
+        return false;
+      }
+
+      const schedStartMin = this.timeUtils.toMinutes(schedule.startTime);
+      let schedEndMin = this.timeUtils.toMinutes(schedule.endTime);
+      // Handle "00:00" meaning midnight end-of-day
+      if (schedEndMin <= schedStartMin) schedEndMin += 24 * 60;
+      const isFullDay = (schedEndMin - schedStartMin) >= 23 * 60;
+      const startMin = this.timeUtils.toMinutes(startTime);
+      const endMin = this.timeUtils.toMinutes(endTime);
+      const adjustedEndMin = endMin <= startMin ? endMin + 24 * 60 : endMin;
+
+      if (isFullDay) {
+        if (startMin < schedStartMin || startMin > schedEndMin) return false;
+      } else if (startMin < schedStartMin || adjustedEndMin > schedEndMin) {
+        return false;
+      }
+
+      // Check blocked dates (employee level, branch level, tenant level)
+      if (employeeId) {
+        const empBlocked = await this.schedulesService.isEmployeeDateBlocked(employeeId, date);
+        if (empBlocked) return false;
+      }
+      if (branchId) {
+        const branchBlocked = await tx.branchBlockedDate.findFirst({
+          where: { branchId, date: { gte: new Date(date + 'T00:00:00Z'), lte: new Date(date + 'T23:59:59.999Z') } },
+        });
+        if (branchBlocked) return false;
+      }
+      const isBlocked = await this.schedulesService.isDateBlocked(tenantId, date);
+      if (isBlocked) return false;
+    }
+
+    // Count overlapping bookings
+    const overlappingWhere: any = {
+      tenantId,
+      date: {
+        gte: new Date(date + 'T00:00:00Z'),
+        lte: new Date(date + 'T23:59:59.999Z'),
+      },
+      status: { in: [BookingStatus.PENDING, BookingStatus.CONFIRMED] },
+      OR: [
+        { AND: [{ startTime: { lte: startTime } }, { endTime: { gt: startTime } }] },
+        { AND: [{ startTime: { lt: endTime } }, { endTime: { gte: endTime } }] },
+        { AND: [{ startTime: { gte: startTime } }, { endTime: { lte: endTime } }] },
+      ],
+    };
+
+    if (employeeId) {
+      // When checking for a specific employee, only count their bookings
+      overlappingWhere.employeeId = employeeId;
+    } else if (branchId) {
+      overlappingWhere.branchId = branchId;
+    }
+
+    const overlappingCount = await tx.booking.count({ where: overlappingWhere });
+
+    return overlappingCount < capacity;
   }
 
   private generateTimeSlots(
@@ -600,10 +1131,13 @@ export class BookingsService {
     bookingBuffer = 0,
     isFullDay = false,
     nextDayBookings: { startTime: string; endTime: string }[] = [],
+    capacity = 1,
   ): { time: string; available: boolean }[] {
     const slots: { time: string; available: boolean }[] = [];
     let currentMinutes = this.timeUtils.toMinutes(startTime);
-    const endMinutes = this.timeUtils.toMinutes(endTime);
+    let endMinutes = this.timeUtils.toMinutes(endTime);
+    // Handle "00:00" meaning midnight end-of-day when start is later (e.g. 12:00-00:00)
+    if (endMinutes <= currentMinutes) endMinutes += 24 * 60;
 
     // Always use 30-min intervals for maximum granularity.
     const slotInterval = 30;
@@ -620,8 +1154,8 @@ export class BookingsService {
       const slotEndMinutes = currentMinutes + duration;
       const crossesMidnight = slotEndMinutes > 24 * 60;
 
-      // Check if this slot overlaps with any existing booking (including buffer)
-      const isOccupied = existingBookings.some((booking) => {
+      // Check how many existing bookings overlap with this slot (including buffer)
+      const overlappingCount = existingBookings.filter((booking) => {
         const bufferedEnd = bookingBuffer > 0
           ? this.timeUtils.calculateEndTime(booking.endTime, bookingBuffer)
           : booking.endTime;
@@ -633,13 +1167,14 @@ export class BookingsService {
         if (bEnd <= bStart) bEnd += 24 * 60;
 
         return currentMinutes < bEnd && bStart < slotEndMinutes;
-      });
+      }).length;
+      const isOccupied = overlappingCount >= capacity;
 
       // For cross-midnight slots, also check next-day bookings
       let nextDayConflict = false;
       if (crossesMidnight && nextDayBookings.length > 0) {
         const overflowEnd = slotEndMinutes - 24 * 60; // minutes into next day
-        nextDayConflict = nextDayBookings.some((booking) => {
+        const nextDayOverlapping = nextDayBookings.filter((booking) => {
           const bufferedEnd = bookingBuffer > 0
             ? this.timeUtils.calculateEndTime(booking.endTime, bookingBuffer)
             : booking.endTime;
@@ -647,7 +1182,8 @@ export class BookingsService {
           const bEnd = this.timeUtils.toMinutes(bufferedEnd);
           // Check if next-day booking overlaps with the overflow portion (00:00 to overflowEnd)
           return bStart < overflowEnd && bEnd > 0;
-        });
+        }).length;
+        nextDayConflict = (overlappingCount + nextDayOverlapping) >= capacity;
       }
 
       slots.push({ time, available: !isOccupied && !nextDayConflict });
@@ -824,6 +1360,53 @@ export class BookingsService {
   }
 
   /**
+   * Get monthly availability for calendar visual indicators (HOURLY mode).
+   * Returns a map of date → hasAvailability for each valid day in the month.
+   */
+  async getMonthlyAvailability(
+    tenantId: string,
+    year: number,
+    month: number, // 1-based
+    serviceId?: string,
+    branchId?: string,
+  ): Promise<Record<string, boolean>> {
+    // Current date in Argentina timezone (UTC-3)
+    const nowUtc = new Date();
+    const argentinaOffset = -3 * 60;
+    const nowArgMs = nowUtc.getTime() + (nowUtc.getTimezoneOffset() + argentinaOffset) * 60000;
+    const nowArg = new Date(nowArgMs);
+    const todayStr = `${nowArg.getFullYear()}-${String(nowArg.getMonth() + 1).padStart(2, '0')}-${String(nowArg.getDate()).padStart(2, '0')}`;
+    const todayDate = new Date(todayStr + 'T12:00:00Z');
+
+    const constraints = await this.getBookingConstraints(tenantId);
+    const maxDate = new Date(todayDate);
+    maxDate.setUTCDate(maxDate.getUTCDate() + constraints.maxAdvanceBookingDays);
+
+    const firstDay = new Date(Date.UTC(year, month - 1, 1, 12));
+    const lastDay = new Date(Date.UTC(year, month, 0, 12));
+
+    const result: Record<string, boolean> = {};
+    const tasks: Promise<void>[] = [];
+
+    const current = new Date(firstDay);
+    while (current <= lastDay) {
+      const dateStr = current.toISOString().split('T')[0];
+      if (current >= todayDate && current <= maxDate) {
+        const d = dateStr;
+        tasks.push(
+          this.getAvailability(tenantId, d, serviceId, branchId).then(slots => {
+            result[d] = slots.some(s => s.available);
+          }),
+        );
+      }
+      current.setUTCDate(current.getUTCDate() + 1);
+    }
+
+    await Promise.all(tasks);
+    return result;
+  }
+
+  /**
    * Create a daily booking (check-in → check-out).
    * One booking = one stay.
    */
@@ -900,49 +1483,112 @@ export class BookingsService {
       );
     }
 
-    // Get service for pricing
+    // Get service for base info (outside tx — read-only, needed for isPack check)
     const service = await this.servicesService.findById(tenantId, dto.serviceId);
-    const pricePerNight = Number(service.price);
-    const totalPrice = pricePerNight * nights;
+    const isPack = (service as any).isPack || false;
 
-    // Find or create customer
-    let customer = await this.customersService.findByPhone(tenantId, dto.customerPhone);
-    if (!customer) {
-      customer = await this.customersService.create(tenantId, {
-        name: dto.customerName,
-        phone: dto.customerPhone,
-        email: dto.customerEmail,
+    // Serializable transaction: availability re-check + pricing + customer + booking
+    const booking = await this.prisma.$transaction(async (tx) => {
+      // Re-read service inside tx for atomic promo check (prevents race condition on promoBookingCount)
+      const freshService = await tx.service.findUniqueOrThrow({ where: { id: dto.serviceId } });
+
+      // Determine pricing: pack fixed price > promo price > normal price
+      let totalPrice: number;
+      let promoUsed = false;
+
+      if (isPack) {
+        totalPrice = Number(freshService.price);
+      } else {
+        const now = new Date();
+        const promoActive = freshService.promoPrice != null
+          && (!freshService.promoStartDate || freshService.promoStartDate <= now)
+          && (!freshService.promoEndDate || freshService.promoEndDate >= now)
+          && (freshService.promoMaxBookings == null || freshService.promoBookingCount < freshService.promoMaxBookings);
+
+        const pricePerNight = promoActive ? Number(freshService.promoPrice) : Number(freshService.price);
+        totalPrice = pricePerNight * nights;
+        promoUsed = promoActive;
+      }
+
+      // Re-check overlap inside transaction to prevent double booking
+      const overlapping = await tx.booking.count({
+        where: {
+          tenantId,
+          status: { in: [BookingStatus.PENDING, BookingStatus.CONFIRMED] },
+          AND: [
+            { checkOutDate: { not: null } },
+            { date: { lt: checkOut } },
+            { checkOutDate: { gt: checkIn } },
+          ],
+          ...(dto.branchId ? { branchId: dto.branchId } : {}),
+        },
       });
-    }
 
-    // Create booking
-    const booking = await this.prisma.booking.create({
-      data: {
-        tenantId,
-        branchId: dto.branchId || null,
-        serviceId: dto.serviceId,
-        customerId: customer.id,
-        date: checkIn,
-        startTime: settings.dailyCheckInTime,
-        endTime: settings.dailyCheckOutTime,
-        checkOutDate: checkOut,
-        totalNights: nights,
-        totalPrice,
-        notes: dto.notes,
-        status: BookingStatus.PENDING,
-        depositAmount: depositAmount || null,
-        depositPaid: false,
-      },
-      include: {
-        service: true,
-        customer: true,
-        employee: true,
-        branch: true,
-      },
+      if (overlapping > 0) {
+        throw new ConflictException('Las fechas seleccionadas ya no están disponibles');
+      }
+
+      // Find or create customer inside transaction
+      let customer = await tx.customer.findFirst({
+        where: { tenantId, phone: dto.customerPhone },
+      });
+
+      if (!customer) {
+        customer = await tx.customer.create({
+          data: {
+            tenantId,
+            name: dto.customerName,
+            phone: dto.customerPhone,
+            email: dto.customerEmail,
+          },
+        });
+      }
+
+      const newBooking = await tx.booking.create({
+        data: {
+          tenantId,
+          branchId: dto.branchId || null,
+          serviceId: dto.serviceId,
+          customerId: customer.id,
+          date: checkIn,
+          startTime: settings.dailyCheckInTime,
+          endTime: settings.dailyCheckOutTime,
+          checkOutDate: checkOut,
+          totalNights: nights,
+          totalPrice,
+          notes: dto.notes,
+          status: BookingStatus.PENDING,
+          depositAmount: depositAmount || null,
+          depositPaid: false,
+        },
+        include: {
+          service: true,
+          product: true,
+          customer: true,
+          employee: true,
+          branch: true,
+        },
+      });
+
+      // Increment customer bookings inside transaction
+      await tx.customer.update({
+        where: { id: customer.id },
+        data: { totalBookings: { increment: 1 }, lastBookingAt: new Date() },
+      });
+
+      // Increment promo booking counter if promo was used
+      if (promoUsed) {
+        await tx.service.update({
+          where: { id: dto.serviceId },
+          data: { promoBookingCount: { increment: 1 } },
+        });
+      }
+
+      return newBooking;
+    }, {
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+      timeout: 10000,
     });
-
-    // Update customer stats
-    await this.customersService.incrementBookings(customer.id);
 
     // Emit booking created event
     const eventPayload: BookingCreatedPayload = {
@@ -958,7 +1604,7 @@ export class BookingsService {
       checkIn: dto.checkInDate,
       checkOut: dto.checkOutDate,
       nights,
-      totalPrice,
+      totalPrice: booking.totalPrice != null ? Number(booking.totalPrice) : null,
       action: 'booking.create_daily',
     });
 
@@ -983,6 +1629,7 @@ export class BookingsService {
       },
       include: {
         service: true,
+        product: true,
         customer: true,
         employee: true,
       },
@@ -997,6 +1644,7 @@ export class BookingsService {
       },
       include: {
         service: true,
+        product: true,
         customer: true,
       },
       orderBy: { createdAt: 'desc' },
@@ -1006,11 +1654,188 @@ export class BookingsService {
     return bookings.map((booking) => ({
       id: booking.id,
       customerName: booking.customer?.name || 'Cliente',
-      serviceName: booking.service?.name || 'Servicio',
+      serviceName: booking.service?.name || booking.product?.name || 'Sin detalle',
       date: booking.date.toISOString(),
       startTime: booking.startTime,
       createdAt: booking.createdAt.toISOString(),
       status: booking.status,
     }));
+  }
+
+  /**
+   * Unified activity feed for the notification bell.
+   * Aggregates: recent bookings, job applications, reviews, and talent proposals.
+   */
+  async getActivityFeed(tenantId: string, userId: string, tenantType: string = 'BUSINESS') {
+    const items: Array<{
+      id: string;
+      type: 'booking' | 'application' | 'review' | 'proposal_response';
+      title: string;
+      description: string;
+      createdAt: string;
+      link: string;
+      meta?: Record<string, unknown>;
+    }> = [];
+
+    if (tenantType === 'PROFESSIONAL') {
+      // Professional feed: application status updates + proposals received
+
+      // 1. My application status changes (accepted/rejected by businesses)
+      try {
+        const myApps = await this.prisma.jobApplication.findMany({
+          where: { profile: { userId } },
+          include: {
+            posting: { select: { title: true, id: true, tenant: { select: { name: true } } } },
+          },
+          orderBy: { updatedAt: 'desc' },
+          take: 10,
+        });
+
+        for (const app of myApps) {
+          const statusLabels: Record<string, string> = {
+            PENDING: 'pendiente',
+            REVIEWED: 'vista por',
+            ACCEPTED: 'aceptada por',
+            REJECTED: 'rechazada por',
+          };
+          const label = statusLabels[app.status] || app.status.toLowerCase();
+          items.push({
+            id: app.id,
+            type: 'application',
+            title: app.status === 'PENDING'
+              ? `Postulación enviada`
+              : `Postulación ${label} ${app.posting.tenant.name}`,
+            description: app.posting.title,
+            createdAt: (app.updatedAt || app.createdAt).toISOString(),
+            link: '/mi-perfil/postulaciones',
+            meta: { status: app.status, postingId: app.posting.id },
+          });
+        }
+      } catch { /* Job applications may not exist */ }
+
+      // 2. Proposals received from businesses
+      try {
+        const proposals = await this.prisma.talentProposal.findMany({
+          where: { profile: { userId } },
+          include: { senderTenant: { select: { name: true } } },
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+        });
+
+        for (const p of proposals) {
+          items.push({
+            id: p.id,
+            type: 'proposal_response',
+            title: `${p.senderTenant.name} te envió una propuesta`,
+            description: p.role,
+            createdAt: p.createdAt.toISOString(),
+            link: '/mi-perfil/propuestas',
+            meta: { status: p.status },
+          });
+        }
+      } catch { /* Proposals may not exist */ }
+
+    } else {
+      // Business feed: bookings, applications received, reviews, proposal responses
+
+      // 1. Recent bookings (last 5)
+      const bookings = await this.prisma.booking.findMany({
+        where: { tenantId },
+        include: { service: true, customer: true },
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+      });
+
+      for (const b of bookings) {
+        items.push({
+          id: b.id,
+          type: 'booking',
+          title: `Nueva reserva de ${b.customer?.name || 'Cliente'}`,
+          description: `${b.service?.name || 'Servicio'} — ${b.startTime}`,
+          createdAt: b.createdAt.toISOString(),
+          link: '/turnos',
+          meta: { status: b.status, date: b.date.toISOString(), startTime: b.startTime },
+        });
+      }
+
+      // 2. Job applications received (last 5 across all postings)
+      try {
+        const applications = await this.prisma.jobApplication.findMany({
+          where: { posting: { tenantId } },
+          include: {
+            posting: { select: { title: true, id: true } },
+            profile: { select: { name: true } },
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+        });
+
+        for (const app of applications) {
+          items.push({
+            id: app.id,
+            type: 'application',
+            title: `${app.profile.name} se postuló`,
+            description: app.posting.title,
+            createdAt: app.createdAt.toISOString(),
+            link: `/talento/ofertas/${app.posting.id}`,
+            meta: { status: app.status, postingId: app.posting.id },
+          });
+        }
+      } catch { /* Job postings module may not exist */ }
+
+      // 3. Recent reviews (last 5)
+      try {
+        const reviews = await this.prisma.review.findMany({
+          where: { tenantId },
+          include: {
+            customer: { select: { name: true } },
+            booking: { include: { service: { select: { name: true } } } },
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+        });
+
+        for (const r of reviews) {
+          const stars = '★'.repeat(r.rating) + '☆'.repeat(5 - r.rating);
+          items.push({
+            id: r.id,
+            type: 'review',
+            title: `${r.customer.name} dejó una reseña`,
+            description: `${stars} — ${r.booking?.service?.name || 'Servicio'}`,
+            createdAt: r.createdAt.toISOString(),
+            link: '/resenas',
+            meta: { rating: r.rating, comment: r.comment },
+          });
+        }
+      } catch { /* Reviews module may not exist */ }
+
+      // 4. Talent proposal responses (last 5 — proposals we sent that got a response)
+      try {
+        const proposals = await this.prisma.talentProposal.findMany({
+          where: { senderTenantId: tenantId, respondedAt: { not: null } },
+          include: { profile: { select: { name: true } } },
+          orderBy: { respondedAt: 'desc' },
+          take: 5,
+        });
+
+        for (const p of proposals) {
+          const accepted = p.status === 'ACCEPTED';
+          items.push({
+            id: p.id,
+            type: 'proposal_response',
+            title: `${p.profile.name} ${accepted ? 'aceptó' : 'rechazó'} tu propuesta`,
+            description: p.role,
+            createdAt: (p.respondedAt || p.createdAt).toISOString(),
+            link: '/talento/propuestas',
+            meta: { status: p.status },
+          });
+        }
+      } catch { /* Proposals may not exist */ }
+    }
+
+    // Sort all items by date descending, take top 15
+    items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    return items.slice(0, 15);
   }
 }

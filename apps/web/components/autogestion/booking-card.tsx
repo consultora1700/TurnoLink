@@ -1,8 +1,8 @@
 'use client';
 
-import { Clock, User } from 'lucide-react';
+import { Clock, User, ShoppingBag } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { formatDuration } from '@/lib/utils';
+import { formatDuration, formatPrice } from '@/lib/utils';
 import type { Booking } from '@/lib/api';
 
 const statusConfig: Record<string, { bg: string; text: string; border: string; dot: string; label: string }> = {
@@ -51,6 +51,7 @@ interface BookingCardProps {
 
 export function BookingCard({ booking, onClick, compact }: BookingCardProps) {
   const config = statusConfig[booking.status] || statusConfig.PENDING;
+  const isProductSale = !!booking.product && !booking.service;
 
   if (compact) {
     return (
@@ -62,14 +63,51 @@ export function BookingCard({ booking, onClick, compact }: BookingCardProps) {
           flex items-center gap-2
         `}
       >
-        <span className="text-sm font-bold shrink-0">{booking.startTime}</span>
+        {isProductSale ? (
+          <span className="text-sm font-bold shrink-0">{formatPrice(Number(booking.totalPrice ?? 0))}</span>
+        ) : (
+          <span className="text-sm font-bold shrink-0">{booking.startTime}</span>
+        )}
         <span className="text-xs truncate">{booking.customer.name}</span>
         <span className="text-[10px] text-muted-foreground truncate hidden lg:inline">
-          {booking.service.name}
+          {(booking.service?.name ?? booking.product?.name ?? 'Sin detalle')}
+          {isProductSale && (booking.quantity ?? 1) > 1 ? ` ×${booking.quantity}` : ''}
         </span>
         <Badge className={`${config.bg} ${config.text} border-0 text-[10px] shrink-0 ml-auto`}>
           {config.label}
         </Badge>
+      </div>
+    );
+  }
+
+  if (isProductSale) {
+    return (
+      <div
+        onClick={onClick}
+        className={`
+          ${config.bg} border-l-[3px] ${config.border}
+          rounded-lg p-3 cursor-pointer transition-all hover:shadow-md h-full
+        `}
+      >
+        <div className="flex items-center gap-3">
+          <div className="text-center shrink-0 w-14">
+            <p className="text-base font-bold">{formatPrice(Number(booking.totalPrice ?? 0))}</p>
+            <p className="text-[10px] text-muted-foreground">{(booking.quantity ?? 1) > 1 ? `×${booking.quantity}` : booking.startTime}</p>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 mb-0.5">
+              <ShoppingBag className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <p className="font-semibold text-sm truncate">{booking.product?.name ?? 'Sin detalle'}</p>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <p className="text-xs text-muted-foreground truncate">{booking.customer.name}</p>
+            </div>
+          </div>
+          <Badge className={`${config.bg} ${config.text} border-0 text-[10px] shrink-0`}>
+            {config.label}
+          </Badge>
+        </div>
       </div>
     );
   }
@@ -95,7 +133,7 @@ export function BookingCard({ booking, onClick, compact }: BookingCardProps) {
           <div className="flex items-center gap-1.5">
             <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
             <p className="text-xs text-muted-foreground truncate">
-              {booking.service.name} · {formatDuration(booking.service.duration)}
+              {(booking.service?.name ?? booking.product?.name ?? 'Sin detalle')}{booking.service?.duration ? ` · ${formatDuration(booking.service.duration)}` : ''}
             </p>
           </div>
         </div>

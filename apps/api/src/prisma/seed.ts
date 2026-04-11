@@ -7,8 +7,11 @@ async function main() {
   console.log('🌱 Seeding database for TurnoLink...');
 
   // Create Super Admin
+  if (!process.env.SUPER_ADMIN_PASSWORD) {
+    throw new Error('SUPER_ADMIN_PASSWORD environment variable is required for seeding. Never use default passwords.');
+  }
   const adminPassword = await bcrypt.hash(
-    process.env.SUPER_ADMIN_PASSWORD || 'admin123456',
+    process.env.SUPER_ADMIN_PASSWORD,
     12,
   );
 
@@ -90,7 +93,8 @@ async function main() {
   console.log('✅ Demo Tenant (Estética) created:', demoTenant.name);
 
   // Create Demo Owner
-  const ownerPassword = await bcrypt.hash('demo123456', 12);
+  const demoPass = process.env.DEMO_OWNER_PASSWORD || require('crypto').randomBytes(16).toString('base64url');
+  const ownerPassword = await bcrypt.hash(demoPass, 12);
 
   const demoOwner = await prisma.user.upsert({
     where: { email: 'demo@bellaestetica.com' },
@@ -386,8 +390,8 @@ async function main() {
 
   console.log('\n🎉 Seed completed successfully!');
   console.log('\n📋 Demo credentials:');
-  console.log('   Super Admin: admin@turnolink.app / admin123456');
-  console.log('   Demo Owner: demo@bellaestetica.com / demo123456');
+  console.log('   Super Admin:', process.env.SUPER_ADMIN_EMAIL || 'admin@turnolink.app', '/ [from SUPER_ADMIN_PASSWORD env]');
+  console.log('   Demo Owner: demo@bellaestetica.com / [from DEMO_OWNER_PASSWORD env or random]');
   console.log('\n🔗 URLs:');
   console.log('   Landing: http://localhost:3000');
   console.log('   Demo Estética: http://localhost:3000/demo-estetica');

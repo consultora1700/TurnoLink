@@ -123,7 +123,7 @@ export function ColorPicker({
       {isExpanded && (
         <div className="space-y-3 animate-in slide-in-from-top-2 duration-200">
           {/* Preset Colors Grid - Large touch targets */}
-          <div className="grid grid-cols-5 gap-2">
+          <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
             {presets.map((preset) => {
               const isSelected = value.toUpperCase() === preset.value.toUpperCase();
               return (

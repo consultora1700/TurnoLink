@@ -8,23 +8,27 @@ import {
   Body,
   Param,
   Query,
-  UseGuards,
+  Req,
+
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { BookingsService } from './bookings.service';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { TenantGuard } from '../../common/guards/tenant.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { User } from '@prisma/client';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { UpdateBookingDto } from './dto/update-booking.dto';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import { ForbiddenException, BadRequestException } from '@nestjs/common';
+import { SkipSubscriptionCheck } from '../../common/decorators/skip-subscription-check.decorator';
 
 @ApiTags('bookings')
 @Controller('bookings')
-@UseGuards(JwtAuthGuard, TenantGuard)
 @ApiBearerAuth()
 export class BookingsController {
-  constructor(private readonly bookingsService: BookingsService) {}
+  constructor(
+    private readonly bookingsService: BookingsService,
+    private readonly subscriptionsService: SubscriptionsService,
+  ) {}
 
   @Post()
   @ApiOperation({ summary: 'Create a new booking (from dashboard)' })
@@ -32,6 +36,10 @@ export class BookingsController {
     @CurrentUser() user: User,
     @Body() createBookingDto: CreateBookingDto,
   ) {
+    const { hasReachedLimit, current, limit } = await this.subscriptionsService.checkLimit(user.tenantId!, 'bookings');
+    if (hasReachedLimit) {
+      throw new ForbiddenException(`Límite de ${limit} reservas/mes alcanzado (tenés ${current}). Mejorá tu plan para agregar más.`);
+    }
     // skipAdvanceCheck=true: dashboard users can create bookings at any time (no min advance hours)
     return this.bookingsService.create(user.tenantId!, createBookingDto, undefined, true);
   }
@@ -67,6 +75,14 @@ export class BookingsController {
   @ApiOperation({ summary: 'Get recent bookings for notifications' })
   async getRecent(@CurrentUser() user: User) {
     return this.bookingsService.getRecentBookings(user.tenantId!);
+  }
+
+  @Get('activity-feed')
+  @SkipSubscriptionCheck()
+  @ApiOperation({ summary: 'Get unified activity feed for notification bell' })
+  async getActivityFeed(@CurrentUser() user: User, @Req() req: any) {
+    const tenantType = req.user?.tenantType || 'BUSINESS';
+    return this.bookingsService.getActivityFeed(user.tenantId!, user.id, tenantType);
   }
 
   @Get('availability')
@@ -112,6 +128,10 @@ export class BookingsController {
     @Param('id') id: string,
     @Body('status') status: string,
   ) {
+    const validStatuses = ['PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELLED', 'NO_SHOW'];
+    if (!validStatuses.includes(status)) {
+      throw new BadRequestException(`Estado inválido: ${status}. Valores válidos: ${validStatuses.join(', ')}`);
+    }
     return this.bookingsService.updateStatus(user.tenantId!, id, status);
   }
 

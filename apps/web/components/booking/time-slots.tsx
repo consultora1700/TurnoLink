@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Clock } from 'lucide-react';
+import { Clock, CalendarDays } from 'lucide-react';
+import { format as formatDate } from 'date-fns';
+import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
 // ─── Period icons ───────────────────────────────────────────────────────────
@@ -80,9 +82,11 @@ interface Props {
   onSelect: (time: string) => void;
   loading?: boolean;
   groupByPeriod?: boolean;
+  nextAvailableDate?: string | null;
+  onJumpToDate?: (date: Date) => void;
 }
 
-export function TimeSlots({ slots, selectedTime, onSelect, loading, groupByPeriod = true }: Props) {
+export function TimeSlots({ slots, selectedTime, onSelect, loading, groupByPeriod = true, nextAvailableDate, onJumpToDate }: Props) {
   const [activePeriod, setActivePeriod] = useState<Period | null>(null);
 
   const availableSlots = useMemo(() => slots.filter((s) => s.available), [slots]);
@@ -134,11 +138,20 @@ export function TimeSlots({ slots, selectedTime, onSelect, loading, groupByPerio
   if (availableSlots.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
-        <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-4">
-          <Clock className="h-8 w-8 text-red-600 dark:text-red-400" />
+        <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-neutral-700 flex items-center justify-center mb-4">
+          <Clock className="h-8 w-8 text-slate-500 dark:text-neutral-400" />
         </div>
-        <p className="font-medium text-slate-700 dark:text-neutral-200">Sin disponibilidad</p>
-        <p className="text-sm text-muted-foreground mt-1">Todos los horarios están ocupados</p>
+        <p className="font-medium text-slate-700 dark:text-neutral-200">Esta fecha está completa</p>
+        <p className="text-sm text-muted-foreground mt-1">No quedan horarios disponibles para este día</p>
+        {nextAvailableDate && onJumpToDate && (
+          <button
+            onClick={() => onJumpToDate(new Date(nextAvailableDate + 'T12:00:00'))}
+            className="mt-4 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-slate-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-slate-800 dark:hover:bg-neutral-100 transition-colors"
+          >
+            <CalendarDays className="h-4 w-4" />
+            Próximo disponible: {formatDate(new Date(nextAvailableDate + 'T12:00:00'), "EEEE d 'de' MMMM", { locale: es })}
+          </button>
+        )}
       </div>
     );
   }
@@ -160,38 +173,36 @@ export function TimeSlots({ slots, selectedTime, onSelect, loading, groupByPerio
 
   return (
     <div className="space-y-3 w-full min-w-0">
-      {/* Period tabs */}
-      <div className="w-full min-w-0 overflow-x-auto scrollbar-hide">
-        <div className="flex gap-1.5 pb-0.5">
-          {PERIODS.map((p) => {
-            const count = grouped[p.key].length;
-            if (count === 0) return null;
-            const isActive = currentPeriod === p.key;
-            return (
-              <button
-                key={p.key}
-                onClick={() => setActivePeriod(p.key)}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0',
-                  isActive
-                    ? 'bg-slate-900 dark:bg-white text-white dark:text-neutral-900 shadow-sm'
-                    : 'bg-slate-100 dark:bg-neutral-700 text-slate-600 dark:text-neutral-300 active:bg-slate-200 dark:active:bg-neutral-600'
-                )}
-              >
-                <p.Icon className="h-4 w-4 sm:h-[18px] sm:w-[18px] flex-shrink-0" />
-                <span>{p.label}</span>
-                <span className={cn(
-                  'text-[10px] sm:text-xs font-semibold px-1.5 py-0.5 rounded-full min-w-[18px] text-center',
-                  isActive
-                    ? 'bg-white/20 dark:bg-neutral-900/20'
-                    : 'bg-slate-200 dark:bg-neutral-600 text-slate-500 dark:text-neutral-400'
-                )}>
-                  {count}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+      {/* Period tabs — grid aligned with slot grid below */}
+      <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5 sm:gap-2 w-full min-w-0">
+        {PERIODS.map((p) => {
+          const count = grouped[p.key].length;
+          if (count === 0) return null;
+          const isActive = currentPeriod === p.key;
+          return (
+            <button
+              key={p.key}
+              onClick={() => setActivePeriod(p.key)}
+              className={cn(
+                'flex items-center justify-center gap-1 sm:gap-1.5 py-2 px-1 sm:px-3 rounded-xl text-[11px] sm:text-sm font-medium transition-colors',
+                isActive
+                  ? 'bg-slate-900 dark:bg-white text-white dark:text-neutral-900 shadow-sm'
+                  : 'bg-slate-100 dark:bg-neutral-700 text-slate-600 dark:text-neutral-300 active:bg-slate-200 dark:active:bg-neutral-600'
+              )}
+            >
+              <p.Icon className="h-3.5 w-3.5 sm:h-[18px] sm:w-[18px] flex-shrink-0" />
+              <span className="truncate">{p.label}</span>
+              <span className={cn(
+                'text-[9px] sm:text-xs font-semibold px-1 sm:px-1.5 py-0.5 rounded-full min-w-[16px] sm:min-w-[18px] text-center flex-shrink-0',
+                isActive
+                  ? 'bg-white/20 dark:bg-neutral-900/20'
+                  : 'bg-slate-200 dark:bg-neutral-600 text-slate-500 dark:text-neutral-400'
+              )}>
+                {count}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       <SlotGrid slots={periodSlots} selectedTime={selectedTime} onSelect={onSelect} />

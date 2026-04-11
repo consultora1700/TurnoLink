@@ -16,6 +16,7 @@ import { EmailVerificationService } from '../email-verification/email-verificati
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { getOnboardingExamples } from './onboarding-examples';
 
 @Injectable()
 export class AuthService {
@@ -79,10 +80,154 @@ export class AuthService {
     // Hash password
     const hashedPassword = await bcrypt.hash(registerDto.password, 12);
 
+    // publicPageLayout per rubro — service_first por defecto para todos los rubros de servicios
+    // All mercado-* sub-rubros share the same layout/sections/defaults as 'mercado'
+    const MERCADO_SUB_RUBROS = [
+      'mercado-celulares', 'mercado-indumentaria', 'mercado-calzado', 'mercado-computacion',
+      'mercado-electronica', 'mercado-accesorios-tech', 'mercado-automotoras', 'mercado-alimentos',
+      'mercado-muebles', 'mercado-juguetes', 'mercado-deportes', 'mercado-libreria',
+      'mercado-cosmetica', 'mercado-mascotas', 'mercado-joyeria', 'mercado-ferreteria',
+      'mercado-bazar', 'mercado-general',
+    ];
+
+    const RUBRO_LAYOUT: Record<string, string> = {
+      'estetica-belleza': 'service_first',
+      'barberia':         'service_first',
+      'masajes-spa':      'service_first',
+      'tatuajes-piercing':'service_first',
+      'salud':            'service_first',
+      'odontologia':      'service_first',
+      'psicologia':       'service_first',
+      'nutricion':        'service_first',
+      'veterinaria':      'service_first',
+      'fitness':          'service_first',
+      'deportes':         'service_first',
+      'hospedaje':        'service_first',
+      'alquiler':         'service_first',
+      'espacios':         'service_first',
+      'educacion':        'service_first',
+      'gastronomia':      'service_first',
+      'inmobiliarias':    'product_grid',
+      'mercado':          'product_grid',
+      'consultoria':      'service_first',
+      'otro':             'service_first',
+      // Mercado sub-rubros inherit product_grid
+      ...Object.fromEntries(MERCADO_SUB_RUBROS.map(k => [k, 'product_grid'])),
+    };
+
+    // Items ocultos por defecto (siempre reactivables en Configuración → Secciones del Menú)
+    const TALENTO = ['/talento', '/talento/propuestas', '/talento/ofertas'];
+    const ADVANCED = ['/integracion'];
+    // Catálogo/e-commerce sidebar items — ocultos para rubros que no son mercado
+    const CATALOGO = ['/catalogo', '/categorias-productos', '/pedidos', '/mi-tienda'];
+
+    const RUBRO_HIDDEN_SECTIONS: Record<string, string[]> = {
+      'estetica-belleza': ['/especialidades', '/sucursales', '/videollamadas', ...TALENTO, ...ADVANCED, ...CATALOGO],
+      'barberia':         ['/especialidades', '/sucursales', '/videollamadas', ...TALENTO, ...ADVANCED, ...CATALOGO],
+      'masajes-spa':      ['/especialidades', '/sucursales', '/videollamadas', ...TALENTO, ...ADVANCED, ...CATALOGO],
+      'tatuajes-piercing':['/especialidades', '/formularios', '/sucursales', '/videollamadas', ...TALENTO, ...ADVANCED, ...CATALOGO],
+      'salud':            ['/sucursales', ...TALENTO, ...ADVANCED, ...CATALOGO],
+      'odontologia':      ['/especialidades', '/sucursales', '/videollamadas', ...TALENTO, ...ADVANCED, ...CATALOGO],
+      'psicologia':       ['/especialidades', '/empleados', '/sucursales', ...TALENTO, ...ADVANCED, ...CATALOGO],
+      'nutricion':        ['/especialidades', '/empleados', '/sucursales', ...TALENTO, ...ADVANCED, ...CATALOGO],
+      'veterinaria':      ['/especialidades', '/sucursales', '/videollamadas', ...TALENTO, ...ADVANCED, ...CATALOGO],
+      'fitness':          ['/especialidades', '/formularios', '/sucursales', '/videollamadas', ...TALENTO, ...ADVANCED, ...CATALOGO],
+      'deportes':         ['/empleados', '/especialidades', '/formularios', '/sucursales', '/videollamadas', ...TALENTO, ...ADVANCED, ...CATALOGO],
+      'hospedaje':        ['/empleados', '/especialidades', '/formularios', '/sucursales', '/videollamadas', ...TALENTO, ...ADVANCED, ...CATALOGO],
+      'alquiler':         ['/empleados', '/especialidades', '/formularios', '/sucursales', '/videollamadas', ...TALENTO, ...ADVANCED, ...CATALOGO],
+      'espacios':         ['/empleados', '/especialidades', '/formularios', '/sucursales', '/videollamadas', ...TALENTO, ...ADVANCED, ...CATALOGO],
+      'educacion':        ['/especialidades', '/sucursales', ...TALENTO, ...ADVANCED, ...CATALOGO],
+      'gastronomia':      ['/especialidades', '/formularios', '/sucursales', '/videollamadas', ...TALENTO, ...ADVANCED],
+      'consultoria':      ['/sucursales', ...TALENTO, ...ADVANCED, ...CATALOGO],
+      'inmobiliarias':    ['/autogestion', '/turnos', '/servicios', '/empleados', '/especialidades', '/formularios', '/horarios', '/videollamadas', '/sucursales', '/clientes', ...TALENTO, ...ADVANCED],
+      'mercado':          ['/autogestion', '/turnos', '/servicios', '/empleados', '/especialidades', '/formularios', '/horarios', '/videollamadas', '/sucursales', '/clientes', ...TALENTO, ...ADVANCED],
+      'otro':             [...TALENTO, ...ADVANCED, ...CATALOGO],
+      // Mercado sub-rubros inherit mercado hidden sections
+      ...Object.fromEntries(MERCADO_SUB_RUBROS.map(k => [k, ['/autogestion', '/turnos', '/servicios', '/empleados', '/especialidades', '/formularios', '/horarios', '/videollamadas', '/sucursales', '/clientes', ...TALENTO, ...ADVANCED]])),
+    };
+
+    // Map industry slug to rubro key and plan slug
+    const INDUSTRY_CONFIG: Record<string, { rubro: string; plan: string; bookingMode?: string }> = {
+      // Landing page slugs (mantener por compatibilidad)
+      'belleza':              { rubro: 'estetica-belleza', plan: 'belleza-gratis' },
+      'salud':                { rubro: 'salud',            plan: 'salud-starter' },
+      'deportes':             { rubro: 'deportes',         plan: 'deportes-gratis' },
+      'hospedaje-por-horas':  { rubro: 'hospedaje',        plan: 'hospedaje-gratis',  bookingMode: 'DAILY' },
+      'alquiler-temporario':  { rubro: 'alquiler',         plan: 'alquiler-gratis',   bookingMode: 'DAILY' },
+      'espacios-flexibles':   { rubro: 'espacios',         plan: 'espacios-gratis' },
+      'profesionales':        { rubro: 'consultoria',      plan: 'profesionales-starter' },
+      // Rubro keys directos (desde formulario de registro)
+      'estetica-belleza':     { rubro: 'estetica-belleza', plan: 'belleza-gratis' },
+      'barberia':             { rubro: 'barberia',         plan: 'belleza-gratis' },
+      'masajes-spa':          { rubro: 'masajes-spa',      plan: 'belleza-gratis' },
+      'tatuajes-piercing':    { rubro: 'tatuajes-piercing', plan: 'belleza-gratis' },
+      'odontologia':          { rubro: 'odontologia',      plan: 'salud-starter' },
+      'psicologia':           { rubro: 'psicologia',       plan: 'salud-starter' },
+      'nutricion':            { rubro: 'nutricion',        plan: 'salud-starter' },
+      'veterinaria':          { rubro: 'veterinaria',      plan: 'salud-starter' },
+      'fitness':              { rubro: 'fitness',           plan: 'deportes-gratis' },
+      'hospedaje':            { rubro: 'hospedaje',         plan: 'hospedaje-gratis', bookingMode: 'DAILY' },
+      'alquiler':             { rubro: 'alquiler',          plan: 'alquiler-gratis',  bookingMode: 'DAILY' },
+      'espacios':             { rubro: 'espacios',          plan: 'espacios-gratis' },
+      'educacion':            { rubro: 'educacion',         plan: 'profesionales-starter' },
+      'gastronomia':          { rubro: 'gastronomia',       plan: 'gastronomia-gratis' },
+      'consultoria':          { rubro: 'consultoria',       plan: 'profesionales-starter' },
+      'inmobiliarias':        { rubro: 'inmobiliarias',      plan: 'mercado-vitrina' },
+      'mercado':              { rubro: 'mercado',           plan: 'mercado-vitrina' },
+      // Mercado sub-rubros (from sub-rubro picker in registration)
+      ...Object.fromEntries(MERCADO_SUB_RUBROS.map(k => [k, { rubro: k, plan: 'mercado-vitrina' }])),
+      // Backward compat
+      'celulares':            { rubro: 'mercado-celulares', plan: 'mercado-vitrina' },
+      'otro':                 { rubro: 'otro',              plan: 'profesional' },
+    };
+
+    const industryConfig = registerDto.industry ? INDUSTRY_CONFIG[registerDto.industry] : null;
+
+    // Rubro-specific defaults: terminology + ficha modules
+    // Mirrors RUBROS in apps/web/lib/tenant-config.ts — keep in sync
+    const RUBRO_DEFAULTS: Record<string, { clientLabelSingular: string; clientLabelPlural: string; enabledFichas: string[] }> = {
+      'estetica-belleza': { clientLabelSingular: 'Cliente', clientLabelPlural: 'Clientes', enabledFichas: ['datosPersonales', 'fichaBelleza', 'notasSeguimiento'] },
+      'barberia':         { clientLabelSingular: 'Cliente', clientLabelPlural: 'Clientes', enabledFichas: ['datosPersonales', 'fichaBelleza', 'notasSeguimiento'] },
+      'masajes-spa':      { clientLabelSingular: 'Cliente', clientLabelPlural: 'Clientes', enabledFichas: ['datosPersonales', 'fichaBelleza', 'notasSeguimiento'] },
+      'salud':            { clientLabelSingular: 'Paciente', clientLabelPlural: 'Pacientes', enabledFichas: ['datosPersonales', 'fichaClinica', 'notasSeguimiento'] },
+      'odontologia':      { clientLabelSingular: 'Paciente', clientLabelPlural: 'Pacientes', enabledFichas: ['datosPersonales', 'fichaClinica', 'notasSeguimiento'] },
+      'psicologia':       { clientLabelSingular: 'Paciente', clientLabelPlural: 'Pacientes', enabledFichas: ['datosPersonales', 'fichaClinica', 'notasSeguimiento'] },
+      'nutricion':        { clientLabelSingular: 'Paciente', clientLabelPlural: 'Pacientes', enabledFichas: ['datosPersonales', 'fichaClinica', 'fichaFitness', 'notasSeguimiento'] },
+      'fitness':          { clientLabelSingular: 'Alumno', clientLabelPlural: 'Alumnos', enabledFichas: ['datosPersonales', 'fichaFitness', 'notasSeguimiento'] },
+      'veterinaria':      { clientLabelSingular: 'Paciente', clientLabelPlural: 'Pacientes', enabledFichas: ['datosPersonales', 'fichaClinica', 'notasSeguimiento'] },
+      'tatuajes-piercing': { clientLabelSingular: 'Cliente', clientLabelPlural: 'Clientes', enabledFichas: ['datosPersonales', 'fichaBelleza', 'notasSeguimiento'] },
+      'educacion':        { clientLabelSingular: 'Alumno', clientLabelPlural: 'Alumnos', enabledFichas: ['datosPersonales', 'notasSeguimiento'] },
+      'gastronomia':      { clientLabelSingular: 'Comensal', clientLabelPlural: 'Comensales', enabledFichas: ['datosPersonales', 'notasSeguimiento'] },
+      'consultoria':      { clientLabelSingular: 'Cliente', clientLabelPlural: 'Clientes', enabledFichas: ['datosPersonales', 'notasSeguimiento'] },
+      'deportes':         { clientLabelSingular: 'Cliente', clientLabelPlural: 'Clientes', enabledFichas: ['datosPersonales', 'notasSeguimiento'] },
+      'espacios':         { clientLabelSingular: 'Usuario', clientLabelPlural: 'Usuarios', enabledFichas: ['datosPersonales', 'notasSeguimiento'] },
+      'hospedaje':        { clientLabelSingular: 'Huesped', clientLabelPlural: 'Huespedes', enabledFichas: ['datosPersonales', 'notasSeguimiento'] },
+      'alquiler':         { clientLabelSingular: 'Cliente', clientLabelPlural: 'Clientes', enabledFichas: ['datosPersonales', 'notasSeguimiento'] },
+      'inmobiliarias':    { clientLabelSingular: 'Interesado', clientLabelPlural: 'Interesados', enabledFichas: ['datosPersonales', 'notasSeguimiento'] },
+      'mercado':          { clientLabelSingular: 'Cliente', clientLabelPlural: 'Clientes', enabledFichas: ['datosPersonales', 'notasSeguimiento'] },
+      // Mercado sub-rubros inherit mercado defaults
+      ...Object.fromEntries(MERCADO_SUB_RUBROS.map(k => [k, { clientLabelSingular: 'Cliente', clientLabelPlural: 'Clientes', enabledFichas: ['datosPersonales', 'notasSeguimiento'] }])),
+      'otro':             { clientLabelSingular: 'Cliente', clientLabelPlural: 'Clientes', enabledFichas: ['datosPersonales', 'notasSeguimiento'] },
+    };
+
+    // Build extra settings: rubro + bookingMode + terminology + fichas
+    let extraSettings: Record<string, unknown> | undefined;
+    if (industryConfig) {
+      const rubroDefaults = RUBRO_DEFAULTS[industryConfig.rubro];
+      extraSettings = {
+        rubro: industryConfig.rubro,
+        ...(industryConfig.bookingMode ? { bookingMode: industryConfig.bookingMode } : {}),
+        ...(rubroDefaults || {}),
+        hiddenSections: RUBRO_HIDDEN_SECTIONS[industryConfig.rubro] || [],
+      };
+    }
+
     // Create tenant first
+    const publicPageLayout = industryConfig ? (RUBRO_LAYOUT[industryConfig.rubro] || 'service_first') : 'service_first';
     const tenant = await this.tenantsService.create(
-      { name: tenantName, slug: tenantSlug },
+      { name: tenantName, slug: tenantSlug, publicPageLayout },
       tenantType,
+      extraSettings,
     );
 
     // Create user with tenant association
@@ -94,12 +239,21 @@ export class AuthService {
       tenantId: tenant.id,
     });
 
-    // Create free subscription for BUSINESS tenants (async, don't block registration)
-    if (!isProfessional) {
-      this.subscriptionsService.createFreeSubscription(tenant.id, false).catch((error) => {
-        this.logger.error(`Failed to create free subscription for tenant ${tenant.id}: ${error.message}`);
-      });
-    }
+    // Create trial subscription — use industry-specific plan or default
+    const planSlug = industryConfig?.plan || 'profesional';
+    this.subscriptionsService.createTrialSubscription(tenant.id, planSlug).catch((error) => {
+      // Fallback to generic plan if industry plan not found
+      if (planSlug !== 'profesional') {
+        this.subscriptionsService.createTrialSubscription(tenant.id, 'profesional').catch(() => {});
+      }
+      this.logger.error(`Failed to create trial subscription for tenant ${tenant.id}: ${error.message}`);
+    });
+
+    // Seed example services/products based on industry (async, non-blocking)
+    const rubro = extraSettings?.rubro as string || 'otro';
+    this.seedOnboardingExamples(tenant.id, rubro).catch((error) => {
+      this.logger.error(`Failed to seed onboarding examples for tenant ${tenant.id}: ${error.message}`);
+    });
 
     // Generate tokens
     const tokens = await this.generateTokens(user.id, user.email, user.role, tenant.id, tenant.type);
@@ -126,21 +280,80 @@ export class AuthService {
     };
   }
 
+  /**
+   * Seeds example services or products for a new tenant based on their industry.
+   * Products for 'mercado', services for everything else.
+   */
+  private async seedOnboardingExamples(tenantId: string, rubro: string): Promise<void> {
+    const examples = getOnboardingExamples(rubro);
+
+    const placeholderImage = examples.placeholderImage;
+
+    if (examples.type === 'products' && examples.products) {
+      for (let i = 0; i < examples.products.length; i++) {
+        const p = examples.products[i];
+        const slug = p.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-' + crypto.randomBytes(2).toString('hex');
+        const product = await this.prisma.product.create({
+          data: {
+            tenantId,
+            name: p.name,
+            slug,
+            description: p.description,
+            shortDescription: p.shortDescription,
+            price: p.price,
+            stock: p.stock,
+            trackInventory: true,
+            isActive: true,
+            isFeatured: i === examples.products.length - 1, // last one featured
+            order: i + 1,
+          },
+        });
+        await this.prisma.productImage.create({
+          data: {
+            productId: product.id,
+            url: placeholderImage,
+            alt: p.name,
+            order: 0,
+            isPrimary: true,
+          },
+        });
+      }
+      this.logger.log(`Seeded ${examples.products.length} example products for tenant ${tenantId} (rubro: ${rubro})`);
+    } else if (examples.services) {
+      const imagesJson = JSON.stringify([{ url: placeholderImage, alt: 'Imagen de ejemplo' }]);
+      for (let i = 0; i < examples.services.length; i++) {
+        const s = examples.services[i];
+        await this.prisma.service.create({
+          data: {
+            tenantId,
+            name: s.name,
+            description: s.description,
+            price: s.price,
+            duration: s.duration,
+            capacity: 1,
+            isActive: true,
+            visibleOnPublicPage: true,
+            order: i + 1,
+            images: imagesJson,
+            variations: '[]',
+          },
+        });
+      }
+      this.logger.log(`Seeded ${examples.services.length} example services for tenant ${tenantId} (rubro: ${rubro})`);
+    }
+  }
+
+  // Dummy hash for constant-time response when user doesn't exist (prevents user enumeration)
+  private readonly dummyHash = '$2a$12$000000000000000000000uGHEwMOxIEh0EECxGIGwVGHDITzSAZWy';
+
   async login(loginDto: LoginDto) {
     const user = await this.usersService.findByEmail(loginDto.email);
-    if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
 
-    if (!user.isActive) {
-      throw new UnauthorizedException('Account is disabled');
-    }
+    // Always run bcrypt.compare to prevent timing-based user enumeration
+    const passwordToCompare = user?.password || this.dummyHash;
+    const isPasswordValid = await bcrypt.compare(loginDto.password, passwordToCompare);
 
-    const isPasswordValid = await bcrypt.compare(
-      loginDto.password,
-      user.password,
-    );
-    if (!isPasswordValid) {
+    if (!user || !user.isActive || !isPasswordValid) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
@@ -156,12 +369,34 @@ export class AuthService {
       }
     }
 
+    // If user is EMPLOYEE, resolve employeeId and employeeRole
+    let employeeId: string | undefined;
+    let employeeRole: string | undefined;
+    if (user.role === 'EMPLOYEE') {
+      const employee = await this.prisma.employee.findUnique({
+        where: { userId: user.id },
+        select: { id: true, employeeRole: true },
+      });
+      if (employee) {
+        employeeId = employee.id;
+        employeeRole = employee.employeeRole;
+      }
+    }
+
+    // Update lastLoginAt
+    this.prisma.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date() },
+    }).catch(() => {});
+
     const tokens = await this.generateTokens(
       user.id,
       user.email,
       user.role,
       user.tenantId,
       tenantType,
+      employeeId,
+      employeeRole,
     );
 
     return {
@@ -172,6 +407,7 @@ export class AuthService {
         role: user.role,
         tenantId: user.tenantId,
         tenantType,
+        ...(employeeId ? { employeeId, employeeRole } : {}),
       },
       ...tokens,
     };
@@ -183,9 +419,33 @@ export class AuthService {
         secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
       });
 
-      const user = await this.usersService.findById(payload.sub);
+      // Check if this refresh token has been revoked (rotation check)
+      const tokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
+      const storedToken = await this.prisma.refreshToken.findUnique({
+        where: { tokenHash },
+      });
+
+      if (storedToken?.revokedAt) {
+        // Token was already used — possible token theft, revoke all user tokens
+        await this.prisma.refreshToken.updateMany({
+          where: { userId: payload.sub, revokedAt: null },
+          data: { revokedAt: new Date() },
+        });
+        this.logger.warn(`Refresh token reuse detected for user ${payload.sub} — all tokens revoked`);
+        throw new UnauthorizedException('Invalid refresh token');
+      }
+
+      const user = await this.usersService.findByIdSafe(payload.sub);
       if (!user || !user.isActive) {
         throw new UnauthorizedException('Invalid refresh token');
+      }
+
+      // Revoke the current refresh token (it's being rotated)
+      if (storedToken) {
+        await this.prisma.refreshToken.update({
+          where: { id: storedToken.id },
+          data: { revokedAt: new Date() },
+        });
       }
 
       // Fetch tenant type
@@ -200,14 +460,29 @@ export class AuthService {
         }
       }
 
-      return this.generateTokens(user.id, user.email, user.role, user.tenantId, tenantType);
-    } catch {
+      // Resolve employee info for EMPLOYEE users
+      let employeeId: string | undefined;
+      let employeeRole: string | undefined;
+      if (user.role === 'EMPLOYEE') {
+        const employee = await this.prisma.employee.findUnique({
+          where: { userId: user.id },
+          select: { id: true, employeeRole: true },
+        });
+        if (employee) {
+          employeeId = employee.id;
+          employeeRole = employee.employeeRole;
+        }
+      }
+
+      return this.generateTokens(user.id, user.email, user.role, user.tenantId, tenantType, employeeId, employeeRole);
+    } catch (error) {
+      if (error instanceof UnauthorizedException) throw error;
       throw new UnauthorizedException('Invalid refresh token');
     }
   }
 
   async validateUser(userId: string) {
-    const user = await this.usersService.findById(userId);
+    const user = await this.usersService.findByIdSafe(userId);
     if (!user || !user.isActive) {
       return null;
     }
@@ -242,8 +517,9 @@ export class AuthService {
       return { message: 'Si el email existe, recibirás un enlace para restablecer tu contraseña' };
     }
 
-    // Generate token
+    // Generate token and store hashed version (plain token sent via email only)
     const token = crypto.randomBytes(32).toString('hex');
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 1); // 1 hour expiry
 
@@ -252,11 +528,11 @@ export class AuthService {
       where: { userId: user.id },
     });
 
-    // Create new reset token
+    // Store hashed token in DB — if DB leaks, tokens are not usable
     await this.prisma.passwordReset.create({
       data: {
         userId: user.id,
-        token,
+        token: hashedToken,
         expiresAt,
       },
     });
@@ -275,8 +551,10 @@ export class AuthService {
   }
 
   async resetPassword(token: string, newPassword: string) {
+    // Hash the incoming token to compare against stored hash
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
     const resetRecord = await this.prisma.passwordReset.findUnique({
-      where: { token },
+      where: { token: hashedToken },
       include: { user: true },
     });
 
@@ -351,30 +629,25 @@ export class AuthService {
         <!-- Container -->
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width: 480px;">
 
-          <!-- Logo -->
-          <tr>
-            <td align="center" style="padding-bottom: 24px;">
-              <img src="https://turnolink.mubitt.com/claro2.png" alt="TurnoLink" width="140" style="display: block; height: auto; border: 0;" />
-            </td>
-          </tr>
-
           <!-- Card -->
           <tr>
             <td style="background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);">
 
-              <!-- Header gradient -->
+              <!-- Header with integrated logo -->
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                 <tr>
-                  <td align="center" style="background: linear-gradient(135deg, #3F8697 0%, #346E7D 100%); padding: 40px 32px;">
+                  <td align="center" style="background: linear-gradient(135deg, #3F8697 0%, #346E7D 100%); padding: 32px 32px 36px;">
+                    <!-- Logo -->
+                    <img src="https://turnolink.com.ar/logo-email-white.png" alt="TurnoLink" width="120" style="display: block; height: auto; border: 0; margin: 0 auto 24px; opacity: 0.9;" />
                     <!-- Icon circle -->
                     <table role="presentation" cellspacing="0" cellpadding="0" border="0">
                       <tr>
-                        <td align="center" width="72" height="72" style="background-color: rgba(255,255,255,0.2); border-radius: 36px; vertical-align: middle; font-size: 32px;">
+                        <td align="center" width="52" height="52" style="background-color: rgba(255,255,255,0.15); border-radius: 26px; vertical-align: middle; font-size: 26px;">
                           &#128274;
                         </td>
                       </tr>
                     </table>
-                    <h1 style="margin: 20px 0 0 0; padding: 0; color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; font-size: 22px; font-weight: 600; line-height: 1.3;">
+                    <h1 style="margin: 14px 0 0 0; padding: 0; color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; font-size: 21px; font-weight: 600; line-height: 1.3;">
                       Restablecer contraseña
                     </h1>
                   </td>
@@ -507,8 +780,10 @@ export class AuthService {
     role: string,
     tenantId: string | null,
     tenantType?: string,
+    employeeId?: string,
+    employeeRole?: string,
   ) {
-    const payload = {
+    const payload: Record<string, unknown> = {
       sub: userId,
       email,
       role,
@@ -516,17 +791,148 @@ export class AuthService {
       tenantType: tenantType || 'BUSINESS',
     };
 
+    if (employeeId) {
+      payload.employeeId = employeeId;
+      payload.employeeRole = employeeRole || 'STAFF';
+    }
+
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload),
       this.jwtService.signAsync(payload, {
         secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
-        expiresIn: this.configService.get<string>('JWT_REFRESH_EXPIRES_IN', '30d'),
+        expiresIn: this.configService.get<string>('JWT_REFRESH_EXPIRES_IN', '7d'),
       }),
     ]);
+
+    // Store refresh token hash for rotation tracking
+    const tokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
+    this.prisma.refreshToken.create({
+      data: {
+        userId,
+        tokenHash,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      },
+    }).catch((err) => {
+      this.logger.error(`Failed to store refresh token: ${err.message}`);
+    });
+
+    // Cleanup expired tokens (async, non-blocking)
+    this.prisma.refreshToken.deleteMany({
+      where: { expiresAt: { lt: new Date() } },
+    }).catch(() => {});
 
     return {
       accessToken,
       refreshToken,
+    };
+  }
+
+  async acceptInvitation(token: string, name: string, email: string, password: string) {
+    const invitation = await this.prisma.employeeInvitation.findUnique({
+      where: { token },
+      include: { employee: true, tenant: true },
+    });
+
+    if (!invitation) {
+      throw new BadRequestException('Invitación inválida o expirada');
+    }
+
+    if (invitation.acceptedAt) {
+      throw new BadRequestException('Esta invitación ya fue aceptada');
+    }
+
+    if (new Date() > invitation.expiresAt) {
+      throw new BadRequestException('Esta invitación ha expirado');
+    }
+
+    // Check if user already exists
+    const existingUser = await this.usersService.findByEmail(email);
+
+    let userId: string;
+    let userEmail: string;
+    let userName: string;
+
+    if (existingUser) {
+      // Check this user is not already linked to another employee
+      const existingLink = await this.prisma.employee.findUnique({
+        where: { userId: existingUser.id },
+      });
+      if (existingLink) {
+        throw new ConflictException('Este usuario ya está vinculado a otro empleado');
+      }
+      userId = existingUser.id;
+      userEmail = existingUser.email;
+      userName = existingUser.name;
+    } else {
+      // Create new user
+      const hashedPassword = await bcrypt.hash(password, 12);
+      const newUser = await this.usersService.create({
+        email,
+        password: hashedPassword,
+        name,
+        role: 'EMPLOYEE',
+        tenantId: invitation.tenantId,
+      });
+      userId = newUser.id;
+      userEmail = newUser.email;
+      userName = newUser.name;
+    }
+
+    const resolvedUser = { id: userId, email: userEmail, name: userName };
+
+    // Link employee to user and accept invitation
+    await this.prisma.$transaction([
+      this.prisma.employee.update({
+        where: { id: invitation.employeeId },
+        data: {
+          userId: resolvedUser.id,
+          employeeRole: invitation.role,
+          email: email,
+        },
+      }),
+      this.prisma.employeeInvitation.update({
+        where: { id: invitation.id },
+        data: { acceptedAt: new Date() },
+      }),
+      this.prisma.user.update({
+        where: { id: resolvedUser.id },
+        data: {
+          role: 'EMPLOYEE',
+          tenantId: invitation.tenantId,
+          lastLoginAt: new Date(),
+        },
+      }),
+    ]);
+
+    // Generate tokens with employee info
+    const tokens = await this.generateTokens(
+      resolvedUser.id,
+      resolvedUser.email,
+      'EMPLOYEE',
+      invitation.tenantId,
+      invitation.tenant.type,
+      invitation.employeeId,
+      invitation.role,
+    );
+
+    return {
+      user: {
+        id: resolvedUser.id,
+        email: resolvedUser.email,
+        name: resolvedUser.name || name,
+        role: 'EMPLOYEE',
+        tenantId: invitation.tenantId,
+        tenantType: invitation.tenant.type,
+        employeeId: invitation.employeeId,
+        employeeRole: invitation.role,
+      },
+      tenant: {
+        id: invitation.tenant.id,
+        name: invitation.tenant.name,
+        slug: invitation.tenant.slug,
+        type: invitation.tenant.type,
+      },
+      ...tokens,
     };
   }
 }

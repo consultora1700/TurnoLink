@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Query, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query, NotFoundException, BadRequestException, ForbiddenException, Logger } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ConfigService } from '@nestjs/config';
@@ -9,7 +9,12 @@ import { CreateDailyBookingDto } from './dto/create-daily-booking.dto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ServicesService } from '../services/services.service';
 import { MercadoPagoService } from '../mercadopago/mercadopago.service';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import { AssignmentService } from './assignment.service';
+import { IntakeFormsService } from '../intake-forms/intake-forms.service';
 import { BookingEvent, BookingEventPayload } from '../../common/events';
+import { CacheService } from '../../common/cache';
+import { TimeUtilsService } from '../../common/utils';
 
 @ApiTags('public')
 @Controller('public/bookings')
@@ -23,6 +28,11 @@ export class PublicBookingsController {
     private readonly eventEmitter: EventEmitter2,
     private readonly mercadoPagoService: MercadoPagoService,
     private readonly configService: ConfigService,
+    private readonly subscriptionsService: SubscriptionsService,
+    private readonly assignmentService: AssignmentService,
+    private readonly intakeFormsService: IntakeFormsService,
+    private readonly timeUtils: TimeUtilsService,
+    private readonly cacheService: CacheService,
   ) {}
 
   @Public()
@@ -32,9 +42,28 @@ export class PublicBookingsController {
     @Param('slug') slug: string,
     @Query('date') date: string,
     @Query('serviceId') serviceId?: string,
+    @Query('employeeId') employeeId?: string,
   ) {
     const tenant = await this.getTenantBySlug(slug);
-    return this.bookingsService.getAvailability(tenant.id, date, serviceId);
+    return this.bookingsService.getAvailability(tenant.id, date, serviceId, undefined, employeeId);
+  }
+
+  @Public()
+  @Get(':slug/monthly-availability')
+  @ApiOperation({ summary: 'Disponibilidad mensual para calendario visual' })
+  async getMonthlyAvailability(
+    @Param('slug') slug: string,
+    @Query('year') yearStr: string,
+    @Query('month') monthStr: string,
+    @Query('serviceId') serviceId?: string,
+    @Query('branchId') branchId?: string,
+  ) {
+    const year = parseInt(yearStr, 10);
+    const month = parseInt(monthStr, 10);
+    if (isNaN(year) || isNaN(month) || month < 1 || month > 12)
+      throw new BadRequestException('year/month inválidos');
+    const tenant = await this.getTenantBySlug(slug);
+    return this.bookingsService.getMonthlyAvailability(tenant.id, year, month, serviceId, branchId);
   }
 
   @Public()
@@ -72,17 +101,58 @@ export class PublicBookingsController {
     @Body() createBookingDto: CreatePublicBookingDto,
   ) {
     const tenant = await this.getTenantBySlug(slug);
+
+    // Check booking limit for tenant
+    const { hasReachedLimit, limit } = await this.subscriptionsService.checkLimit(tenant.id, 'bookings');
+    if (hasReachedLimit) {
+      throw new ForbiddenException(`Este negocio alcanzó el límite de ${limit} reservas/mes. Contactá al negocio para más información.`);
+    }
+
     const settings = this.parseSettings(tenant.settings);
+
+    // Auto-assignment: if no employee selected and service has auto-assign mode
+    const service = await this.servicesService.findById(tenant.id, createBookingDto.serviceId);
+    if (!createBookingDto.employeeId && service.assignmentMode && service.assignmentMode !== 'client_chooses') {
+      const endTime = this.timeUtils.calculateEndTime(createBookingDto.startTime, service.duration);
+      const assignment = await this.assignmentService.autoAssign(
+        tenant.id,
+        createBookingDto.serviceId,
+        createBookingDto.date,
+        createBookingDto.startTime,
+        endTime,
+        service.assignmentMode as 'auto_assign' | 'round_robin',
+        createBookingDto.branchId,
+      );
+      if (assignment) {
+        createBookingDto.employeeId = assignment.employeeId;
+        (createBookingDto as any).assignedBy = assignment.assignedBy;
+        (createBookingDto as any).assignmentReason = assignment.assignmentReason;
+      }
+    }
 
     // Calculate deposit if required
     let depositAmount: number | undefined;
     if (settings.requireDeposit) {
-      const service = await this.servicesService.findById(tenant.id, createBookingDto.serviceId);
       const priceAsNumber = Number(service.price);
       depositAmount = Math.round((priceAsNumber * settings.depositPercentage) / 100 * 100) / 100;
     }
 
     const booking = await this.bookingsService.create(tenant.id, createBookingDto, depositAmount);
+
+    // Save intake form submission if provided
+    if (createBookingDto.intakeFormId && createBookingDto.intakeFormData) {
+      try {
+        await this.intakeFormsService.createSubmission(
+          tenant.id,
+          createBookingDto.intakeFormId,
+          createBookingDto.intakeFormData,
+          booking.id,
+          booking.customerId,
+        );
+      } catch (error) {
+        this.logger.warn(`Failed to save intake form: ${error.message}`);
+      }
+    }
 
     return {
       ...booking,
@@ -90,10 +160,13 @@ export class PublicBookingsController {
       depositAmount: booking.depositAmount ? Number(booking.depositAmount) : null,
       service: booking.service ? {
         ...booking.service,
-        price: Number(booking.service.price),
+        price: Number(booking.service?.price ?? booking.product?.price ?? 0),
       } : null,
       requiresPayment: settings.requireDeposit && !booking.depositPaid,
       depositMode: settings.depositMode || 'simulated',
+      videoJoinUrl: booking.videoJoinUrl || null,
+      videoProvider: booking.videoProvider || null,
+      bookingMode: booking.bookingMode || null,
     };
   }
 
@@ -118,6 +191,13 @@ export class PublicBookingsController {
     @Body() dto: CreateDailyBookingDto,
   ) {
     const tenant = await this.getTenantBySlug(slug);
+
+    // Check booking limit for tenant
+    const { hasReachedLimit, limit } = await this.subscriptionsService.checkLimit(tenant.id, 'bookings');
+    if (hasReachedLimit) {
+      throw new ForbiddenException(`Este negocio alcanzó el límite de ${limit} reservas/mes. Contactá al negocio para más información.`);
+    }
+
     const settings = this.parseSettings(tenant.settings);
 
     // Calculate deposit if required
@@ -142,7 +222,7 @@ export class PublicBookingsController {
       totalPrice: booking.totalPrice ? Number(booking.totalPrice) : null,
       service: booking.service ? {
         ...booking.service,
-        price: Number(booking.service.price),
+        price: Number(booking.service?.price ?? booking.product?.price ?? 0),
       } : null,
       requiresPayment: settings.requireDeposit && !booking.depositPaid,
       depositMode: settings.depositMode || 'simulated',
@@ -172,7 +252,7 @@ export class PublicBookingsController {
     // Verify booking belongs to this tenant
     const booking = await this.prisma.booking.findFirst({
       where: { id: bookingId, tenantId: tenant.id },
-      include: { service: true, customer: true },
+      include: { service: true, customer: true, product: true },
     });
 
     if (!booking) {
@@ -192,7 +272,7 @@ export class PublicBookingsController {
         depositReference: `SIM-${Date.now()}`, // Simulated reference
         status: 'CONFIRMED', // Auto-confirm after payment
       },
-      include: { service: true, customer: true, employee: true },
+      include: { service: true, customer: true, employee: true, product: true },
     });
 
     // Emit event for notification (handled by BookingEventsListener)
@@ -224,6 +304,7 @@ export class PublicBookingsController {
       include: {
         service: true,
         customer: true,
+        product: true,
       },
     });
 
@@ -261,7 +342,7 @@ export class PublicBookingsController {
     // Get booking
     const booking = await this.prisma.booking.findFirst({
       where: { id: bookingId, tenantId: tenant.id },
-      include: { service: true, customer: true },
+      include: { service: true, customer: true, product: true },
     });
 
     if (!booking) {
@@ -276,16 +357,38 @@ export class PublicBookingsController {
       throw new BadRequestException('No deposit amount set for this booking');
     }
 
-    // Build URLs
+    // Security: Validate deposit amount matches service price calculation
+    const servicePrice = Number(booking.service?.price ?? booking.product?.price ?? 0);
+    const expectedDeposit = Math.round((servicePrice * settings.depositPercentage) / 100 * 100) / 100;
+    if (Math.abs(Number(booking.depositAmount) - expectedDeposit) > 0.01) {
+      this.logger.warn(`Deposit amount mismatch for booking ${bookingId}: stored=${booking.depositAmount}, expected=${expectedDeposit}`);
+    }
+
+    // Security: Validate back URLs against whitelist to prevent open redirect
     const frontendUrl = this.configService.get<string>('APP_URL') || 'http://localhost:3000';
+    const allowedHosts = ['turnolink.com.ar', 'www.turnolink.com.ar', 'localhost'];
+    const defaultBackUrl = (suffix: string) => `${frontendUrl}/${tenant.slug}/booking/${bookingId}?payment=${suffix}`;
+
+    const sanitizeUrl = (url: string | undefined, fallback: string): string => {
+      if (!url) return fallback;
+      try {
+        const parsed = new URL(url);
+        if (allowedHosts.includes(parsed.hostname)) return url;
+        this.logger.warn(`Blocked redirect to unauthorized host: ${parsed.hostname}`);
+        return fallback;
+      } catch {
+        return fallback;
+      }
+    };
+
     const backUrls = {
-      success: body.successUrl || `${frontendUrl}/${tenant.slug}/booking/${bookingId}?payment=success`,
-      failure: body.failureUrl || `${frontendUrl}/${tenant.slug}/booking/${bookingId}?payment=failure`,
-      pending: body.pendingUrl || `${frontendUrl}/${tenant.slug}/booking/${bookingId}?payment=pending`,
+      success: sanitizeUrl(body.successUrl, defaultBackUrl('success')),
+      failure: sanitizeUrl(body.failureUrl, defaultBackUrl('failure')),
+      pending: sanitizeUrl(body.pendingUrl, defaultBackUrl('pending')),
     };
 
     // Create preference description
-    const description = `Seña para ${booking.service.name} - ${tenant.name}`;
+    const description = `Seña para ${booking.service?.name ?? booking.product?.name ?? 'Sin detalle'} - ${tenant.name}`;
 
     try {
       const preference = await this.mercadoPagoService.createDepositPreference(
@@ -353,6 +456,10 @@ export class PublicBookingsController {
   }
 
   private async getTenantBySlug(slug: string) {
+    // Check cache first
+    const cached = await this.cacheService.getTenantBySlug(slug);
+    if (cached) return cached;
+
     const tenant = await this.prisma.tenant.findUnique({
       where: { slug, status: 'ACTIVE' },
     });
@@ -360,6 +467,9 @@ export class PublicBookingsController {
     if (!tenant) {
       throw new NotFoundException('Business not found');
     }
+
+    // Cache for 5 minutes
+    await this.cacheService.setTenantBySlug(slug, tenant);
 
     return tenant;
   }

@@ -10,10 +10,34 @@ export async function middleware(request: NextRequest) {
   if (pathname === '/login' || pathname === '/register') {
     const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
     if (token) {
-      const dest = token.tenantType === 'PROFESSIONAL' ? '/mi-perfil'
+      const dest = token.role === 'EMPLOYEE' ? '/portal-empleado/agenda'
+        : token.tenantType === 'PROFESSIONAL' ? '/mi-perfil'
         : token.tenantType === 'TALENT_SEEKER' ? '/talento'
         : '/dashboard';
       return NextResponse.redirect(new URL(dest, request.url));
+    }
+  }
+
+  // ─── Employee Portal: block non-employees from portal routes ───
+  if (pathname.startsWith('/portal-empleado')) {
+    const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
+    if (!token) {
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
+    // Only EMPLOYEE role or OWNER can access portal
+    if (token.role !== 'EMPLOYEE' && token.role !== 'OWNER') {
+      return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
+  }
+
+  // ─── Dashboard redirect for EMPLOYEE role ───
+  if (pathname === '/dashboard' || pathname.startsWith('/dashboard/')) {
+    const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
+    if (token?.role === 'EMPLOYEE') {
+      return NextResponse.redirect(new URL('/portal-empleado/agenda', request.url));
+    }
+    if (token?.tenantType === 'PROFESSIONAL') {
+      return NextResponse.redirect(new URL('/mi-perfil', request.url));
     }
   }
 
@@ -45,15 +69,15 @@ export async function middleware(request: NextRequest) {
   // CSP directives - allowing API domain and Google services
   const cspDirectives = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.gstatic.com https://translate.googleapis.com https://maps.google.com https://www.google.com https://sdk.mercadopago.com",
+    "script-src 'self' 'unsafe-inline' https://www.gstatic.com https://translate.googleapis.com https://maps.google.com https://www.google.com https://sdk.mercadopago.com https://pagead2.googlesyndication.com https://adservice.google.com https://www.googletagservices.com https://tpc.googlesyndication.com https://fundingchoicesmessages.google.com",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://www.gstatic.com",
     "font-src 'self' https://fonts.gstatic.com data:",
     `img-src 'self' data: blob: https: ${apiDomain} ${devHosts}`.trim(),
-    `connect-src 'self' https: ${apiDomain} ${devHosts} ${devWebsockets}`.trim(),
+    `connect-src 'self' https: wss: ${apiDomain} ${devHosts} ${devWebsockets}`.trim(),
     "media-src 'self' https: data: blob:",
     "object-src 'none'",
-    "frame-src 'self' https://maps.google.com https://www.google.com https://www.mercadopago.com https://www.mercadopago.com.ar https:",
-    isEmbedRoute ? "frame-ancestors *" : "frame-ancestors 'self'",
+    "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://maps.google.com https://www.google.com https://www.mercadopago.com https://www.mercadopago.com.ar https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com https://fundingchoicesmessages.google.com",
+    isEmbedRoute ? "frame-ancestors 'self' https://turnolink.com.ar https://*.turnolink.com.ar" : "frame-ancestors 'self'",
   ];
 
   // Only add upgrade-insecure-requests in production
@@ -71,6 +95,10 @@ export async function middleware(request: NextRequest) {
   }
   response.headers.set('X-XSS-Protection', '1; mode=block');
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(self)');
+  if (!isDevelopment) {
+    response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
 
   return response;
 }

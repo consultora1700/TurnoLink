@@ -2,7 +2,6 @@
 
 import { ReactNode, useEffect, useState } from 'react';
 import { Moon, Sun } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 type Theme = 'light' | 'dark';
@@ -113,18 +112,20 @@ export function DashboardThemeToggle({ className }: { className?: string }) {
 
   if (!mounted) {
     return (
-      <Button variant="ghost" size="icon" className={cn('h-9 w-9', className)} disabled>
+      <span className={cn('h-9 w-9 inline-flex items-center justify-center rounded-lg text-muted-foreground', className)}>
         <Sun className="h-5 w-5" />
-      </Button>
+      </span>
     );
   }
 
   return (
-    <Button
-      variant="ghost"
-      size="icon"
+    <button
       onClick={toggleTheme}
-      className={cn('h-9 w-9 relative overflow-hidden', className)}
+      className={cn(
+        'h-9 w-9 inline-flex items-center justify-center rounded-lg relative overflow-hidden',
+        'text-muted-foreground hover:text-foreground hover:bg-muted transition-colors outline-none',
+        className,
+      )}
       aria-label={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
     >
       <Sun
@@ -139,6 +140,6 @@ export function DashboardThemeToggle({ className }: { className?: string }) {
           theme === 'dark' ? 'rotate-0 scale-100 opacity-100' : 'rotate-90 scale-0 opacity-0'
         )}
       />
-    </Button>
+    </button>
   );
 }

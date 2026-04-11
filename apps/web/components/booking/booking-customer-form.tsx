@@ -37,6 +37,17 @@ const customerFormSchema = z.object({
 
 type CustomerFormData = z.infer<typeof customerFormSchema>;
 
+interface FormStyleProps {
+  /** CTA button Tailwind classes (from HeroStyleConfig.modalCtaBtnClasses) */
+  ctaBtnClasses?: string;
+  /** Card border-radius class (from HeroStyleConfig.cardRadius) */
+  cardRadius?: string;
+  /** Input border-radius class */
+  inputRadius?: string;
+  /** Icon accent classes for the header icon box */
+  iconAccentClasses?: string;
+}
+
 interface BookingCustomerFormProps {
   /** Whether email is required based on tenant settings */
   requireEmail?: boolean;
@@ -50,6 +61,8 @@ interface BookingCustomerFormProps {
   externalError?: string | null;
   /** Handler to clear external error */
   onClearError?: () => void;
+  /** Style tokens derived from tenant's selected card/hero style */
+  styleProps?: FormStyleProps;
 }
 
 /**
@@ -63,7 +76,13 @@ export function BookingCustomerForm({
   isSubmitting = false,
   externalError,
   onClearError,
+  styleProps,
 }: BookingCustomerFormProps) {
+  // Resolve style tokens with sensible defaults
+  const ctaBtnCls = styleProps?.ctaBtnClasses || 'bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-100 text-white';
+  const cardRadiusCls = styleProps?.cardRadius || 'rounded-xl';
+  const inputRadiusCls = styleProps?.inputRadius || 'rounded-xl';
+  const iconAccentCls = styleProps?.iconAccentClasses || 'bg-slate-100 dark:bg-neutral-700';
   // Create dynamic schema based on email requirement
   const schema = requireEmail
     ? customerFormSchema.extend({
@@ -134,23 +153,23 @@ export function BookingCustomerForm({
 
   const getInputClassName = (fieldName: keyof CustomerFormData) => {
     const state = getFieldState(fieldName);
-    const base = 'h-12 rounded-xl transition-colors';
+    const base = `h-12 ${inputRadiusCls} transition-colors`;
 
     switch (state) {
       case 'error':
         return `${base} border-red-300 dark:border-red-700 focus:border-red-500 focus:ring-red-500`;
       case 'valid':
-        return `${base} border-green-300 dark:border-green-700 focus:border-green-500 focus:ring-green-500`;
+        return `${base} border-[hsl(var(--tenant-primary-300))] dark:border-[hsl(var(--tenant-primary-700))] focus:border-[hsl(var(--tenant-primary-500))] focus:ring-[hsl(var(--tenant-primary-500))]`;
       default:
         return base;
     }
   };
 
   return (
-    <Card className="border border-slate-200 dark:border-neutral-700 shadow-sm bg-white dark:bg-neutral-800">
+    <Card className={`border border-slate-200 dark:border-neutral-700 shadow-sm bg-white dark:bg-neutral-800 ${cardRadiusCls} overflow-hidden`}>
       <CardContent className="p-6">
         <h3 className="text-lg font-semibold mb-6 flex items-center gap-2 text-slate-900 dark:text-white">
-          <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-neutral-700 flex items-center justify-center">
+          <div className={`h-8 w-8 ${inputRadiusCls} ${iconAccentCls} flex items-center justify-center`}>
             <User className="h-4 w-4 text-slate-600 dark:text-neutral-300" />
           </div>
           Completá tus datos
@@ -175,7 +194,7 @@ export function BookingCustomerForm({
               />
               {getFieldState('name') === 'valid' && (
                 <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                  <svg className="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="h-5 w-5 text-[hsl(var(--tenant-primary-500))]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
@@ -210,7 +229,7 @@ export function BookingCustomerForm({
               />
               {getFieldState('phone') === 'valid' && (
                 <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                  <svg className="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="h-5 w-5 text-[hsl(var(--tenant-primary-500))]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
@@ -245,7 +264,7 @@ export function BookingCustomerForm({
               />
               {getFieldState('email') === 'valid' && (
                 <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                  <svg className="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="h-5 w-5 text-[hsl(var(--tenant-primary-500))]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
@@ -272,7 +291,7 @@ export function BookingCustomerForm({
               {...register('notes')}
               placeholder="Alguna indicación especial..."
               disabled={isSubmitting}
-              className="h-12 rounded-xl"
+              className={`h-12 ${inputRadiusCls}`}
             />
             {errors.notes && (
               <p className="text-sm text-red-600 dark:text-red-400">{errors.notes.message}</p>
@@ -292,7 +311,7 @@ export function BookingCustomerForm({
           <Button
             type="submit"
             disabled={isSubmitting}
-            className="w-full h-12 text-base bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-100 text-white rounded-lg"
+            className={`w-full h-12 text-base ${ctaBtnCls} ${inputRadiusCls} disabled:opacity-50 disabled:cursor-not-allowed`}
           >
             {isSubmitting ? (
               <span className="flex items-center gap-2">

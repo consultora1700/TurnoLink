@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { TalentProfile } from '@/lib/api';
 import {
   resolveTemplate,
@@ -175,9 +176,9 @@ function HeaderArea({
     return (
       <div className="relative">
         {/* Gradient header */}
-        <div className={`${hasCover ? '' : style.headerBg + ' ' + style.headerBgDark} ${compact ? 'h-20 sm:h-28' : 'h-24 sm:h-32'} overflow-hidden`}>
+        <div className={`${hasCover ? '' : style.headerBg + ' ' + style.headerBgDark} ${compact ? 'h-20 sm:h-28' : 'h-24 sm:h-32'} relative overflow-hidden`}>
           {hasCover ? (
-            <img src={profile.coverImage!} alt="" className="h-full w-full object-cover object-center" />
+            <Image src={profile.coverImage!} alt="" className="h-full w-full object-cover object-center" fill sizes="100vw" />
           ) : (
             <div className="absolute inset-0">
               <div className="absolute inset-0 opacity-20">
@@ -195,8 +196,8 @@ function HeaderArea({
           <div className="flex items-center gap-3 sm:gap-4">
             <div className="-mt-12 sm:-mt-14 shrink-0 relative z-10">
               {profile.image ? (
-                <div className={`${style.avatarSize} ${style.avatarShape} ${style.avatarRing} overflow-hidden bg-muted`}>
-                  <img src={profile.image} alt={profile.name} className="h-full w-full object-cover object-center" />
+                <div className={`${style.avatarSize} ${style.avatarShape} ${style.avatarRing} relative overflow-hidden bg-muted`}>
+                  <Image src={profile.image} alt={profile.name} className="h-full w-full object-cover object-center" fill sizes="120px" />
                 </div>
               ) : (
                 <div className={`${style.avatarSize} ${style.avatarShape} ${style.avatarRing} flex items-center justify-center bg-gradient-to-br from-teal-500 to-cyan-600 text-xl sm:text-2xl font-bold text-white`}>
@@ -224,8 +225,8 @@ function HeaderArea({
         <div className="border-l-4 border-teal-500 dark:border-teal-400 pl-3 sm:pl-5">
           <div className="flex items-center gap-3 sm:gap-4">
             {profile.image ? (
-              <div className={`${style.avatarSize} ${style.avatarShape} ${style.avatarRing} overflow-hidden shrink-0 bg-muted`}>
-                <img src={profile.image} alt={profile.name} className="h-full w-full object-cover object-center" />
+              <div className={`${style.avatarSize} ${style.avatarShape} ${style.avatarRing} relative overflow-hidden shrink-0 bg-muted`}>
+                <Image src={profile.image} alt={profile.name} className="h-full w-full object-cover object-center" fill sizes="120px" />
               </div>
             ) : (
               <div className={`${style.avatarSize} ${style.avatarShape} ${style.avatarRing} flex items-center justify-center bg-teal-100 text-teal-700 dark:bg-teal-800 dark:text-teal-200 text-lg font-bold`}>
@@ -253,8 +254,8 @@ function HeaderArea({
         <div className="p-4 sm:p-6 bg-slate-50/50 dark:bg-gray-800/30 border-b border-slate-200/50 dark:border-slate-600/30">
           <div className="flex items-center gap-3 sm:gap-4">
             {profile.image ? (
-              <div className={`${style.avatarSize} ${style.avatarShape} ${style.avatarRing} overflow-hidden shrink-0 bg-muted`}>
-                <img src={profile.image} alt={profile.name} className="h-full w-full object-cover object-center" />
+              <div className={`${style.avatarSize} ${style.avatarShape} ${style.avatarRing} relative overflow-hidden shrink-0 bg-muted`}>
+                <Image src={profile.image} alt={profile.name} className="h-full w-full object-cover object-center" fill sizes="120px" />
               </div>
             ) : (
               <div className={`${style.avatarSize} ${style.avatarShape} ${style.avatarRing} flex items-center justify-center bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-200 text-base font-bold`}>
@@ -281,7 +282,7 @@ function HeaderArea({
         {/* Gradient header */}
         <div className={`${hasCover ? '' : style.headerBg + ' ' + style.headerBgDark} ${compact ? 'h-16 sm:h-24' : 'h-24 sm:h-32'} overflow-hidden`}>
           {hasCover ? (
-            <img src={profile.coverImage!} alt="" className="h-full w-full object-cover object-center" />
+            <Image src={profile.coverImage!} alt="" className="h-full w-full object-cover object-center" fill sizes="100vw" />
           ) : (
             <div className="absolute inset-0 opacity-15">
               <svg className="h-full w-full" viewBox="0 0 400 200" preserveAspectRatio="none">
@@ -297,8 +298,8 @@ function HeaderArea({
           <div className="flex items-center gap-3 sm:gap-4">
             <div className="-mt-10 sm:-mt-12 shrink-0 relative z-10">
               {profile.image ? (
-                <div className={`${style.avatarSize} ${style.avatarShape} ${style.avatarRing} overflow-hidden bg-muted`}>
-                  <img src={profile.image} alt={profile.name} className="h-full w-full object-cover object-center" />
+                <div className={`${style.avatarSize} ${style.avatarShape} ${style.avatarRing} relative overflow-hidden bg-muted`}>
+                  <Image src={profile.image} alt={profile.name} className="h-full w-full object-cover object-center" fill sizes="120px" />
                 </div>
               ) : (
                 <div className={`${style.avatarSize} ${style.avatarShape} ${style.avatarRing} flex items-center justify-center bg-gradient-to-br from-blue-500 to-emerald-500 text-lg sm:text-xl font-bold text-white`}>
@@ -324,8 +325,8 @@ function HeaderArea({
     <div className={`${style.headerBg} ${style.headerBgDark} p-4 sm:p-6`}>
       <div className="flex items-start gap-3 sm:gap-4">
         {profile.image ? (
-          <div className={`${style.avatarSize} ${style.avatarShape} ${style.avatarRing} overflow-hidden shrink-0 bg-muted`}>
-            <img src={profile.image} alt={profile.name} className="h-full w-full object-cover object-center" />
+          <div className={`${style.avatarSize} ${style.avatarShape} ${style.avatarRing} relative overflow-hidden shrink-0 bg-muted`}>
+            <Image src={profile.image} alt={profile.name} className="h-full w-full object-cover object-center" fill sizes="120px" />
           </div>
         ) : (
           <div className={`${style.avatarSize} ${style.avatarShape} ${style.avatarRing} flex items-center justify-center bg-gradient-to-br from-teal-500 to-cyan-600 text-base sm:text-lg font-bold text-white`}>

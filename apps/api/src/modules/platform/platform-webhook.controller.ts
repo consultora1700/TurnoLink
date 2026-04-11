@@ -7,8 +7,12 @@ import {
   HttpCode,
   HttpStatus,
   Logger,
+  UnauthorizedException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PlatformService } from './platform.service';
+import { verifyMercadoPagoSignature } from '../../common/utils/webhook-signature';
+import { Public } from '../../common/decorators/public.decorator';
 
 interface WebhookPayload {
   id?: number;
@@ -24,10 +28,14 @@ interface WebhookPayload {
 }
 
 @Controller('platform/webhook')
+@Public()
 export class PlatformWebhookController {
   private readonly logger = new Logger(PlatformWebhookController.name);
 
-  constructor(private readonly platformService: PlatformService) {}
+  constructor(
+    private readonly platformService: PlatformService,
+    private readonly configService: ConfigService,
+  ) {}
 
   /**
    * Handle MercadoPago webhook notifications for subscription payments
@@ -48,16 +56,37 @@ export class PlatformWebhookController {
       const type = payload.type || queryType;
       const dataId = payload.data?.id || queryDataId;
 
+      // Verify webhook signature
+      const webhookSecret = this.configService.get<string>('PLATFORM_WEBHOOK_SECRET');
+      if (dataId && !verifyMercadoPagoSignature(signature, requestId, dataId, webhookSecret)) {
+        this.logger.warn('Invalid platform webhook signature');
+        throw new UnauthorizedException('Invalid webhook signature');
+      }
+
       if (!type || !dataId) {
         this.logger.warn('Webhook missing type or data.id');
         return { received: true };
       }
 
-      // Process payment notifications
-      if (type === 'payment') {
-        await this.platformService.processPaymentNotification(dataId);
-      } else {
-        this.logger.debug(`Ignoring webhook type: ${type}`);
+      // Process notifications by type
+      switch (type) {
+        case 'payment':
+          // One-time payment (legacy or first payment)
+          await this.platformService.processPaymentNotification(dataId);
+          break;
+
+        case 'subscription_preapproval':
+          // Recurring subscription status change (authorized, paused, cancelled)
+          await this.platformService.processPreapprovalNotification(dataId);
+          break;
+
+        case 'subscription_authorized_payment':
+          // Recurring payment charged successfully
+          await this.platformService.processAuthorizedPaymentNotification(dataId);
+          break;
+
+        default:
+          this.logger.debug(`Ignoring webhook type: ${type}`);
       }
 
       return { received: true };

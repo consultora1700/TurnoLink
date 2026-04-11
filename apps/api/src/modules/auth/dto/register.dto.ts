@@ -21,6 +21,9 @@ export class RegisterDto {
   @IsString()
   @MinLength(8)
   @MaxLength(50)
+  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/, {
+    message: 'La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número',
+  })
   password: string;
 
   @ApiProperty({ example: 'John Doe' })
@@ -69,4 +72,10 @@ export class RegisterDto {
   @IsString()
   @MaxLength(50)
   category?: string;
+
+  @ApiPropertyOptional({ example: 'belleza', description: 'Industry slug from landing page' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  industry?: string;
 }

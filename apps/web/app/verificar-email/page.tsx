@@ -123,7 +123,7 @@ function VerifyEmailContent() {
 
   const verifyEmail = async () => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api-turnolink.mubitt.com';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.turnolink.com.ar';
       const response = await fetch(`${apiUrl}/api/email-verification/verify?token=${token}`);
       const data = await response.json();
 
@@ -157,7 +157,7 @@ function VerifyEmailContent() {
     setResendSuccess(false);
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api-turnolink.mubitt.com';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.turnolink.com.ar';
       const response = await fetch(`${apiUrl}/api/email-verification/resend`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

@@ -40,10 +40,11 @@ export class UpdateDepositSettingsDto {
   @IsIn(['simulated', 'mercadopago'])
   depositMode?: 'simulated' | 'mercadopago';
 
-  @ApiProperty({
-    description: 'TOTP code for 2FA verification',
+  @ApiPropertyOptional({
+    description: 'TOTP code for 2FA verification (only required for sensitive MP operations)',
     example: '123456',
   })
+  @IsOptional()
   @IsString()
-  totpCode: string;
+  totpCode?: string;
 }

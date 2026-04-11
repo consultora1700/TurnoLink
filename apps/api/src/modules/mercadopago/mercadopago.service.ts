@@ -27,6 +27,8 @@ interface MPPreferenceItem {
   quantity: number;
   unit_price: number;
   currency_id: string;
+  picture_url?: string;
+  description?: string;
 }
 
 interface MPPreferenceBackUrls {
@@ -550,40 +552,276 @@ export class MercadoPagoService {
   }
 
   /**
+   * Create a payment preference for an e-commerce order
+   */
+  async createOrderPreference(
+    tenantId: string,
+    orderId: string,
+    totalAmount: number,
+    items: { title: string; quantity: number; unitPrice: number }[],
+    backUrls: MPPreferenceBackUrls,
+    business?: { businessName?: string; businessLogo?: string | null },
+  ): Promise<{ preferenceId: string; initPoint: string }> {
+    const accessToken = await this.getAccessToken(tenantId);
+
+    const externalReference = `order_${orderId}_${Date.now()}`;
+
+    const credential = await this.prisma.mercadoPagoCredential.findUnique({
+      where: { tenantId },
+      select: { isSandbox: true },
+    });
+
+    const businessName = business?.businessName || '';
+
+    const mpItems: MPPreferenceItem[] = items.map((item) => ({
+      title: businessName
+        ? `${businessName} - ${item.title}`
+        : item.title,
+      quantity: item.quantity,
+      unit_price: item.unitPrice,
+      currency_id: 'ARS',
+      ...(business?.businessLogo ? { picture_url: business.businessLogo } : {}),
+    }));
+
+    // Statement descriptor: what appears on the buyer's credit card statement
+    // Max 22 chars, no special characters
+    const statementDescriptor = businessName
+      ? businessName.replace(/[^a-zA-Z0-9\s]/g, '').substring(0, 22).trim()
+      : undefined;
+
+    const preferenceData = {
+      items: mpItems,
+      back_urls: backUrls,
+      auto_return: 'approved',
+      external_reference: externalReference,
+      notification_url: `${this.configService.get<string>('API_URL')}/api/mercadopago/webhook`,
+      expires: true,
+      expiration_date_from: new Date().toISOString(),
+      expiration_date_to: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      ...(statementDescriptor ? { statement_descriptor: statementDescriptor } : {}),
+    };
+
+    const response = await fetch('https://api.mercadopago.com/checkout/preferences', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(preferenceData),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      this.logger.error(`Failed to create order preference: ${error}`);
+      throw new InternalServerErrorException('Failed to create payment. Please try again.');
+    }
+
+    const preference: MPPreferenceResponse = await response.json();
+
+    // Store preferenceId and externalReference in Payment record
+    await this.prisma.payment.updateMany({
+      where: { orderId, status: 'PENDING' },
+      data: {
+        preferenceId: preference.id,
+        externalReference,
+      },
+    });
+
+    return {
+      preferenceId: preference.id,
+      initPoint: credential?.isSandbox ? preference.sandbox_init_point : preference.init_point,
+    };
+  }
+
+  /**
    * Process payment webhook notification
    */
   async processPaymentNotification(paymentId: string): Promise<void> {
-    // First, find the deposit payment by checking all tenants
-    // We need to get the payment details from MP to find the external_reference
-    const depositPayments = await this.prisma.depositPayment.findMany({
-      where: { paymentId: null, status: 'PENDING' },
+    // Anti-replay: check if this webhook was already processed
+    const existing = await this.prisma.processedWebhook.findUnique({
+      where: { webhookId: paymentId },
+    });
+    if (existing) {
+      this.logger.debug(`Webhook ${paymentId} already processed, skipping`);
+      return;
+    }
+
+    // Mark as processed immediately (before processing to prevent race conditions)
+    await this.prisma.processedWebhook.create({
+      data: { webhookId: paymentId, source: 'mercadopago' },
+    }).catch(() => {
+      // Unique constraint violation = another instance is processing it
+      this.logger.debug(`Webhook ${paymentId} being processed by another instance`);
+    });
+
+    // Cleanup old processed webhooks (older than 7 days)
+    this.prisma.processedWebhook.deleteMany({
+      where: { processedAt: { lt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } },
+    }).catch(() => {});
+
+    // Strategy: get payment details from MP first using any active credential,
+    // then do indexed lookup by externalReference. Avoids loading ALL pending records.
+    const credentials = await this.prisma.mercadoPagoCredential.findMany({
+      where: { isConnected: true },
+      select: { tenantId: true },
+      take: 20,
+    });
+
+    let mpPaymentData: MPPaymentNotification | null = null;
+
+    for (const cred of credentials) {
+      try {
+        const accessToken = await this.getAccessToken(cred.tenantId);
+        mpPaymentData = await this.getPaymentDetails(accessToken, paymentId);
+        if (mpPaymentData) break;
+      } catch {
+        continue;
+      }
+    }
+
+    if (!mpPaymentData || !mpPaymentData.external_reference) {
+      this.logger.warn(`Payment ${paymentId} could not be fetched from MP or has no external_reference`);
+      return;
+    }
+
+    const extRef = mpPaymentData.external_reference;
+
+    // Direct lookup: match deposit payment by externalReference
+    const deposit = await this.prisma.depositPayment.findFirst({
+      where: { externalReference: extRef, status: 'PENDING' },
+    });
+
+    if (deposit) {
+      await this.updateDepositPaymentFromNotification(deposit.id, mpPaymentData, paymentId);
+      return;
+    }
+
+    // Direct lookup: match order payment by externalReference
+    const orderPayment = await this.prisma.payment.findFirst({
+      where: { externalReference: extRef, status: 'PENDING' },
       include: {
-        tenant: {
+        order: {
           include: {
-            mercadoPagoCredential: true,
+            tenant: {
+              include: { mercadoPagoCredential: true },
+            },
           },
         },
       },
     });
 
-    // Try to find the payment in each connected tenant
-    for (const deposit of depositPayments) {
-      if (!deposit.tenant?.mercadoPagoCredential?.isConnected) continue;
+    if (orderPayment) {
+      await this.processMatchedOrderPayment(orderPayment, mpPaymentData, paymentId);
+      return;
+    }
 
-      try {
-        const accessToken = await this.getAccessToken(deposit.tenantId);
-        const payment = await this.getPaymentDetails(accessToken, paymentId);
+    // Direct lookup: match gastro table session by externalReference stored in paymentId field
+    if (extRef.startsWith('gastro_session_')) {
+      const gastroSession = await this.prisma.tableSession.findFirst({
+        where: { paymentId: extRef, status: 'WAITING_PAYMENT' },
+      });
 
-        if (payment && payment.external_reference === deposit.externalReference) {
-          await this.updateDepositPaymentFromNotification(deposit.id, payment, paymentId);
-          return;
-        }
-      } catch (error) {
-        this.logger.debug(`Payment ${paymentId} not found for tenant ${deposit.tenantId}`);
+      if (gastroSession) {
+        await this.processGastroSessionPayment(gastroSession, mpPaymentData, paymentId);
+        return;
       }
     }
 
-    this.logger.warn(`Payment ${paymentId} not matched to any deposit`);
+    this.logger.warn(`Payment ${paymentId} (ref: ${extRef}) not matched to any deposit, order, or gastro session`);
+  }
+
+  /**
+   * Process a matched order payment with already-fetched MP data
+   */
+  private async processMatchedOrderPayment(
+    payment: any,
+    mpPayment: MPPaymentNotification,
+    paymentId: string,
+  ): Promise<void> {
+    const statusMap: Record<string, string> = {
+      approved: 'APPROVED',
+      pending: 'PENDING',
+      authorized: 'PENDING',
+      in_process: 'PENDING',
+      in_mediation: 'PENDING',
+      rejected: 'REJECTED',
+      cancelled: 'CANCELLED',
+      refunded: 'CANCELLED',
+      charged_back: 'CANCELLED',
+    };
+
+    const newStatus = statusMap[mpPayment.status] || 'PENDING';
+    const isApproved = newStatus === 'APPROVED';
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.payment.update({
+        where: { id: payment.id },
+        data: {
+          mercadoPagoId: paymentId,
+          status: newStatus,
+          payerEmail: mpPayment.payer?.email,
+          payerName: mpPayment.payer?.first_name
+            ? `${mpPayment.payer.first_name} ${mpPayment.payer.last_name || ''}`.trim()
+            : null,
+          paymentType: mpPayment.payment_type_id,
+          paidAt: isApproved ? new Date() : null,
+          rawResponse: JSON.stringify(mpPayment),
+        },
+      });
+
+      if (isApproved) {
+        // Si el comercio ya aceptó el pedido (CONFIRMED), pasamos a PROCESSING.
+        // Si todavía no aceptó (PENDING), solo limpiamos awaitingPayment y dejamos
+        // que el comercio acepte → en ese momento pasará directo a PROCESSING.
+        const currentOrder = await tx.order.findUnique({
+          where: { id: payment.orderId },
+          select: { status: true },
+        });
+
+        if (currentOrder?.status === 'CONFIRMED') {
+          await tx.order.update({
+            where: { id: payment.orderId },
+            data: { status: 'PROCESSING', awaitingPayment: false },
+          });
+
+          await tx.orderStatusHistory.create({
+            data: {
+              orderId: payment.orderId,
+              status: 'PROCESSING',
+              note: 'Pago aprobado por MercadoPago — preparación iniciada',
+            },
+          });
+        } else if (currentOrder?.status === 'PENDING') {
+          // Pago llegó antes de la aceptación: solo marca como pagado.
+          await tx.order.update({
+            where: { id: payment.orderId },
+            data: { awaitingPayment: false },
+          });
+
+          await tx.orderStatusHistory.create({
+            data: {
+              orderId: payment.orderId,
+              status: 'PENDING',
+              note: 'Pago aprobado por MercadoPago — esperando aceptación del comercio',
+            },
+          });
+        } else {
+          // Otros casos (PROCESSING, READY, etc): solo marca pagado.
+          await tx.order.update({
+            where: { id: payment.orderId },
+            data: { awaitingPayment: false },
+          });
+        }
+
+        this.logger.log(`Order payment ${payment.id} approved, order ${payment.orderId} confirmed`);
+
+        this.eventEmitter.emit('order.paid', {
+          orderId: payment.orderId,
+          tenantId: payment.order.tenantId,
+          paymentId: payment.id,
+        });
+      }
+    }, { timeout: 30000 });
   }
 
   private async getPaymentDetails(
@@ -707,7 +945,77 @@ export class MercadoPagoService {
     hmac.update(manifest);
     const calculatedSignature = hmac.digest('hex');
 
-    return calculatedSignature === receivedSignature;
+    // Timing-safe comparison to prevent signature forgery via timing attacks
+    try {
+      const calcBuf = Buffer.from(calculatedSignature, 'hex');
+      const recvBuf = Buffer.from(receivedSignature, 'hex');
+      if (calcBuf.length !== recvBuf.length) {
+        return false;
+      }
+      return crypto.timingSafeEqual(calcBuf, recvBuf);
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Process a gastro table session payment from MP webhook
+   */
+  private async processGastroSessionPayment(
+    session: { id: string; tenantId: string; tableNumber: number; totalAmount: any; tipAmount: any },
+    mpPayment: MPPaymentNotification,
+    paymentId: string,
+  ): Promise<void> {
+    const isApproved = mpPayment.status === 'approved';
+
+    if (!isApproved) {
+      this.logger.log(`Gastro session ${session.id} MP payment ${paymentId} status: ${mpPayment.status}`);
+      return;
+    }
+
+    // Mark session as PAID
+    await this.prisma.tableSession.update({
+      where: { id: session.id },
+      data: {
+        status: 'PAID',
+        paymentId: paymentId,
+      },
+    });
+
+    // Emit events for real-time dashboard update
+    this.eventEmitter.emit('gastro.session.paid', {
+      tenantId: session.tenantId,
+      sessionId: session.id,
+      tableNumber: session.tableNumber,
+      totalAmount: Number(session.totalAmount),
+      tipAmount: Number(session.tipAmount),
+    });
+
+    // Register income in finance system
+    const totalAmount = Number(session.totalAmount || 0);
+    const tipAmount = Number(session.tipAmount || 0);
+    if (totalAmount > 0) {
+      try {
+        const now = new Date();
+        await this.prisma.expense.create({
+          data: {
+            tenantId: session.tenantId,
+            type: 'INCOME',
+            category: 'GASTRO_SALON',
+            description: `Salón — Mesa ${session.tableNumber} (Mercado Pago)${tipAmount > 0 ? ` · propina $${tipAmount.toFixed(0)}` : ''}`,
+            amount: totalAmount + tipAmount,
+            date: now,
+            month: now.getMonth() + 1,
+            year: now.getFullYear(),
+          },
+        });
+        this.logger.log(`Income registered for gastro session ${session.id}: $${(totalAmount + tipAmount).toFixed(2)}`);
+      } catch (err: any) {
+        this.logger.error(`Failed to register gastro income from MP webhook: ${err.message}`);
+      }
+    }
+
+    this.logger.log(`Gastro session ${session.id} paid via MercadoPago (payment ${paymentId})`);
   }
 
   /**

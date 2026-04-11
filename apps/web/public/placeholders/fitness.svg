@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#b5e0c8"/>
+      <stop offset="100%" style="stop-color:#7dc4a0"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="400" rx="16" fill="url(#g)"/>
+  <g transform="translate(200,140)" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.9">
+    <!-- Dumbbell clean -->
+    <line x1="-10" y1="0" x2="10" y2="0"/>
+    <rect x="-22" y="-10" width="12" height="20" rx="3" fill="#fff" opacity="0.15"/>
+    <rect x="-22" y="-10" width="12" height="20" rx="3"/>
+    <rect x="10" y="-10" width="12" height="20" rx="3" fill="#fff" opacity="0.15"/>
+    <rect x="10" y="-10" width="12" height="20" rx="3"/>
+    <line x1="-28" y1="-6" x2="-28" y2="6"/>
+    <line x1="28" y1="-6" x2="28" y2="6"/>
+  </g>
+  <text x="200" y="218" text-anchor="middle" fill="#fff" font-family="system-ui,sans-serif" font-size="16" font-weight="600" opacity="0.95">Agrega tu imagen</text>
+  <text x="200" y="240" text-anchor="middle" fill="#fff" font-family="system-ui,sans-serif" font-size="12" font-weight="400" opacity="0.65">Motiva a tus clientes</text>
+</svg>

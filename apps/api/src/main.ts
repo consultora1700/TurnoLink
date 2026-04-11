@@ -4,10 +4,28 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 import helmet from 'helmet';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const compression = require('compression');
 import { join } from 'path';
 import { AppModule } from './app.module';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { RedisIoAdapter } from './common/adapters/redis-io.adapter';
 
 async function bootstrap() {
+  // Fail fast: validate required environment variables
+  const requiredEnvVars = ['JWT_SECRET', 'DATABASE_URL'];
+  const optionalButWarn = ['JWT_REFRESH_SECRET', 'CORS_ORIGINS', 'RESEND_API_KEY'];
+  for (const env of requiredEnvVars) {
+    if (!process.env[env]) {
+      throw new Error(`FATAL: Missing required environment variable: ${env}`);
+    }
+  }
+  for (const env of optionalButWarn) {
+    if (!process.env[env]) {
+      console.warn(`WARNING: Environment variable ${env} is not set. Some features may not work.`);
+    }
+  }
+
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     bufferLogs: true, // Buffer logs until Winston is ready
   });
@@ -16,10 +34,21 @@ async function bootstrap() {
   const logger = app.get(WINSTON_MODULE_NEST_PROVIDER);
   app.useLogger(logger);
 
-  // Serve static files from uploads directory
+  // Trust proxy (nginx) so rate-limiting and IP detection use the real client IP
+  app.set('trust proxy', 1);
+
+  // Global exception filter (catches Prisma errors, hides stack traces)
+  app.useGlobalFilters(new HttpExceptionFilter());
+
+  // Serve static files from uploads directory (30-day cache, UUID = immutable)
   app.useStaticAssets(join(process.cwd(), 'uploads'), {
     prefix: '/uploads/',
+    maxAge: 30 * 24 * 60 * 60 * 1000,
+    immutable: true,
   });
+
+  // Compress responses (gzip/brotli) — reduces payload ~70% for JSON/HTML
+  app.use(compression());
 
   // Security with proper CSP for images
   const isDevelopment = process.env.NODE_ENV !== 'production';
@@ -38,7 +67,7 @@ async function bootstrap() {
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+          scriptSrc: ["'self'", ...(isDevelopment ? ["'unsafe-inline'", "'unsafe-eval'"] : [])],
           styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
           fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
           imgSrc: [
@@ -52,6 +81,7 @@ async function bootstrap() {
           connectSrc: [
             "'self'",
             'https:',
+            'wss:',
             ...(isDevelopment ? [...devLocalhost, 'ws://localhost:3000', 'ws://localhost:3001'] : []),
           ],
           mediaSrc: ["'self'", 'https:', 'data:', 'blob:'],
@@ -73,8 +103,27 @@ async function bootstrap() {
     credentials: true,
   });
 
-  // Global prefix
-  app.setGlobalPrefix('api');
+  // Performance monitoring — log slow requests (>3s)
+  app.use((req: any, res: any, next: any) => {
+    const start = Date.now();
+    const originalEnd = res.end;
+    res.end = function (...args: any[]) {
+      const duration = Date.now() - start;
+      if (duration > 3000) {
+        logger.warn(
+          `SLOW REQUEST: ${req.method} ${req.originalUrl} — ${duration}ms (status ${res.statusCode})`,
+          'PerformanceMonitor',
+        );
+      }
+      originalEnd.apply(res, args);
+    };
+    next();
+  });
+
+  // Global prefix — exclude socket.io path so WebSocket gateway is reachable
+  app.setGlobalPrefix('api', {
+    exclude: ['/socket.io(.*)'],
+  });
 
   // Validation
   app.useGlobalPipes(
@@ -108,6 +157,11 @@ async function bootstrap() {
     const document = SwaggerModule.createDocument(app, config);
     SwaggerModule.setup('api/docs', app, document);
   }
+
+  // WebSocket adapter with Redis for PM2 cluster mode
+  const redisIoAdapter = new RedisIoAdapter(app);
+  await redisIoAdapter.connectToRedis();
+  app.useWebSocketAdapter(redisIoAdapter);
 
   const port = process.env.PORT || 3001;
   await app.listen(port, '0.0.0.0');

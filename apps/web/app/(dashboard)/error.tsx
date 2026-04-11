@@ -6,6 +6,21 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AlertCircle, RotateCcw, Home, ChevronDown, ChevronUp } from 'lucide-react';
 
+const HYDRATION_PATTERNS = [
+  'removeChild',
+  'insertBefore',
+  'Hydration',
+  'hydrating',
+  'server-rendered',
+  'Text content does not match',
+  'did not match',
+];
+
+function isHydrationError(error: Error): boolean {
+  const msg = error.message || '';
+  return HYDRATION_PATTERNS.some((p) => msg.includes(p));
+}
+
 export default function DashboardError({
   error,
   reset,
@@ -17,6 +32,20 @@ export default function DashboardError({
 
   useEffect(() => {
     console.error('Dashboard error:', error);
+
+    // Auto-reload on hydration errors — transparent to the user
+    if (isHydrationError(error)) {
+      const reloadKey = 'turnolink-hydration-reload';
+      const lastReload = sessionStorage.getItem(reloadKey);
+      const now = Date.now();
+
+      // Only auto-reload once per 30 seconds to avoid infinite loops
+      if (!lastReload || now - Number(lastReload) > 30000) {
+        sessionStorage.setItem(reloadKey, String(now));
+        window.location.reload();
+        return;
+      }
+    }
   }, [error]);
 
   return (
@@ -54,7 +83,7 @@ export default function DashboardError({
           )}
 
           <div className="flex gap-3 justify-center">
-            <Button onClick={reset} className="gap-2">
+            <Button onClick={() => window.location.reload()} className="gap-2">
               <RotateCcw className="h-4 w-4" />
               Reintentar
             </Button>

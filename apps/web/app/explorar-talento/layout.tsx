@@ -23,6 +23,9 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'es_AR',
   },
+  alternates: {
+    canonical: 'https://turnolink.com.ar/explorar-talento',
+  },
 };
 
 export default function ExplorarTalentoLayout({

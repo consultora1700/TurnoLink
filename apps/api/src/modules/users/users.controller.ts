@@ -8,7 +8,6 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { UsersService } from './users.service';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -17,7 +16,6 @@ import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @ApiTags('users')
 @Controller('users')
-@UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
@@ -25,12 +23,7 @@ export class UsersController {
   @Get('me')
   @ApiOperation({ summary: 'Get current user profile' })
   async getProfile(@CurrentUser() user: User) {
-    const fullUser = await this.usersService.findById(user.id);
-    if (!fullUser) {
-      return null;
-    }
-    const { password: _, ...result } = fullUser;
-    return result;
+    return this.usersService.findByIdSafe(user.id);
   }
 
   @Put('me')
@@ -39,9 +32,8 @@ export class UsersController {
     @CurrentUser() user: User,
     @Body() updateDto: UpdateProfileDto,
   ) {
-    const updated = await this.usersService.update(user.id, updateDto);
-    const { password: _, ...result } = updated;
-    return result;
+    await this.usersService.update(user.id, updateDto);
+    return this.usersService.findByIdSafe(user.id);
   }
 
   // Admin endpoints

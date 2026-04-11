@@ -50,6 +50,11 @@ const STYLE_FEATURES: Record<HeroStyleName, { label: string; color: string }[]> 
     { label: 'Fondo cálido', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' },
     { label: 'Suave', color: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300' },
   ],
+  minimalist: [
+    { label: 'Centrado', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' },
+    { label: 'Fondo blanco', color: 'bg-slate-100 text-slate-600 dark:bg-slate-800/50 dark:text-slate-300' },
+    { label: 'Sin adornos', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' },
+  ],
 };
 
 function buildPreviewVars(style: HeroStyleName): React.CSSProperties {
@@ -77,7 +82,7 @@ export function HeroStylePreview({ style, selected, onClick, label, description 
   const previewVars = buildPreviewVars(style);
   const features = STYLE_FEATURES[style];
 
-  const fixedBg = { bold: 'light', corporate: 'light', clinical: 'dark', zen: 'dark', warm: 'dark' } as Record<string, string>;
+  const fixedBg = { bold: 'light', corporate: 'light', clinical: 'dark', zen: 'dark', warm: 'dark', minimalist: 'dark' } as Record<string, string>;
   const contrastMode = fixedBg[style]
     ? fixedBg[style]
     : getContrastTextColor(HERO_STYLE_DEFAULT_COLORS[style].primary);
@@ -103,6 +108,11 @@ export function HeroStylePreview({ style, selected, onClick, label, description 
         <div className={cn('absolute -top-8 -right-8 w-20 h-20 rounded-full blur-2xl', cfg.heroDecorativeBlobs[0])} />
         <div className={cn('absolute -bottom-8 -left-8 w-20 h-20 rounded-full blur-2xl', cfg.heroDecorativeBlobs[1])} />
 
+        {/* Minimalist: white inner card */}
+        {style === 'minimalist' && (
+          <div className="absolute inset-2 bg-white dark:bg-neutral-900 rounded-lg border border-slate-200/60 dark:border-neutral-800 shadow-[0_1px_2px_rgba(0,0,0,0.04)]" />
+        )}
+
         {/* ── Layout preview ── */}
         <div className={cn(
           'relative flex gap-2 p-3 h-full',
@@ -112,7 +122,8 @@ export function HeroStylePreview({ style, selected, onClick, label, description 
         )}>
           {/* Logo placeholder */}
           <div className={cn(
-            'flex-shrink-0 flex items-center justify-center shadow-md',
+            'flex-shrink-0 flex items-center justify-center',
+            style === 'minimalist' ? 'shadow-none ring-1 ring-slate-200' : 'shadow-md',
             cfg.heroLayout === 'center' ? 'w-11 h-11' : 'w-9 h-9',
             cfg.logoRadius,
             cfg.logoFallbackGradient,
@@ -125,21 +136,30 @@ export function HeroStylePreview({ style, selected, onClick, label, description 
             'flex flex-col gap-1 flex-1 min-w-0',
             cfg.heroLayout === 'center' && 'items-center'
           )}>
-            {/* Name: show weight/tracking visually */}
-            <div className={cn(
-              'h-2.5 rounded-full',
-              cfg.heroLayout === 'center' ? 'w-20' : 'w-24',
-              cfg.nameWeight === 'font-black' ? (isLight ? 'bg-slate-900/80' : 'bg-white/90') :
-              cfg.nameWeight === 'font-bold' ? (isLight ? 'bg-slate-800/70' : 'bg-white/80') :
-              (isLight ? 'bg-slate-700/50' : 'bg-white/60')
-            )} />
+            {/* Name: show weight/tracking visually; minimalist uses primary color */}
+            {style === 'minimalist' ? (
+              <>
+                <div className="h-1.5 w-14 rounded-full" style={{ backgroundColor: HERO_STYLE_DEFAULT_COLORS[style].primary, opacity: 0.6 }} />
+                <div className="h-2.5 w-24 rounded-full bg-slate-800/70 dark:bg-white/80" />
+              </>
+            ) : (
+              <div className={cn(
+                'h-2.5 rounded-full',
+                cfg.heroLayout === 'center' ? 'w-20' : 'w-24',
+                cfg.nameWeight === 'font-black' ? (isLight ? 'bg-slate-900/80' : 'bg-white/90') :
+                cfg.nameWeight === 'font-bold' ? (isLight ? 'bg-slate-800/70' : 'bg-white/80') :
+                (isLight ? 'bg-slate-700/50' : 'bg-white/60')
+              )} />
+            )}
 
             {/* Description */}
-            <div className={cn(
-              'h-1.5 rounded-full',
-              cfg.heroLayout === 'center' ? 'w-14' : 'w-16',
-              isLight ? 'bg-slate-500/35' : 'bg-white/35'
-            )} />
+            {style !== 'minimalist' && (
+              <div className={cn(
+                'h-1.5 rounded-full',
+                cfg.heroLayout === 'center' ? 'w-14' : 'w-16',
+                isLight ? 'bg-slate-500/35' : 'bg-white/35'
+              )} />
+            )}
 
             {/* Contact buttons row */}
             <div className={cn(
@@ -183,6 +203,11 @@ export function HeroStylePreview({ style, selected, onClick, label, description 
           )}
         </div>
 
+        {/* Minimalist: separator line */}
+        {style === 'minimalist' && (
+          <div className="absolute left-4 right-4 bottom-6 border-t border-slate-200/60 dark:border-neutral-700/50" />
+        )}
+
         {/* ── Trust badges row ── */}
         <div className={cn(
           'absolute bottom-1.5 left-2.5 right-2.5 flex gap-1',
@@ -218,6 +243,12 @@ export function HeroStylePreview({ style, selected, onClick, label, description 
             <div key={i} className="flex items-center gap-1">
               {i > 0 && <div className="w-px h-3 bg-white/20" />}
               <div className="w-5 h-1 rounded-full bg-white/25" />
+            </div>
+          ))}
+          {cfg.trustBadgeStyle === 'text-only' && [0,1,2].map(i => (
+            <div key={i} className="flex items-center gap-0.5">
+              {i > 0 && <div className={cn('w-0.5 h-0.5 rounded-full', isLight ? 'bg-slate-400/50' : 'bg-white/30')} />}
+              <div className={cn('w-5 h-1 rounded-full', isLight ? 'bg-slate-400/25' : 'bg-white/15')} />
             </div>
           ))}
           {cfg.trustBadgeStyle === 'warm-box' && [0,1,2].map(i => (

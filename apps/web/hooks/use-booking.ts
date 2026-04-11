@@ -83,7 +83,11 @@ export function useBooking(slug: string): UseBookingReturn {
       } catch (err) {
         if (isApiError(err)) {
           if (err.isValidationError) {
-            setError('Por favor, verifique los datos ingresados');
+            if (err.validationDetails?.length) {
+              setError(err.validationDetails.join('. '));
+            } else {
+              setError(err.message || 'Por favor, verifique los datos ingresados');
+            }
           } else if (err.statusCode === 409) {
             setError('El horario seleccionado ya no está disponible. Por favor, elija otro.');
           } else {

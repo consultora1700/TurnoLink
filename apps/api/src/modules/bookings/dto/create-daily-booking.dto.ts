@@ -2,7 +2,6 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsNotEmpty,
   IsString,
-  IsUUID,
   IsOptional,
   IsEmail,
   Matches,
@@ -11,13 +10,13 @@ import {
 
 export class CreateDailyBookingDto {
   @ApiProperty()
-  @IsUUID()
+  @IsString()
   @IsNotEmpty()
   serviceId: string;
 
   @ApiPropertyOptional({ description: 'ID de la sucursal' })
   @IsOptional()
-  @IsUUID()
+  @IsString()
   branchId?: string;
 
   @ApiProperty({ example: '2024-03-10', description: 'Check-in date in YYYY-MM-DD format' })

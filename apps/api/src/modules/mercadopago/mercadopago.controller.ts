@@ -4,31 +4,35 @@ import {
   Post,
   Body,
   Query,
-  UseGuards,
   Res,
   Logger,
+  ForbiddenException,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { MercadoPagoService } from './mercadopago.service';
-import { JwtAuthGuard, TenantGuard, Require2FAGuard } from '../../common/guards';
-import { CurrentUser, CurrentTenant, Require2FA } from '../../common/decorators';
+import { TotpService } from '../totp/totp.service';
+import { CurrentUser, CurrentTenant } from '../../common/decorators';
+import { Public } from '../../common/decorators/public.decorator';
+import { RequireFeature } from '../../common/decorators/require-feature.decorator';
 import { GetOAuthUrlDto, DisconnectMercadoPagoDto } from './dto/connect-mercadopago.dto';
 import { User, Tenant } from '@prisma/client';
 
 @ApiTags('Mercado Pago')
 @Controller('mercadopago')
+@ApiBearerAuth()
+@RequireFeature('mercadopago')
 export class MercadoPagoController {
   private readonly logger = new Logger(MercadoPagoController.name);
 
   constructor(
     private readonly mercadoPagoService: MercadoPagoService,
     private readonly configService: ConfigService,
+    private readonly totpService: TotpService,
   ) {}
 
   @Get('status')
-  @UseGuards(JwtAuthGuard, TenantGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get Mercado Pago connection status' })
   @ApiResponse({ status: 200, description: 'Connection status' })
@@ -41,15 +45,34 @@ export class MercadoPagoController {
   }
 
   @Post('oauth/url')
-  @UseGuards(JwtAuthGuard, TenantGuard, Require2FAGuard)
-  @Require2FA()
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get OAuth authorization URL' })
   @ApiResponse({ status: 200, description: 'OAuth URL generated' })
   async getOAuthUrl(
     @CurrentTenant() tenant: Tenant,
+    @CurrentUser() user: User,
     @Body() dto: GetOAuthUrlDto,
   ) {
+    // If tenant already has MP connected, require 2FA to reconnect
+    const status = await this.mercadoPagoService.getStatus(tenant.id);
+    if (status.isConnected) {
+      if (!dto.totpCode) {
+        throw new ForbiddenException({
+          statusCode: 403,
+          message: 'Se requiere código de verificación para reconectar Mercado Pago',
+          code: '2FA_CODE_REQUIRED',
+        });
+      }
+      const isValid = await this.totpService.verifyCode(user.id, dto.totpCode);
+      if (!isValid) {
+        throw new ForbiddenException({
+          statusCode: 403,
+          message: 'Código de verificación inválido',
+          code: '2FA_CODE_INVALID',
+        });
+      }
+    }
+
     const url = await this.mercadoPagoService.getOAuthUrl(tenant.id, dto.isSandbox);
     return {
       success: true,
@@ -57,6 +80,7 @@ export class MercadoPagoController {
     };
   }
 
+  @Public()
   @Get('oauth/callback')
   @ApiOperation({ summary: 'OAuth callback handler' })
   @ApiResponse({ status: 302, description: 'Redirects to frontend with result' })
@@ -88,8 +112,6 @@ export class MercadoPagoController {
   }
 
   @Post('disconnect')
-  @UseGuards(JwtAuthGuard, TenantGuard, Require2FAGuard)
-  @Require2FA()
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Disconnect Mercado Pago account' })
   @ApiResponse({ status: 200, description: 'Account disconnected' })

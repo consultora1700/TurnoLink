@@ -85,6 +85,61 @@ export function Providers({ children }: { children: React.ReactNode }) {
     return () => document.removeEventListener('focusin', handleFocusIn);
   }, []);
 
+  // Global safety net for ChunkLoadError after a redeploy.
+  // When a client holds HTML from a previous build and navigates (router.back,
+  // router.push), Next tries to load chunks whose hashes may no longer exist.
+  // Those failures don't always reach the error boundary — router.prefetch and
+  // dynamic imports can swallow them as console errors or unhandled rejections.
+  // This listener catches them and reloads once, transparently.
+  useEffect(() => {
+    const CHUNK_PATTERNS = [
+      'ChunkLoadError',
+      'Loading chunk',
+      'Loading CSS chunk',
+      'failed to fetch dynamically imported module',
+    ];
+    const RELOAD_KEY = 'turnolink-chunk-reload';
+    const RELOAD_DEBOUNCE_MS = 30_000;
+
+    const matchesChunkError = (value: unknown): boolean => {
+      if (!value) return false;
+      const text = value instanceof Error
+        ? `${value.name} ${value.message}`
+        : typeof value === 'string'
+        ? value
+        : String((value as { message?: unknown })?.message ?? '');
+      return CHUNK_PATTERNS.some((p) => text.includes(p));
+    };
+
+    const tryReload = () => {
+      const last = sessionStorage.getItem(RELOAD_KEY);
+      const now = Date.now();
+      if (!last || now - Number(last) > RELOAD_DEBOUNCE_MS) {
+        sessionStorage.setItem(RELOAD_KEY, String(now));
+        window.location.reload();
+      }
+    };
+
+    const onError = (e: ErrorEvent) => {
+      if (matchesChunkError(e.error) || matchesChunkError(e.message)) {
+        tryReload();
+      }
+    };
+
+    const onUnhandledRejection = (e: PromiseRejectionEvent) => {
+      if (matchesChunkError(e.reason)) {
+        tryReload();
+      }
+    };
+
+    window.addEventListener('error', onError);
+    window.addEventListener('unhandledrejection', onUnhandledRejection);
+    return () => {
+      window.removeEventListener('error', onError);
+      window.removeEventListener('unhandledrejection', onUnhandledRejection);
+    };
+  }, []);
+
   const [queryClient] = useState(
     () =>
       new QueryClient({

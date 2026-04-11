@@ -4,22 +4,21 @@ import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
 import {
   CreditCard,
   Link as LinkIcon,
   Unlink,
-  AlertCircle,
   Check,
   X,
-  Percent,
-  Settings,
   CheckCircle2,
   ExternalLink,
-  Info,
+  ShieldCheck,
+  Lock,
+  Eye,
+  EyeOff,
+  RefreshCw,
+  HelpCircle,
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -34,6 +33,9 @@ import {
 import { useDashboardApi } from '@/lib/hooks/use-dashboard-api';
 import { useToast } from '@/hooks/use-toast';
 import { useTwoFactorModal } from '@/components/ui/two-factor-modal';
+import { useTenantConfig } from '@/contexts/tenant-config-context';
+import { usePlanFeatures } from '@/lib/hooks/use-plan-features';
+import { UpgradeWall } from '@/components/dashboard/upgrade-wall';
 
 interface MercadoPagoStatus {
   isConnected: boolean;
@@ -42,64 +44,36 @@ interface MercadoPagoStatus {
   userId: string | null;
 }
 
-interface DepositSettings {
-  requireDeposit: boolean;
-  depositPercentage: number;
-  depositMode: 'mercadopago';
-}
-
 function PagosPageContent() {
+  const { hasFeature, planTier, isLoaded } = usePlanFeatures();
+  const canAccess = hasFeature('online_payments') || hasFeature('mercadopago');
+
   const api = useDashboardApi();
   const searchParams = useSearchParams();
   const router = useRouter();
   const { toast } = useToast();
   const oauthHandled = useRef(false);
   const twoFA = useTwoFactorModal();
+  const { clientLabelPlural } = useTenantConfig();
 
-  // State
+  // State (must be before any conditional return)
   const [loading, setLoading] = useState(true);
   const [mpStatus, setMpStatus] = useState<MercadoPagoStatus | null>(null);
-  const [depositSettings, setDepositSettings] = useState<DepositSettings>({
-    requireDeposit: false,
-    depositPercentage: 30,
-    depositMode: 'mercadopago',
-  });
-
-  // Dialog states
   const [showConnectDialog, setShowConnectDialog] = useState(false);
   const [showDisconnectDialog, setShowDisconnectDialog] = useState(false);
-
-  // Processing states
   const [processing, setProcessing] = useState(false);
-  const [savingSettings, setSavingSettings] = useState(false);
 
-  // Load initial data
+  // ALL hooks MUST be before any conditional return (React rules of hooks)
   useEffect(() => {
-    if (!api) return;
+    if (!isLoaded || !canAccess || !api) return;
 
     let cancelled = false;
 
     const loadData = async () => {
       try {
-        const [status, tenant] = await Promise.all([
-          api.getMercadoPagoStatus(),
-          api.getTenant(),
-        ]);
-
+        const status = await api.getMercadoPagoStatus();
         if (cancelled) return;
-
         setMpStatus(status);
-
-        // Parse tenant settings
-        const settings = typeof tenant.settings === 'string'
-          ? JSON.parse(tenant.settings)
-          : tenant.settings || {};
-
-        setDepositSettings({
-          requireDeposit: settings.requireDeposit ?? false,
-          depositPercentage: settings.depositPercentage ?? 30,
-          depositMode: settings.depositMode ?? 'mercadopago',
-        });
       } catch (err) {
         if (cancelled) return;
         console.error('Error loading data:', err);
@@ -115,7 +89,7 @@ function PagosPageContent() {
 
     loadData();
     return () => { cancelled = true; };
-  }, [api]);
+  }, [api, isLoaded, canAccess]);
 
   // Handle URL params (success/error from OAuth callback) - runs once
   useEffect(() => {
@@ -133,11 +107,10 @@ function PagosPageContent() {
         title: 'Mercado Pago conectado',
         description: 'Tu cuenta de Mercado Pago ha sido conectada exitosamente',
       });
-      // Reload status
       if (api) {
         api.getMercadoPagoStatus()
           .then(setMpStatus)
-          .catch((err) => console.error('Failed to reload MP status:', err));
+          .catch((err: any) => console.error('Failed to reload MP status:', err));
       }
     }
 
@@ -149,9 +122,50 @@ function PagosPageContent() {
       });
     }
 
-    // Clean URL using Next.js router
-    router.replace('/pagos', { scroll: false });
+    // Clean URL without triggering re-render
+    window.history.replaceState(null, '', '/pagos');
   }, [searchParams, api]);
+
+  // ── Loading state (avoid flash of UpgradeWall) ──
+  if (!isLoaded) {
+    return (
+      <div className="space-y-6">
+        <div className="h-32 rounded-xl bg-muted animate-pulse" />
+        <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
+          {[1,2,3,4].map(i => <div key={i} className="h-24 rounded-lg bg-muted animate-pulse" />)}
+        </div>
+      </div>
+    );
+  }
+
+  // Block free plans
+  if (planTier === 'free' || (!canAccess && planTier !== null)) {
+    return (
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="relative overflow-hidden rounded-xl sm:rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 p-4 sm:p-6 md:p-8 text-white">
+          <div className="absolute inset-0 bg-grid opacity-10" />
+          <div className="absolute -top-24 -right-24 w-48 sm:w-64 h-48 sm:h-64 bg-white/10 rounded-full blur-3xl" />
+          <div className="absolute -bottom-24 -left-24 w-48 sm:w-64 h-48 sm:h-64 bg-white/10 rounded-full blur-3xl" />
+          <div className="relative flex items-center gap-3">
+            <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center flex-shrink-0">
+              <CreditCard className="h-5 w-5 sm:h-6 sm:w-6" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-2xl sm:text-3xl font-bold">Pagos</h1>
+              <p className="text-white/80 text-sm sm:text-base">Configura Mercado Pago y depósitos</p>
+            </div>
+          </div>
+        </div>
+        <UpgradeWall
+          title="Pagos con Mercado Pago"
+          description="Conectá Mercado Pago para recibir pagos de señas y ventas directamente en tu cuenta. Disponible en planes superiores."
+          planName="Comercio"
+          previewLabels={['Conexión MP', 'Pagos recibidos', 'Facturación', 'Comisiones']}
+        />
+      </div>
+    );
+  }
 
   const handleConnectClick = () => {
     setShowConnectDialog(true);
@@ -161,7 +175,11 @@ function PagosPageContent() {
     if (!api) return;
     setShowConnectDialog(false);
     try {
-      const totpCode = await twoFA.requestVerification();
+      let totpCode: string | null = null;
+      // Only require TOTP when reconnecting (already connected)
+      if (mpStatus?.isConnected) {
+        totpCode = await twoFA.requestVerification();
+      }
       setProcessing(true);
       const url = await api.getMercadoPagoOAuthUrl(totpCode, false);
       window.location.href = url;
@@ -184,16 +202,14 @@ function PagosPageContent() {
     if (!api) return;
     setShowDisconnectDialog(false);
     try {
-      const totpCode = await twoFA.requestVerification();
       setProcessing(true);
-      await api.disconnectMercadoPago(totpCode);
+      await api.disconnectMercadoPago();
       setMpStatus((prev) => prev ? { ...prev, isConnected: false } : null);
       toast({
         title: 'Cuenta desconectada',
         description: 'Mercado Pago ha sido desconectado exitosamente',
       });
     } catch (err: any) {
-      if (err?.message === 'Verificación cancelada') return;
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -201,27 +217,6 @@ function PagosPageContent() {
       });
     } finally {
       setProcessing(false);
-    }
-  };
-
-  const handleSaveSettings = async (newSettings: Partial<DepositSettings>) => {
-    if (!api) return;
-    setSavingSettings(true);
-    try {
-      await api.updateDepositSettings(newSettings);
-      setDepositSettings((prev) => ({ ...prev, ...newSettings }));
-      toast({
-        title: 'Configuración guardada',
-        description: 'La configuración de depósitos ha sido actualizada',
-      });
-    } catch (err: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: err?.message || 'No se pudo guardar la configuración',
-      });
-    } finally {
-      setSavingSettings(false);
     }
   };
 
@@ -275,40 +270,6 @@ function PagosPageContent() {
         </div>
       </div>
 
-      {/* Setup Guide - Show when MP not connected */}
-      {!mpStatus?.isConnected && (
-        <Card className="border-0 shadow-soft overflow-hidden">
-          <div className="h-1 bg-gradient-to-r from-[#009EE3] to-[#00B1EA]" />
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-[#009EE3] to-[#00B1EA] flex items-center justify-center">
-                <CreditCard className="h-6 w-6 text-white" />
-              </div>
-              <div>
-                <CardTitle className="text-xl">Conecta Mercado Pago para recibir pagos</CardTitle>
-                <CardDescription>
-                  Vincula tu cuenta para cobrar señas automaticamente cuando tus clientes reserven
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="p-4 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700">
-              <p className="text-sm text-muted-foreground mb-4">
-                Los clientes podran pagar con tarjetas, efectivo, y mas medios de pago. El dinero va directo a tu cuenta de Mercado Pago.
-              </p>
-              <Button
-                className="bg-[#009EE3] hover:bg-[#008ACE]"
-                onClick={handleConnectClick}
-              >
-                <LinkIcon className="mr-2 h-4 w-4" />
-                Conectar Mercado Pago
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Mercado Pago Connection Card */}
       <Card className="border-0 shadow-soft overflow-hidden">
         <div className={`h-1 bg-gradient-to-r ${mpStatus?.isConnected ? 'from-emerald-500 to-teal-500' : 'from-slate-300 to-slate-400'}`} />
@@ -317,8 +278,13 @@ function PagosPageContent() {
             <div className="flex items-center gap-3">
               <div className="h-14 w-28 rounded-xl flex items-center justify-center overflow-hidden bg-white border border-slate-200 dark:border-neutral-700 p-2">
                 <img
-                  src="/mercadopago-logo.png"
+                  src="/mercadopago-logo.webp"
                   alt="Mercado Pago"
+                  width={224}
+                  height={58}
+                  loading="eager"
+                  decoding="async"
+                  fetchPriority="high"
                   className="h-full w-full object-contain"
                 />
               </div>
@@ -372,7 +338,7 @@ function PagosPageContent() {
               <div className="p-4 rounded-xl bg-slate-50 dark:bg-neutral-800">
                 <p className="text-sm text-muted-foreground">
                   Conecta tu cuenta de Mercado Pago para recibir pagos de señas automáticamente.
-                  Los clientes podrán pagar con tarjetas, efectivo, y más medios de pago.
+                  Los {clientLabelPlural.toLowerCase()} podrán pagar con tarjetas, efectivo, y más medios de pago.
                 </p>
               </div>
 
@@ -388,123 +354,237 @@ function PagosPageContent() {
         </CardContent>
       </Card>
 
-      {/* Deposit Settings Card */}
+      {/* OAuth Security & Trust Section */}
       <Card className="border-0 shadow-soft overflow-hidden">
-        <div className="h-1 bg-gradient-to-r from-violet-500 to-purple-500" />
-        <CardHeader>
+        <div className="h-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500" />
+        <CardHeader className="pb-2">
           <div className="flex items-center gap-3">
-            <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center">
-              <Settings className="h-6 w-6 text-white" />
+            <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center flex-shrink-0">
+              <ShieldCheck className="h-6 w-6 text-white" />
             </div>
             <div>
-              <CardTitle className="text-xl">Configuración de Señas</CardTitle>
+              <CardTitle className="text-xl">Conexión segura con Mercado Pago</CardTitle>
               <CardDescription>
-                Configura los requisitos de depósito para las reservas
+                Entendé cómo funciona y por qué es 100% seguro
               </CardDescription>
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Require Deposit Toggle */}
-          <div className="flex items-center justify-between p-4 rounded-xl bg-slate-50 dark:bg-neutral-800">
-            <div className="space-y-0.5">
-              <Label className="text-base">Requerir seña</Label>
-              <p className="text-sm text-muted-foreground">
-                Los clientes deberán pagar una seña al reservar
-              </p>
+        <CardContent className="space-y-5">
+          {/* How OAuth works */}
+          <div className="rounded-xl border border-emerald-200 dark:border-emerald-800/50 bg-gradient-to-br from-emerald-50/80 to-teal-50/50 dark:from-emerald-950/30 dark:to-teal-950/20 p-5">
+            <h3 className="font-semibold text-emerald-900 dark:text-emerald-200 flex items-center gap-2 mb-3">
+              <Lock className="h-4 w-4" />
+              ¿Cómo funciona la conexión?
+            </h3>
+            <p className="text-sm text-emerald-800 dark:text-emerald-300 leading-relaxed">
+              Usamos el sistema oficial de autorización de Mercado Pago llamado <strong>OAuth 2.0</strong>.
+              Es el mismo método que usan apps como Uber, Rappi o MercadoLibre cuando te piden &quot;Conectar con Mercado Pago&quot;.
+            </p>
+            <div className="mt-4 grid gap-3">
+              <div className="flex items-start gap-3 bg-white/60 dark:bg-white/5 rounded-lg p-3">
+                <div className="h-8 w-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="text-sm font-bold text-emerald-700 dark:text-emerald-300">1</span>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-emerald-900 dark:text-emerald-200">Te redirigimos a Mercado Pago</p>
+                  <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-0.5">Salís de TurnoLink y entrás directamente al sitio oficial de Mercado Pago (mercadopago.com.ar)</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 bg-white/60 dark:bg-white/5 rounded-lg p-3">
+                <div className="h-8 w-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="text-sm font-bold text-emerald-700 dark:text-emerald-300">2</span>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-emerald-900 dark:text-emerald-200">Vos autorizás desde Mercado Pago</p>
+                  <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-0.5">Iniciás sesión en tu cuenta de MP y aceptás los permisos. Nosotros nunca vemos tu contraseña.</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 bg-white/60 dark:bg-white/5 rounded-lg p-3">
+                <div className="h-8 w-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="text-sm font-bold text-emerald-700 dark:text-emerald-300">3</span>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-emerald-900 dark:text-emerald-200">Mercado Pago nos envía un token</p>
+                  <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-0.5">Un código temporal que solo permite recibir pagos en tu nombre. No permite extraer dinero ni acceder a tu saldo.</p>
+                </div>
+              </div>
             </div>
-            <Switch
-              checked={depositSettings.requireDeposit}
-              onCheckedChange={(checked) => handleSaveSettings({ requireDeposit: checked })}
-              disabled={savingSettings}
-            />
           </div>
 
-          {depositSettings.requireDeposit && (
-            <>
-              {/* Deposit Percentage */}
-              <div className="space-y-3">
-                <Label className="flex items-center gap-2">
-                  <Percent className="h-4 w-4" />
-                  Porcentaje de seña
-                </Label>
-                <div className="flex items-center gap-4">
-                  <Input
-                    type="number"
-                    min={1}
-                    max={100}
-                    value={depositSettings.depositPercentage}
-                    onChange={(e) => {
-                      const value = Math.min(100, Math.max(1, parseInt(e.target.value) || 1));
-                      setDepositSettings((prev) => ({ ...prev, depositPercentage: value }));
-                    }}
-                    className="w-24"
-    
-                  />
-                  <span className="text-muted-foreground">% del precio del servicio</span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleSaveSettings({ depositPercentage: depositSettings.depositPercentage })}
-    
-                  >
-                    Guardar
-                  </Button>
-                </div>
-              </div>
+          {/* What we CAN and CANNOT do */}
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="rounded-xl border border-emerald-200 dark:border-emerald-800/50 bg-emerald-50/50 dark:bg-emerald-950/20 p-4">
+              <h4 className="font-semibold text-emerald-800 dark:text-emerald-300 flex items-center gap-2 mb-3 text-sm">
+                <Eye className="h-4 w-4" />
+                Qué puede hacer TurnoLink
+              </h4>
+              <ul className="space-y-2">
+                {[
+                  'Crear cobros cuando tus clientes reservan',
+                  'Ver el estado de los pagos (aprobado, pendiente)',
+                  'Emitir reembolsos si cancelás un turno',
+                ].map((item) => (
+                  <li key={item} className="flex items-start gap-2 text-xs text-emerald-700 dark:text-emerald-400">
+                    <Check className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0 mt-0.5" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="rounded-xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20 p-4">
+              <h4 className="font-semibold text-red-800 dark:text-red-300 flex items-center gap-2 mb-3 text-sm">
+                <EyeOff className="h-4 w-4" />
+                Qué NO puede hacer TurnoLink
+              </h4>
+              <ul className="space-y-2">
+                {[
+                  'Retirar o transferir tu dinero',
+                  'Ver tu saldo o datos bancarios',
+                  'Acceder a tu contraseña de MP',
+                  'Hacer cobros sin que vos lo configures',
+                ].map((item) => (
+                  <li key={item} className="flex items-start gap-2 text-xs text-red-700 dark:text-red-400">
+                    <X className="h-3.5 w-3.5 text-red-500 flex-shrink-0 mt-0.5" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
 
-              {!mpStatus?.isConnected && (
-                <div className="flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400">
-                  <AlertCircle className="h-4 w-4" />
-                  Conecta Mercado Pago para poder cobrar señas a tus clientes
-                </div>
-              )}
+          {/* Revocable anytime */}
+          <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/50">
+            <RefreshCw className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+            <div className="text-sm">
+              <p className="font-medium text-amber-800 dark:text-amber-300">Podés desconectar cuando quieras</p>
+              <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
+                Desde esta misma página o desde tu cuenta de Mercado Pago en{' '}
+                <a
+                  href="https://www.mercadopago.com.ar/settings/security"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline font-medium hover:text-amber-900 dark:hover:text-amber-200 inline-flex items-center gap-0.5"
+                >
+                  Configuración &gt; Seguridad <ExternalLink className="h-3 w-3" />
+                </a>
+                {' '}podés revocar el acceso en cualquier momento.
+              </p>
+            </div>
+          </div>
 
-              {/* Info box */}
-              <div className="flex items-start gap-3 p-4 rounded-xl bg-blue-50 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800">
-                <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-                <div className="text-sm text-blue-700 dark:text-blue-300">
-                  <p className="font-medium">Ejemplo de cálculo</p>
-                  <p className="mt-1">
-                    Para un servicio de <strong>$10,000</strong> con seña del <strong>{depositSettings.depositPercentage}%</strong>,
-                    el cliente pagará <strong>${((10000 * depositSettings.depositPercentage) / 100).toLocaleString('es-AR')}</strong> al reservar.
-                  </p>
-                </div>
-              </div>
-            </>
-          )}
+          {/* Official MP links */}
+          <div className="rounded-xl border border-slate-200 dark:border-neutral-700 bg-slate-50/50 dark:bg-neutral-800/50 p-4">
+            <h4 className="font-semibold text-foreground flex items-center gap-2 mb-3 text-sm">
+              <HelpCircle className="h-4 w-4 text-muted-foreground" />
+              Más información en Mercado Pago
+            </h4>
+            <div className="grid sm:grid-cols-2 gap-2">
+              {[
+                { label: 'Centro de ayuda de Mercado Pago', url: 'https://www.mercadopago.com.ar/ayuda' },
+                { label: 'Seguridad en Mercado Pago', url: 'https://www.mercadopago.com.ar/seguridad' },
+                { label: 'Aplicaciones autorizadas', url: 'https://www.mercadopago.com.ar/settings/security' },
+                { label: 'Documentación para desarrolladores', url: 'https://www.mercadopago.com.ar/developers/es/docs/checkout-api/landing' },
+              ].map((link) => (
+                <a
+                  key={link.url}
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-neutral-700/50 group"
+                >
+                  <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-[#009EE3] group-hover:text-[#007BB6]" />
+                  <span className="underline-offset-2 group-hover:underline">{link.label}</span>
+                </a>
+              ))}
+            </div>
+          </div>
         </CardContent>
       </Card>
 
-      {/* Connect Dialog */}
+      {/* Connect Dialog — Security-focused UX */}
       <AlertDialog open={showConnectDialog} onOpenChange={setShowConnectDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-[#009EE3] to-[#00B1EA] flex items-center justify-center">
-                <LinkIcon className="h-4 w-4 text-white" />
+        <AlertDialogContent className="max-w-md p-0 overflow-hidden gap-0">
+          {/* Header with MP branding */}
+          <div className="bg-gradient-to-br from-[#009EE3] to-[#00689D] px-6 pt-6 pb-5 text-center relative overflow-hidden">
+            <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl" />
+            <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-white/10 rounded-full blur-2xl" />
+            <div className="relative">
+              <div className="h-14 w-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center mx-auto mb-3 shadow-lg ring-1 ring-white/30">
+                <ShieldCheck className="h-7 w-7 text-white" />
               </div>
-              Conectar Mercado Pago
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Serás redirigido a Mercado Pago para autorizar la conexión con tu cuenta.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="py-2">
-            <p className="text-sm text-muted-foreground">
-              Tu cuenta se conectara en modo produccion para recibir pagos reales de tus clientes.
-            </p>
+              <AlertDialogTitle className="text-white text-lg font-bold">
+                Conexión segura
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-white/80 text-sm mt-1">
+                Vas a ser redirigido al sitio oficial de Mercado Pago
+              </AlertDialogDescription>
+            </div>
           </div>
-          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
-            <AlertDialogCancel className="w-full sm:w-auto mt-0">Cancelar</AlertDialogCancel>
+
+          {/* Security guarantees */}
+          <div className="px-6 py-5 space-y-3">
+            {[
+              {
+                icon: Lock,
+                title: 'Tu contraseña es privada',
+                desc: 'Nunca vemos ni almacenamos tus credenciales de Mercado Pago',
+                color: '#10b981',
+              },
+              {
+                icon: ShieldCheck,
+                title: 'Solo recibir pagos',
+                desc: 'El acceso autorizado no permite extraer dinero ni ver tu saldo',
+                color: '#3b82f6',
+              },
+              {
+                icon: RefreshCw,
+                title: 'Revocable en cualquier momento',
+                desc: 'Desconectá desde aquí o desde tu cuenta de Mercado Pago',
+                color: '#8b5cf6',
+              },
+            ].map((item) => {
+              const Icon = item.icon;
+              return (
+                <div key={item.title} className="flex items-start gap-3">
+                  <div
+                    className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
+                    style={{ backgroundColor: `${item.color}12` }}
+                  >
+                    <Icon className="h-4 w-4" style={{ color: item.color }} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">{item.title}</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">{item.desc}</p>
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* URL verification tip */}
+            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-blue-50 dark:bg-blue-950/20 border border-blue-200/60 dark:border-blue-800/40 mt-1">
+              <ShieldCheck className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+              <p className="text-xs text-blue-700 dark:text-blue-300 leading-relaxed">
+                <strong>Verificá la URL</strong> antes de ingresar tus datos: debe decir{' '}
+                <span className="font-mono font-semibold">auth.mercadopago.com</span> o{' '}
+                <span className="font-mono font-semibold">mercadopago.com.ar</span>
+              </p>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="px-6 pb-6 flex flex-col sm:flex-row gap-2.5">
+            <AlertDialogCancel className="w-full sm:w-auto mt-0 order-2 sm:order-1">
+              Cancelar
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmConnect}
-              className="w-full sm:w-auto bg-gradient-to-r from-[#009EE3] to-[#00B1EA]"
+              className="w-full sm:flex-1 order-1 sm:order-2 h-11 bg-gradient-to-r from-[#009EE3] to-[#00B1EA] hover:from-[#008ACE] hover:to-[#009DD5] shadow-md hover:shadow-lg transition-all font-semibold"
             >
               <ExternalLink className="mr-2 h-4 w-4" />
-              Continuar
+              Continuar a Mercado Pago
             </AlertDialogAction>
-          </AlertDialogFooter>
+          </div>
         </AlertDialogContent>
       </AlertDialog>
 

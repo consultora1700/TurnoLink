@@ -37,6 +37,7 @@ export class BookingCleanupService {
         service: true,
         customer: true,
         employee: true,
+        product: true,
       },
     });
 

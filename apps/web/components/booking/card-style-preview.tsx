@@ -50,6 +50,11 @@ const CARD_FEATURES: Record<HeroStyleName, { label: string; color: string }[]> =
     { label: 'Botón filled', color: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300' },
     { label: 'Barra lateral', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' },
   ],
+  minimalist: [
+    { label: 'Tipo lista', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' },
+    { label: 'Sin sombra', color: 'bg-slate-100 text-slate-600 dark:bg-slate-800/50 dark:text-slate-300' },
+    { label: 'CTA texto', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' },
+  ],
 };
 
 function buildPreviewVars(style: HeroStyleName): React.CSSProperties {
@@ -92,7 +97,12 @@ export function CardStylePreview({ style, selected, onClick, label, description 
         style={previewVars}
       >
         {/* Subtle background tint */}
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-neutral-950 dark:to-neutral-900" />
+        <div className={cn(
+          'absolute inset-0',
+          style === 'minimalist'
+            ? 'bg-[#F3F4F6] dark:bg-neutral-950'
+            : 'bg-gradient-to-br from-slate-50 to-slate-100 dark:from-neutral-950 dark:to-neutral-900'
+        )} />
 
         {/* The mini card itself */}
         {style === 'corporate' ? (
@@ -107,6 +117,8 @@ export function CardStylePreview({ style, selected, onClick, label, description 
           <EnergeticCardMock cfg={cfg} colors={colors} />
         ) : style === 'warm' ? (
           <WarmCardMock cfg={cfg} colors={colors} />
+        ) : style === 'minimalist' ? (
+          <MinimalistCardMock cfg={cfg} colors={colors} />
         ) : (
           <ClassicCardMock cfg={cfg} colors={colors} />
         )}
@@ -351,6 +363,47 @@ function EnergeticCardMock({ cfg, colors }: { cfg: any; colors: any }) {
         <div className="h-5 w-full rounded-lg flex items-center justify-center" style={{ background: `linear-gradient(to right, ${colors.primary}, ${colors.secondary})` }}>
           <span className="text-[7px] font-bold text-white tracking-wide">RESERVAR →</span>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Minimalist card mockup ──────────────────────────────────────────────────
+// Calendly-inspired: white card on off-white, round avatars, filled CTA
+function MinimalistCardMock({ cfg, colors }: { cfg: any; colors: any }) {
+  return (
+    <div className="relative w-[80%] max-w-[185px] bg-white dark:bg-neutral-900 rounded-lg border border-slate-200/80 dark:border-neutral-700 shadow-[0_1px_2px_rgba(0,0,0,0.04)] overflow-hidden">
+      {/* Row 1 */}
+      <div className="border-b border-slate-100 dark:border-neutral-700/50 py-1.5 px-2 flex items-center gap-1.5">
+        <div className="w-6 h-6 rounded-full flex-shrink-0 bg-[#F3F4F6] dark:bg-neutral-700 flex items-center justify-center ring-[0.5px] ring-slate-200 dark:ring-neutral-600">
+          <span className="text-[7px] font-medium text-slate-400">C</span>
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="h-1.5 w-3/4 bg-slate-700/60 dark:bg-white/70 rounded-full" />
+          <div className="flex items-center gap-0.5 mt-0.5">
+            <div className="w-1 h-1 rounded-full bg-slate-300/60 dark:bg-neutral-600/60" />
+            <span className="text-[5px] text-slate-400">30 min</span>
+            <div className="w-0.5 h-0.5 rounded-full bg-slate-300 dark:bg-neutral-600" />
+            <span className="text-[5px] text-slate-400">$2.500</span>
+          </div>
+        </div>
+        <span className="text-[6px] font-semibold flex-shrink-0" style={{ color: colors.primary }}>Reservar</span>
+      </div>
+      {/* Row 2 (dimmed) */}
+      <div className="py-1.5 px-2 flex items-center gap-1.5 opacity-50">
+        <div className="w-6 h-6 rounded-full flex-shrink-0 bg-[#F3F4F6] dark:bg-neutral-700 flex items-center justify-center ring-[0.5px] ring-slate-200 dark:ring-neutral-600">
+          <span className="text-[7px] font-medium text-slate-400">S</span>
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="h-1.5 w-2/3 bg-slate-700/60 dark:bg-white/70 rounded-full" />
+          <div className="flex items-center gap-0.5 mt-0.5">
+            <div className="w-1 h-1 rounded-full bg-slate-300/60 dark:bg-neutral-600/60" />
+            <span className="text-[5px] text-slate-400">45 min</span>
+            <div className="w-0.5 h-0.5 rounded-full bg-slate-300 dark:bg-neutral-600" />
+            <span className="text-[5px] text-slate-400">$3.000</span>
+          </div>
+        </div>
+        <span className="text-[6px] font-semibold flex-shrink-0" style={{ color: colors.primary }}>Reservar</span>
       </div>
     </div>
   );

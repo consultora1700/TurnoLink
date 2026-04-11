@@ -109,10 +109,6 @@ export class AdminKeyGuard implements CanActivate {
       return authHeader.substring(9);
     }
 
-    // Fallback to query parameter (less secure, but useful for redirects)
-    const queryKey = request.query['admin_key'] as string;
-    if (queryKey) return queryKey;
-
     return null;
   }
 
@@ -127,16 +123,10 @@ export class AdminKeyGuard implements CanActivate {
 
   private timingSafeCompare(a: string, b: string): boolean {
     try {
-      const bufA = Buffer.from(a);
-      const bufB = Buffer.from(b);
-
-      if (bufA.length !== bufB.length) {
-        // Still do comparison to maintain constant time
-        crypto.timingSafeEqual(bufA, bufA);
-        return false;
-      }
-
-      return crypto.timingSafeEqual(bufA, bufB);
+      // Hash both values to ensure equal length, preventing timing leaks on key length
+      const hashA = crypto.createHash('sha256').update(a).digest();
+      const hashB = crypto.createHash('sha256').update(b).digest();
+      return crypto.timingSafeEqual(hashA, hashB);
     } catch {
       return false;
     }

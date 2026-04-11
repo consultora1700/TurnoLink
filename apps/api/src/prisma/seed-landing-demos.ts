@@ -973,11 +973,11 @@ async function main() {
   console.log('  4. Barber Club: admin@barberclub.com');
   console.log('  5. Albergue Luxury: admin@albergueluxury.com');
   console.log('\nPublic booking pages:');
-  console.log('  https://turnolink.mubitt.com/demo-estetica');
-  console.log('  https://turnolink.mubitt.com/consultorio-medico');
-  console.log('  https://turnolink.mubitt.com/hotel-costa-serena');
-  console.log('  https://turnolink.mubitt.com/barber-club');
-  console.log('  https://turnolink.mubitt.com/albergue-luxury');
+  console.log('  https://turnolink.com.ar/demo-estetica');
+  console.log('  https://turnolink.com.ar/consultorio-medico');
+  console.log('  https://turnolink.com.ar/hotel-costa-serena');
+  console.log('  https://turnolink.com.ar/barber-club');
+  console.log('  https://turnolink.com.ar/albergue-luxury');
 }
 
 main()

@@ -27,8 +27,10 @@ import {
   PaymentFilterDto,
   UserFilterDto,
 } from './dto';
+import { Public } from '../../common/decorators/public.decorator';
 
 @Controller('admin')
+@Public()
 @UseGuards(AdminKeyGuard)
 @UseInterceptors(AuditLogInterceptor)
 export class AdminController {
@@ -220,5 +222,12 @@ export class AdminController {
   @Get('security/metrics')
   async getSecurityMetrics() {
     return this.adminService.getSecurityMetrics();
+  }
+
+  // ==================== MAP ====================
+
+  @Get('map/entities')
+  async getMapEntities(@Query('type') type?: string) {
+    return this.adminService.getMapEntities(type);
   }
 }

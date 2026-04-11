@@ -8,7 +8,7 @@ export interface UseAvailabilityReturn {
   isLoading: boolean;
   isError: boolean;
   error: string | null;
-  fetchAvailability: (date: string, serviceId?: string) => Promise<void>;
+  fetchAvailability: (date: string, serviceId?: string, employeeId?: string) => Promise<void>;
   reset: () => void;
 }
 
@@ -24,13 +24,13 @@ export function useAvailability(slug: string): UseAvailabilityReturn {
   const lastFetchRef = useRef<string>('');
 
   const fetchAvailability = useCallback(
-    async (date: string, serviceId?: string) => {
+    async (date: string, serviceId?: string, employeeId?: string) => {
       if (!slug || !date) {
         return;
       }
 
       // Create cache key to avoid duplicate fetches
-      const cacheKey = `${date}-${serviceId || 'all'}`;
+      const cacheKey = `${date}-${serviceId || 'all'}-${employeeId || 'all'}`;
       if (lastFetchRef.current === cacheKey && slots.length > 0) {
         return;
       }
@@ -46,7 +46,7 @@ export function useAvailability(slug: string): UseAvailabilityReturn {
       lastFetchRef.current = cacheKey;
 
       try {
-        const data = await publicApi.getAvailability(slug, date, serviceId);
+        const data = await publicApi.getAvailability(slug, date, serviceId, employeeId);
         setSlots(data);
       } catch (err) {
         // Ignore abort errors

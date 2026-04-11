@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { DM_Sans } from 'next/font/google';
-import { Navbar } from '../landing-v2/_components/navbar';
-import { Footer } from '../landing-v2/_components/footer';
+import { Navbar } from '../_landing/_components/navbar';
+import { Footer } from '../_landing/_components/footer';
 
 const dmSans = DM_Sans({
   subsets: ['latin'],
@@ -14,6 +14,9 @@ export const metadata: Metadata = {
   title: 'Términos y Condiciones — TurnoLink',
   description:
     'Términos y condiciones de uso de la plataforma TurnoLink. Condiciones de servicio, suscripciones, pagos, responsabilidades y derechos.',
+  alternates: {
+    canonical: 'https://turnolink.com.ar/terminos',
+  },
 };
 
 export default function TerminosPage() {
@@ -44,7 +47,7 @@ export default function TerminosPage() {
             <span className="text-white/50">Condiciones</span>
           </h1>
           <p className="mt-4 text-white/30 text-sm">
-            &Uacute;ltima actualizaci&oacute;n: 25 de febrero de 2026
+            &Uacute;ltima actualizaci&oacute;n: 22 de marzo de 2026
           </p>
         </div>
       </section>
@@ -69,13 +72,18 @@ export default function TerminosPage() {
             <Section num="02" title="Definiciones">
               <P>A los efectos de estos T&eacute;rminos, se entender&aacute; por:</P>
               <UL>
-                <LI><B>Plataforma:</B> El software como servicio (SaaS) accesible en turnolink.mubitt.com y sus subdominios, incluyendo aplicaciones web y m&oacute;viles presentes y futuras.</LI>
+                <LI><B>Plataforma:</B> El software como servicio (SaaS) accesible en turnolink.com.ar y sus subdominios, incluyendo aplicaciones web y m&oacute;viles presentes y futuras.</LI>
                 <LI><B>Usuario:</B> Toda persona humana o jur&iacute;dica que crea una cuenta, ya sea como titular de un negocio (&ldquo;Usuario Negocio&rdquo;), profesional independiente (&ldquo;Usuario Profesional&rdquo;) o buscador de talento (&ldquo;Usuario Buscador&rdquo;).</LI>
                 <LI><B>Cliente Final:</B> Toda persona que realiza una reserva, turno o compra a trav&eacute;s de la p&aacute;gina de reservas de un Usuario Negocio, sin necesidad de crear cuenta en TurnoLink.</LI>
                 <LI><B>Cuenta:</B> El registro &uacute;nico e intransferible que identifica a cada Usuario dentro de la Plataforma.</LI>
                 <LI><B>Suscripci&oacute;n:</B> El plan de pago contratado por el Usuario para acceder a las funcionalidades de la Plataforma.</LI>
                 <LI><B>Contenido del Usuario:</B> Toda informaci&oacute;n, dato, imagen, texto, rese&ntilde;a u otro material cargado o generado por el Usuario o sus Clientes Finales.</LI>
                 <LI><B>Se&ntilde;a:</B> Pago parcial o total que el Cliente Final realiza al reservar, procesado a trav&eacute;s de Mercado Pago.</LI>
+                <LI><B>Modo Cat&aacute;logo:</B> Funcionalidad que permite al Usuario publicar productos con fotos, precios y descripci&oacute;n, donde el Cliente Final consulta mediante WhatsApp u otro canal externo a la Plataforma.</LI>
+                <LI><B>Modo Tienda (E-commerce):</B> Funcionalidad que permite al Usuario operar una tienda online con carrito de compras, gesti&oacute;n de stock, variantes de producto, cupones de descuento y checkout integrado con Mercado Pago.</LI>
+                <LI><B>Producto:</B> Todo bien mueble, servicio, propiedad u oferta publicada por el Usuario a trav&eacute;s del Modo Cat&aacute;logo o Modo Tienda.</LI>
+                <LI><B>Orden / Pedido:</B> El registro de una transacci&oacute;n comercial entre el Usuario (vendedor) y el Cliente Final (comprador), generada a trav&eacute;s del Modo Tienda.</LI>
+                <LI><B>Comprador:</B> El Cliente Final que realiza una consulta, pedido o compra de un Producto publicado por un Usuario.</LI>
               </UL>
             </Section>
 
@@ -84,7 +92,7 @@ export default function TerminosPage() {
                 TurnoLink es una plataforma de gesti&oacute;n integral que permite a negocios y profesionales independientes administrar reservas, turnos, clientes, servicios, pagos y operaciones. La Plataforma incluye, sin limitaci&oacute;n:
               </P>
               <UL>
-                <LI>Sistema de reservas y turnos online con disponibilidad en tiempo real.</LI>
+                <LI>Sistema de gestión con reservas y turnos online con disponibilidad en tiempo real.</LI>
                 <LI>P&aacute;gina de reservas personalizada para compartir en redes sociales y sitios web.</LI>
                 <LI>Gesti&oacute;n de servicios, profesionales/empleados, horarios y sucursales.</LI>
                 <LI>Cobro de se&ntilde;as y pagos integrados a trav&eacute;s de Mercado Pago.</LI>
@@ -92,9 +100,11 @@ export default function TerminosPage() {
                 <LI>Recordatorios autom&aacute;ticos por email.</LI>
                 <LI>Dashboard con m&eacute;tricas de ocupaci&oacute;n y facturaci&oacute;n.</LI>
                 <LI>Sistema de rese&ntilde;as, cat&aacute;logo de productos y red de perfiles profesionales.</LI>
+                <LI><B>Modo Cat&aacute;logo:</B> Publicaci&oacute;n de productos con fotos, precios, variantes, categor&iacute;as y bot&oacute;n de consulta por WhatsApp.</LI>
+                <LI><B>Modo Tienda (E-commerce):</B> Tienda online completa con carrito de compras, gesti&oacute;n de stock por variante, cupones de descuento, checkout con Mercado Pago, registro de &oacute;rdenes y notificaciones autom&aacute;ticas al comprador y al vendedor.</LI>
               </UL>
               <Highlight>
-                TurnoLink act&uacute;a exclusivamente como proveedor de tecnolog&iacute;a. No es parte en las relaciones comerciales, contractuales, laborales o de servicio entre los Usuarios y sus Clientes Finales. No presta servicios de salud, belleza, hospedaje, deportes ni ning&uacute;n otro servicio profesional. No garantiza la calidad, idoneidad, legalidad o cumplimiento de los servicios ofrecidos por los Usuarios.
+                TurnoLink act&uacute;a exclusivamente como proveedor de tecnolog&iacute;a. No es parte en las relaciones comerciales, contractuales, laborales o de servicio entre los Usuarios y sus Clientes Finales. No presta servicios de salud, belleza, hospedaje, deportes ni ning&uacute;n otro servicio profesional. No fabrica, almacena, distribuye, env&iacute;a ni comercializa producto alguno. No garantiza la calidad, idoneidad, legalidad, seguridad o cumplimiento de los servicios o productos ofrecidos por los Usuarios.
               </Highlight>
             </Section>
 
@@ -105,7 +115,7 @@ export default function TerminosPage() {
               </P>
               <H3>4.2. Responsabilidad sobre la cuenta</H3>
               <P>
-                El Usuario es el &uacute;nico responsable de mantener la confidencialidad de sus credenciales de acceso y de toda actividad que ocurra bajo su cuenta. Debe notificar de inmediato cualquier uso no autorizado a soporte@turnolink.mubitt.com.
+                El Usuario es el &uacute;nico responsable de mantener la confidencialidad de sus credenciales de acceso y de toda actividad que ocurra bajo su cuenta. Debe notificar de inmediato cualquier uso no autorizado a soporte@turnolink.com.ar.
               </P>
               <H3>4.3. Verificaci&oacute;n y veracidad</H3>
               <P>
@@ -151,6 +161,72 @@ export default function TerminosPage() {
               <H3>6.3. Responsabilidad tributaria</H3>
               <P>
                 El Usuario es el &uacute;nico responsable del cumplimiento de sus obligaciones tributarias y fiscales, incluyendo emisi&oacute;n de facturas, inscripci&oacute;n ante AFIP, y pago de impuestos nacionales, provinciales y municipales. TurnoLink no brinda asesoramiento tributario.
+              </P>
+            </Section>
+
+            <Section num="06B" title="Cat&aacute;logo y E-commerce (Modo Cat&aacute;logo y Modo Tienda)">
+              <H3>6B.1. Naturaleza del servicio</H3>
+              <Highlight>
+                TurnoLink provee &uacute;nicamente la <B>infraestructura tecnol&oacute;gica</B> para que los Usuarios publiquen productos y, en su caso, procesen ventas online. TurnoLink <B>no es parte</B> en ninguna transacci&oacute;n de compraventa celebrada entre el Usuario (vendedor) y el Cliente Final (comprador). TurnoLink <B>no compra, no vende, no almacena, no env&iacute;a, no distribuye ni comercializa</B> producto alguno. No act&uacute;a como consignatario, intermediario comercial, corredor, agente, distribuidor ni en ning&uacute;n otro car&aacute;cter que implique participaci&oacute;n directa o indirecta en la operaci&oacute;n comercial.
+              </Highlight>
+
+              <H3>6B.2. Responsabilidad exclusiva del Usuario vendedor</H3>
+              <P>
+                El Usuario que publica productos en Modo Cat&aacute;logo o Modo Tienda es el <B>&uacute;nico y exclusivo responsable</B> de:
+              </P>
+              <UL>
+                <LI>La <B>existencia, calidad, legalidad, seguridad e idoneidad</B> de los productos ofrecidos, incluyendo su adecuaci&oacute;n a las normas de salubridad, etiquetado, habilitaciones y certificaciones exigidas por la legislaci&oacute;n vigente (Ley 24.240 de Defensa del Consumidor, Ley 22.802 de Lealtad Comercial, C&oacute;digo Alimentario Argentino, disposiciones de ANMAT, y toda otra normativa aplicable).</LI>
+                <LI>La <B>veracidad y exactitud</B> de las descripciones, fotograf&iacute;as, precios, stock, variantes y toda informaci&oacute;n publicada sobre cada producto.</LI>
+                <LI>El <B>cumplimiento de la relaci&oacute;n de consumo</B> con el comprador: entrega del producto en tiempo y forma, garant&iacute;a legal (art. 11 Ley 24.240), derecho de arrepentimiento en ventas a distancia (art. 34 Ley 24.240), cambios, devoluciones y toda obligaci&oacute;n derivada de la venta.</LI>
+                <LI>La <B>emisi&oacute;n de comprobantes fiscales</B> (facturas, tickets) conforme a la normativa de AFIP y la legislaci&oacute;n tributaria nacional, provincial y municipal.</LI>
+                <LI>La <B>log&iacute;stica, env&iacute;o, empaque y entrega</B> de los productos vendidos. TurnoLink no gestiona, coordina ni garantiza despachos ni entregas.</LI>
+                <LI>El <B>cumplimiento de normativas sectoriales</B> aplicables seg&uacute;n el tipo de producto: alimentos (CAA, ANMAT), cosm&eacute;ticos (ANMAT), electr&oacute;nica (ENACOM), inmuebles (CUCICBA), medicamentos, productos regulados, y cualquier otra regulaci&oacute;n espec&iacute;fica.</LI>
+                <LI>La <B>obtenci&oacute;n de habilitaciones, permisos y licencias</B> necesarias para la comercializaci&oacute;n de los productos ofrecidos.</LI>
+                <LI>La <B>resoluci&oacute;n de todo reclamo, queja, devoluci&oacute;n o disputa</B> con el comprador, incluyendo mediaci&oacute;n ante COPREC o el organismo que corresponda.</LI>
+              </UL>
+
+              <H3>6B.3. Productos prohibidos</H3>
+              <P>
+                Est&aacute; terminantemente prohibido utilizar la Plataforma para publicar, ofrecer o comercializar:
+              </P>
+              <UL>
+                <LI>Productos il&iacute;citos, robados, falsificados, adulterados o de procedencia il&iacute;cita.</LI>
+                <LI>Sustancias controladas, estupefacientes, psicotr&oacute;picos o precursores qu&iacute;micos.</LI>
+                <LI>Armas de fuego, municiones, explosivos o materiales peligrosos.</LI>
+                <LI>Medicamentos sin autorizaci&oacute;n de ANMAT, productos m&eacute;dicos no registrados o suplementos sin habilitaci&oacute;n.</LI>
+                <LI>Productos que infrinjan derechos de propiedad intelectual, marcas o patentes de terceros.</LI>
+                <LI>Tabaco, cigarrillos electr&oacute;nicos, alcohol (sin las habilitaciones correspondientes).</LI>
+                <LI>Contenido pornogr&aacute;fico, discriminatorio o que vulnere la dignidad humana.</LI>
+                <LI>Animales vivos, &oacute;rganos, tejidos u otras partes del cuerpo humano.</LI>
+                <LI>Cualquier bien o servicio cuya comercializaci&oacute;n est&eacute; prohibida o restringida por la legislaci&oacute;n argentina.</LI>
+              </UL>
+              <P>
+                TurnoLink se reserva el derecho de eliminar publicaciones y suspender o cancelar cuentas que infrinjan esta cl&aacute;usula, sin previo aviso y sin que ello genere derecho a indemnizaci&oacute;n.
+              </P>
+
+              <H3>6B.4. Exclusi&oacute;n total de responsabilidad sobre transacciones</H3>
+              <Highlight>
+                TurnoLink <B>no garantiza, avala, certifica ni se responsabiliza</B> por: (i) la calidad, seguridad, legalidad o idoneidad de los productos publicados; (ii) la veracidad de las descripciones, fotos o informaci&oacute;n proporcionada por el vendedor; (iii) la capacidad del vendedor para completar la venta y entregar el producto; (iv) la satisfacci&oacute;n del comprador; (v) la legalidad de la posesi&oacute;n o comercializaci&oacute;n de los productos; (vi) el cumplimiento de garant&iacute;as legales o contractuales; (vii) da&ntilde;os directos, indirectos, incidentales o consecuentes derivados del uso de los productos adquiridos a trav&eacute;s de la Plataforma.
+              </Highlight>
+
+              <H3>6B.5. Pagos en Modo Tienda</H3>
+              <P>
+                Los pagos en Modo Tienda se procesan &iacute;ntegramente a trav&eacute;s de <B>Mercado Pago</B>. El dinero se deposita directamente en la cuenta de Mercado Pago del Usuario vendedor. TurnoLink <B>no retiene, custodia, intermedia ni tiene acceso</B> a los fondos de las transacciones. Las comisiones de procesamiento son las establecidas por Mercado Pago. TurnoLink no cobra comisi&oacute;n adicional sobre las ventas.
+              </P>
+
+              <H3>6B.6. Cupones y promociones</H3>
+              <P>
+                Los cupones de descuento, ofertas y promociones son creados y gestionados exclusivamente por el Usuario vendedor. TurnoLink no financia, garantiza ni asume responsabilidad por descuentos ofrecidos. El Usuario debe cumplir con la Ley 22.802 de Lealtad Comercial en cuanto a publicidad de precios y ofertas.
+              </P>
+
+              <H3>6B.7. Relaci&oacute;n de consumo</H3>
+              <P>
+                La <B>relaci&oacute;n de consumo</B> en los t&eacute;rminos de la Ley 24.240 se establece exclusivamente entre el Usuario vendedor y el comprador. TurnoLink no es proveedor en los t&eacute;rminos del art&iacute;culo 2 de dicha ley respecto de los productos comercializados por los Usuarios. El Usuario vendedor asume todas las obligaciones legales como proveedor: informaci&oacute;n veraz (art. 4), condiciones de la oferta (art. 7), garant&iacute;a legal (art. 11), derecho de revocaci&oacute;n en ventas a distancia (art. 34) y servicio postventa (art. 12).
+              </P>
+
+              <H3>6B.8. Indemnidad en materia comercial</H3>
+              <P>
+                El Usuario vendedor se compromete a mantener indemne a TurnoLink, sus directores, empleados, representantes y afiliados frente a cualquier reclamo, demanda, da&ntilde;o, multa, sanci&oacute;n, gasto (incluidos honorarios profesionales) o p&eacute;rdida que surja de o est&eacute; relacionado con: (i) los productos publicados o vendidos por el Usuario; (ii) el incumplimiento de obligaciones legales del Usuario como vendedor; (iii) reclamos de compradores, organismos de defensa del consumidor (COPREC, autoridades provinciales), AFIP, ANMAT u otras autoridades; (iv) infracciones a derechos de propiedad intelectual de terceros; (v) cualquier da&ntilde;o causado por los productos a compradores o terceros.
               </P>
             </Section>
 
@@ -286,7 +362,7 @@ export default function TerminosPage() {
 
             <Section num="17" title="Resoluci&oacute;n de Disputas">
               <P>
-                Antes de iniciar acci&oacute;n judicial, las partes acuerdan un intento de soluci&oacute;n amigable mediante comunicaci&oacute;n a soporte@turnolink.mubitt.com, con plazo de treinta (30) d&iacute;as h&aacute;biles. El consumidor podr&aacute; recurrir al Sistema Nacional de Arbitraje de Consumo.
+                Antes de iniciar acci&oacute;n judicial, las partes acuerdan un intento de soluci&oacute;n amigable mediante comunicaci&oacute;n a soporte@turnolink.com.ar, con plazo de treinta (30) d&iacute;as h&aacute;biles. El consumidor podr&aacute; recurrir al Sistema Nacional de Arbitraje de Consumo.
               </P>
             </Section>
 
@@ -304,7 +380,7 @@ export default function TerminosPage() {
                 <MiniCard title="Cesi&oacute;n" text="El Usuario no puede ceder su cuenta sin autorizaci&oacute;n escrita. TurnoLink puede ceder libremente en caso de fusi&oacute;n o adquisici&oacute;n." />
               </div>
               <P>
-                Comunicaciones: todas las notificaciones se env&iacute;an al email registrado. Contacto: <B>soporte@turnolink.mubitt.com</B>. Idioma prevaleciente: espa&ntilde;ol.
+                Comunicaciones: todas las notificaciones se env&iacute;an al email registrado. Contacto: <B>soporte@turnolink.com.ar</B>. Idioma prevaleciente: espa&ntilde;ol.
               </P>
             </Section>
 
@@ -314,7 +390,7 @@ export default function TerminosPage() {
                 Al utilizar TurnoLink, usted confirma que ha le&iacute;do y aceptado estos T&eacute;rminos y Condiciones en su totalidad.
               </p>
               <p className="text-white/30 text-sm mt-3">
-                Contacto: <span className="text-white/50">soporte@turnolink.mubitt.com</span>
+                Contacto: <span className="text-white/50">soporte@turnolink.com.ar</span>
               </p>
             </div>
           </div>

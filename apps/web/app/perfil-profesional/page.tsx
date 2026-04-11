@@ -44,7 +44,7 @@ import {
 import { cn } from '@/lib/utils';
 import { publicProfileApi, TalentProposal } from '@/lib/api';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api-turnolink.mubitt.com';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.turnolink.com.ar';
 
 // ============ Types ============
 

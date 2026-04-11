@@ -38,6 +38,7 @@ const pageTitles: Record<string, string> = {
   '/admin/seguridad': 'Seguridad',
   '/admin/reportes': 'Reportes',
   '/admin/configuracion': 'Configuracion',
+  '/admin/landings': 'Control de Landings',
 };
 
 interface AdminHeaderProps {

@@ -1247,4 +1247,106 @@ export class AdminService {
       orderBy: { order: 'asc' },
     });
   }
+
+  // ==================== MAP ====================
+
+  async getMapEntities(type?: string) {
+    const includeBusinesses = !type || type === 'all' || type === 'business';
+    const includeProfessionals = !type || type === 'all' || type === 'professional';
+
+    let businesses: any[] = [];
+    let professionals: any[] = [];
+
+    if (includeBusinesses) {
+      const tenants = await this.prisma.tenant.findMany({
+        where: {
+          latitude: { not: null },
+          longitude: { not: null },
+        },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          city: true,
+          address: true,
+          status: true,
+          logo: true,
+          type: true,
+          latitude: true,
+          longitude: true,
+          subscription: {
+            select: {
+              status: true,
+              plan: { select: { name: true } },
+            },
+          },
+        },
+      });
+
+      businesses = tenants.map((t) => ({
+        id: t.id,
+        name: t.name,
+        slug: t.slug,
+        city: t.city,
+        address: t.address,
+        status: t.status,
+        logo: t.logo,
+        type: t.type,
+        lat: Number(t.latitude),
+        lng: Number(t.longitude),
+        plan: t.subscription?.plan?.name || null,
+        subscriptionStatus: t.subscription?.status || null,
+      }));
+    }
+
+    if (includeProfessionals) {
+      const profiles = await this.prisma.professionalProfile.findMany({
+        where: {
+          latitude: { not: null },
+          longitude: { not: null },
+        },
+        select: {
+          id: true,
+          name: true,
+          image: true,
+          specialty: true,
+          category: true,
+          openToWork: true,
+          profileVisible: true,
+          preferredZones: true,
+          latitude: true,
+          longitude: true,
+        },
+      });
+
+      professionals = profiles.map((p) => {
+        let zones: string[] = [];
+        try {
+          zones = JSON.parse(p.preferredZones);
+        } catch {}
+        return {
+          id: p.id,
+          name: p.name || 'Sin nombre',
+          specialty: p.specialty,
+          category: p.category,
+          zone: zones[0] || null,
+          openToWork: p.openToWork,
+          profileVisible: p.profileVisible,
+          lat: Number(p.latitude),
+          lng: Number(p.longitude),
+          image: p.image || null,
+        };
+      });
+    }
+
+    return {
+      businesses,
+      professionals,
+      counts: {
+        businesses: businesses.length,
+        professionals: professionals.length,
+        total: businesses.length + professionals.length,
+      },
+    };
+  }
 }

@@ -32,7 +32,23 @@ import {
   Clock,
   Calendar,
   Timer,
+  Store,
+  Users,
+  ClipboardList,
+  Zap,
+  Shield,
+  Heart,
+  MessageCircle,
+  X,
+  Youtube,
+  Sparkles,
+  ShoppingCart,
+  BookOpen,
+  Truck,
+  Navigation,
+  RotateCcw,
 } from 'lucide-react';
+import { getAmenitiesCatalog } from '@/lib/amenities-catalog';
 import { RestartTourButton } from '@/components/onboarding/onboarding-tour';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -41,14 +57,22 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { createApiClient } from '@/lib/api';
+import { handleApiError } from '@/lib/notifications';
 import { useToast } from '@/hooks/use-toast';
 import { ImageUpload } from '@/components/ui/image-upload';
 import { BackgroundStylePreview, BACKGROUND_STYLE_OPTIONS, BackgroundStyle } from '@/components/ui/background-styles';
 import { HeroStylePreview } from '@/components/booking/hero-style-preview';
 import { CardStylePreview } from '@/components/booking/card-style-preview';
+import { ProductCardStylePreview } from '@/components/storefront/product-card-style-preview';
 import { HERO_STYLE_OPTIONS, CARD_STYLE_OPTIONS, HERO_STYLE_DEFAULT_COLORS, HERO_STYLE_COVER_DEFAULTS, HeroStyleName } from '@/lib/hero-styles';
 import { ColorPickerSection } from '@/components/ui/color-picker';
 import Link from 'next/link';
+import { CategoryIcon } from '@/components/ui/category-icon';
+import { RUBROS, RUBRO_MAP, TERMINOLOGY_OPTIONS, FICHA_MODULES, DEFAULT_ENABLED_FICHAS, getRubroUIConfig, getFichaModulesForRubro, type FichaModuleId } from '@/lib/tenant-config';
+import { useTenantConfig, useRubroTerms } from '@/contexts/tenant-config-context';
+import { isCatalogRubro as isCatalogRubroFn, isGastronomiaRubro } from '@/lib/rubro-attributes';
+import { usePlanFeatures, SEO_FEATURES } from '@/lib/hooks/use-plan-features';
+import { Search, Lock, Crown } from 'lucide-react';
 
 interface TenantSettings {
   requireDeposit?: boolean;
@@ -74,6 +98,8 @@ interface TenantSettings {
   coverOverlayOpacity?: number;
   coverFadeEnabled?: boolean;
   coverFadeColor?: string;
+  heroTextTone?: 'auto' | 'light' | 'dark';
+  heroTrustTone?: 'auto' | 'light' | 'dark';
 }
 
 interface Tenant {
@@ -89,6 +115,163 @@ interface Tenant {
   logo: string | null;
   coverImage: string | null;
   settings?: string | TenantSettings;
+  publicPageLayout?: string;
+  publicPageConfig?: string;
+}
+
+const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://turnolink.com.ar';
+
+function SeoSection({ slug }: { slug?: string }) {
+  const { data: session } = useSession();
+  const { hasFeature } = usePlanFeatures();
+  const { toast } = useToast();
+  const canCustomize = hasFeature(SEO_FEATURES.SEO_CUSTOM);
+  const [metaTitle, setMetaTitle] = useState('');
+  const [metaDescription, setMetaDescription] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!session?.accessToken) return;
+    const api = createApiClient(session.accessToken as string);
+    api.getBranding().then((b: any) => {
+      setMetaTitle(b?.metaTitle || '');
+      setMetaDescription(b?.metaDescription || '');
+      setLoaded(true);
+    }).catch(() => setLoaded(true));
+  }, [session?.accessToken]);
+
+  const handleSave = async () => {
+    if (!session?.accessToken || !canCustomize) return;
+    setSaving(true);
+    try {
+      const api = createApiClient(session.accessToken as string);
+      await api.updateBranding({ metaTitle: metaTitle || null, metaDescription: metaDescription || null });
+      toast({ title: 'SEO actualizado', description: 'Los cambios pueden tardar unos días en reflejarse en Google.' });
+    } catch (err: any) {
+      handleApiError(err, 'SEO');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const displayTitle = metaTitle || (slug ? `Tu Negocio - Reservar Turno` : 'Cargando...');
+  const displayDesc = metaDescription || 'Reservá tu turno online. Agenda disponible 24/7.';
+  const displayUrl = slug ? `turnolink.com.ar/${slug}` : 'turnolink.com.ar/tu-negocio';
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-2">
+      {/* SEO automático — siempre visible */}
+      <Card className="border-0 shadow-soft overflow-hidden">
+        <div className="h-1 bg-gradient-to-r from-green-500 to-emerald-500" />
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center">
+              <CheckCircle2 className="h-4 w-4 text-white" />
+            </div>
+            SEO Automático
+          </CardTitle>
+          <CardDescription>Tu negocio ya aparece en Google con estos datos generados automáticamente</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
+            <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400 font-medium">
+              <CheckCircle2 className="h-4 w-4" />
+              Activo en tu plan actual
+            </div>
+            <ul className="text-sm text-muted-foreground space-y-1.5 ml-6">
+              <li>Tu página aparece en Google con título y descripción</li>
+              <li>Indexada en el sitemap de TurnoLink</li>
+              <li>Datos estructurados de negocio (nombre, dirección, teléfono)</li>
+              <li>Imagen al compartir en WhatsApp y redes sociales</li>
+            </ul>
+          </div>
+
+          {/* Google Preview */}
+          <div>
+            <Label className="text-xs text-muted-foreground uppercase tracking-wider">Vista previa en Google</Label>
+            <div className="mt-2 rounded-lg border bg-white dark:bg-neutral-900 p-4">
+              <p className="text-blue-600 dark:text-blue-400 text-lg font-medium leading-tight truncate">{displayTitle}</p>
+              <p className="text-green-700 dark:text-green-500 text-sm mt-0.5">{displayUrl}</p>
+              <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{displayDesc}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* SEO personalizado — gateado por plan */}
+      <Card className={`border-0 shadow-soft overflow-hidden ${!canCustomize ? 'opacity-75' : ''}`}>
+        <div className="h-1 bg-gradient-to-r from-amber-500 to-orange-500" />
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
+              {canCustomize ? <Search className="h-4 w-4 text-white" /> : <Lock className="h-4 w-4 text-white" />}
+            </div>
+            SEO Personalizado
+            {!canCustomize && (
+              <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-100 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/30 px-2.5 py-0.5 text-xs font-semibold text-amber-700 dark:text-amber-400">
+                <Crown className="h-3 w-3" />
+                Plan Pro
+              </span>
+            )}
+          </CardTitle>
+          <CardDescription>
+            {canCustomize
+              ? 'Personalizá cómo aparece tu negocio en los resultados de Google'
+              : 'Mejorá a un plan Pro para personalizar tu título y descripción en Google'
+            }
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {canCustomize ? (
+            <>
+              <div className="space-y-2">
+                <Label>Título para buscadores</Label>
+                <Input
+                  value={metaTitle}
+                  onChange={(e) => setMetaTitle(e.target.value)}
+                  placeholder="Ej: Mi Peluquería — Turnos Online en Palermo"
+                  maxLength={70}
+                  className="h-11"
+                />
+                <p className="text-xs text-muted-foreground">{metaTitle.length}/70 caracteres</p>
+              </div>
+              <div className="space-y-2">
+                <Label>Descripción para buscadores</Label>
+                <textarea
+                  value={metaDescription}
+                  onChange={(e) => setMetaDescription(e.target.value)}
+                  placeholder="Ej: Reservá tu turno de corte, color o tratamiento. Atendemos de lunes a sábado en Palermo, CABA."
+                  maxLength={160}
+                  rows={3}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+                <p className="text-xs text-muted-foreground">{metaDescription.length}/160 caracteres</p>
+              </div>
+              <Button onClick={handleSave} disabled={saving} className="w-full h-11">
+                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                Guardar SEO
+              </Button>
+            </>
+          ) : (
+            <div className="rounded-lg border-2 border-dashed border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20 p-6 text-center space-y-3">
+              <Crown className="h-10 w-10 text-amber-500 mx-auto" />
+              <p className="font-semibold">Personalizá tu presencia en Google</p>
+              <p className="text-sm text-muted-foreground">
+                Con el plan Pro podés escribir tu propio título y descripción para que Google muestre exactamente lo que vos querés.
+              </p>
+              <Link href="/planes">
+                <Button variant="outline" className="mt-2 border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-400">
+                  <Crown className="mr-2 h-4 w-4" />
+                  Ver planes
+                </Button>
+              </Link>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
 }
 
 export default function ConfiguracionPage() {
@@ -102,6 +285,8 @@ export default function ConfiguracionPage() {
 function ConfiguracionContent() {
   const { data: session } = useSession();
   const { toast } = useToast();
+  const { hasFeature } = usePlanFeatures();
+  const canEcommerce = hasFeature('online_payments') || hasFeature('mercadopago');
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -150,6 +335,24 @@ function ConfiguracionContent() {
     maxAdvanceBookingDays: 30,
     smartTimeSlots: true,
   });
+  const tenantConfig = useTenantConfig();
+  const terms = useRubroTerms();
+  const [businessConfig, setBusinessConfig] = useState({
+    rubro: '',
+    storeType: 'catalogo' as 'catalogo' | 'ecommerce',
+    clientLabelSingular: 'Cliente',
+    clientLabelPlural: 'Clientes',
+    enabledFichas: ['datosPersonales', 'notasSeguimiento'] as FichaModuleId[],
+    hiddenSections: [] as string[],
+  });
+  const [savedRubro, setSavedRubro] = useState('');
+  const isCatalogRubro = isCatalogRubroFn(businessConfig.rubro);
+  const isGastro = isGastronomiaRubro(businessConfig.rubro);
+  const [publicPageSettings, setPublicPageSettings] = useState({
+    layout: 'employee_first' as string,
+    terminologyPreset: '' as string,
+    customTerms: {} as Record<string, string>,
+  });
   const [themeSettings, setThemeSettings] = useState({
     primaryColor: '#3F8697',
     secondaryColor: '#8B5CF6',
@@ -164,7 +367,25 @@ function ConfiguracionContent() {
     coverOverlayOpacity: 60,
     coverFadeEnabled: false,
     coverFadeColor: '#000000',
+    heroTextTone: 'auto' as 'auto' | 'light' | 'dark',
+    heroTrustTone: 'auto' as 'auto' | 'light' | 'dark',
+    heroButtons: ['location', 'call', 'instagram'] as ('location' | 'call' | 'whatsapp' | 'instagram')[],
+    mobileColumns: 2 as 1 | 2,
   });
+
+  const [shippingSettings, setShippingSettings] = useState({
+    pickup: { enabled: false, address: '', hours: '' },
+    delivery: { enabled: false, info: '' },
+    meetingPoint: { enabled: false, info: '' },
+  });
+  const [contentSettings, setContentSettings] = useState({
+    youtubeVideoUrl: '',
+    amenities: [] as string[],
+    enableServiceContent: false,
+  });
+  const [logoScale, setLogoScale] = useState(1.0);
+  const [logoOffsetX, setLogoOffsetX] = useState(0);
+  const [logoOffsetY, setLogoOffsetY] = useState(0);
 
   useEffect(() => {
     if (session?.accessToken) {
@@ -175,6 +396,7 @@ function ConfiguracionContent() {
   const loadTenant = async () => {
     if (!session?.accessToken) return;
     setLoading(true);
+    try {
     const api = createApiClient(session.accessToken as string);
     const data = await api.getTenant() as Tenant;
     setTenant(data);
@@ -215,6 +437,17 @@ function ConfiguracionContent() {
         maxAdvanceBookingDays: settings.maxAdvanceBookingDays ?? 30,
         smartTimeSlots: settings.smartTimeSlots ?? true,
       });
+      setSavedRubro(settings.rubro ?? '');
+      setBusinessConfig({
+        rubro: settings.rubro ?? '',
+        storeType: (settings.storeType as 'catalogo' | 'ecommerce') ?? 'catalogo',
+        clientLabelSingular: settings.clientLabelSingular ?? 'Cliente',
+        clientLabelPlural: settings.clientLabelPlural ?? 'Clientes',
+        enabledFichas: Array.isArray(settings.enabledFichas) && settings.enabledFichas.length > 0
+          ? settings.enabledFichas
+          : ['datosPersonales', 'notasSeguimiento'],
+        hiddenSections: Array.isArray(settings.hiddenSections) ? settings.hiddenSections : [],
+      });
       setThemeSettings({
         primaryColor: settings.primaryColor ?? '#3F8697',
         secondaryColor: settings.secondaryColor ?? '#8B5CF6',
@@ -229,9 +462,59 @@ function ConfiguracionContent() {
         coverOverlayOpacity: settings.coverOverlayOpacity ?? 60,
         coverFadeEnabled: settings.coverFadeEnabled ?? false,
         coverFadeColor: settings.coverFadeColor ?? '#000000',
+        heroTextTone: (settings.heroTextTone as 'auto' | 'light' | 'dark') ?? 'auto',
+        heroTrustTone: (settings.heroTrustTone as 'auto' | 'light' | 'dark') ?? 'auto',
+        heroButtons: Array.isArray(settings.heroButtons)
+          ? settings.heroButtons
+          : settings.contactPreference === 'whatsapp' ? ['location', 'whatsapp', 'instagram']
+          : settings.contactPreference === 'both' ? ['location', 'call', 'whatsapp', 'instagram']
+          : ['location', 'call', 'instagram'],
+        mobileColumns: (settings.mobileColumns as 1 | 2) ?? 2,
+      });
+      if (settings.shipping) {
+        setShippingSettings({
+          pickup: {
+            enabled: settings.shipping.pickup?.enabled ?? false,
+            address: settings.shipping.pickup?.address ?? '',
+            hours: settings.shipping.pickup?.hours ?? '',
+          },
+          delivery: {
+            enabled: settings.shipping.delivery?.enabled ?? false,
+            info: settings.shipping.delivery?.info ?? '',
+          },
+          meetingPoint: {
+            enabled: settings.shipping.meetingPoint?.enabled ?? false,
+            info: settings.shipping.meetingPoint?.info ?? '',
+          },
+        });
+      }
+      setContentSettings({
+        youtubeVideoUrl: settings.youtubeVideoUrl ?? '',
+        amenities: Array.isArray(settings.amenities) ? settings.amenities : [],
+        enableServiceContent: settings.enableServiceContent ?? false,
       });
     }
-    setLoading(false);
+    // Load public page config
+    const ppc = data.publicPageConfig
+      ? (typeof data.publicPageConfig === 'string' ? JSON.parse(data.publicPageConfig) : data.publicPageConfig)
+      : {};
+    setPublicPageSettings({
+      layout: data.publicPageLayout || 'service_first',
+      terminologyPreset: typeof ppc.terminology === 'string' ? ppc.terminology : '',
+      customTerms: typeof ppc.terminology === 'object' ? ppc.terminology : {},
+    });
+    // Load logoScale from branding
+    try {
+      const brandingData = await api.getBranding();
+      setLogoScale((brandingData as any)?.logoScale ?? 1.0);
+      setLogoOffsetX((brandingData as any)?.logoOffsetX ?? 0);
+      setLogoOffsetY((brandingData as any)?.logoOffsetY ?? 0);
+    } catch {}
+    } catch (error) {
+      handleApiError(error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSave = async () => {
@@ -241,14 +524,27 @@ function ConfiguracionContent() {
     try {
       const api = createApiClient(session.accessToken as string);
       const { slug, ...restFormData } = formData;
+      // Build terminology config
+      const terminology = publicPageSettings.terminologyPreset
+        ? publicPageSettings.terminologyPreset
+        : Object.keys(publicPageSettings.customTerms).length > 0
+          ? publicPageSettings.customTerms
+          : undefined;
       const updateData: Record<string, unknown> = {
         ...restFormData,
+        publicPageLayout: publicPageSettings.layout,
+        publicPageConfig: JSON.stringify({
+          ...(terminology ? { terminology } : {}),
+        }),
         settings: JSON.stringify({
           ...depositSettings,
           ...notificationSettings,
           ...pushSettings,
           ...themeSettings,
           ...bookingTimeSettings,
+          ...businessConfig,
+          ...contentSettings,
+          shipping: shippingSettings,
         }),
       };
       // Only send slug if it changed
@@ -257,21 +553,47 @@ function ConfiguracionContent() {
       }
       await api.updateTenant(updateData);
 
+      // Sync branding colors + visual settings to TenantBranding table
+      // (public pages read from TenantBranding, not Tenant.settings)
+      await api.updateBranding({
+        primaryColor: themeSettings.primaryColor,
+        secondaryColor: themeSettings.secondaryColor,
+        accentColor: themeSettings.accentColor,
+        logoScale,
+        logoOffsetX,
+        logoOffsetY,
+      }).catch(() => {});
+
+      // Purge ISR cache for the public page so changes appear immediately
+      const activeSlug = slug || tenant?.slug;
+      // Purge ISR cache — call multiple times to hit all PM2 cluster instances
+      if (activeSlug) {
+        const revalidateOnce = () =>
+          fetch('/api/revalidate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path: `/${activeSlug}` }),
+          }).catch(() => {});
+        // Fire 4 calls with small delays to maximize chance of hitting both instances
+        revalidateOnce();
+        setTimeout(revalidateOnce, 200);
+        setTimeout(revalidateOnce, 500);
+        setTimeout(revalidateOnce, 1000);
+      }
+
       // Update local tenant state with new slug
       if (tenant) {
         setTenant({ ...tenant, ...restFormData, slug });
       }
+      // Reload tenant config context so sidebar/pages update
+      tenantConfig.reload();
 
       toast({
         title: 'Configuración guardada',
         description: 'Los cambios se guardaron correctamente',
       });
-    } catch {
-      toast({
-        title: 'Error',
-        description: 'No se pudieron guardar los cambios',
-        variant: 'destructive',
-      });
+    } catch (error) {
+      handleApiError(error);
     } finally {
       setSaving(false);
     }
@@ -372,7 +694,7 @@ function ConfiguracionContent() {
             Tu Página Pública
           </CardTitle>
           <CardDescription>
-            Comparte este link con tus clientes para que puedan reservar turnos y ver tu tienda
+            {`Comparte este link con tus clientes para que puedan ${terms.bookingVerb} y ver tu tienda`}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -381,7 +703,7 @@ function ConfiguracionContent() {
             <div className="relative">
               <div className="flex items-center h-11 rounded-lg border border-slate-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 focus-within:ring-2 focus-within:ring-emerald-500/30 focus-within:border-emerald-500 transition-all">
                 <span className="text-xs sm:text-sm text-muted-foreground pl-3 whitespace-nowrap select-none">
-                  <span className="hidden sm:inline">turnolink.mubitt.com/</span>
+                  <span className="hidden sm:inline">turnolink.com.ar/</span>
                   <span className="sm:hidden">turnolink.../</span>
                 </span>
                 <input
@@ -425,19 +747,30 @@ function ConfiguracionContent() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-        <TabsList className="w-full grid grid-cols-3 h-12">
+        <TabsList className={`w-full grid ${isCatalogRubro ? 'grid-cols-4' : 'grid-cols-5'} h-12`}>
           <TabsTrigger value="perfil" className="gap-1.5 text-xs sm:text-sm data-[state=active]:shadow-md">
             <User className="h-4 w-4" />
             <span>Perfil</span>
           </TabsTrigger>
-          <TabsTrigger value="operacion" className="gap-1.5 text-xs sm:text-sm data-[state=active]:shadow-md">
-            <Sliders className="h-4 w-4" />
-            <span className="hidden sm:inline">Reservas y Avisos</span>
-            <span className="sm:hidden">Ajustes</span>
+          <TabsTrigger value="negocio" className="gap-1.5 text-xs sm:text-sm data-[state=active]:shadow-md">
+            <Store className="h-4 w-4" />
+            <span className="hidden sm:inline">Mi Negocio</span>
+            <span className="sm:hidden">Negocio</span>
           </TabsTrigger>
+          {!isCatalogRubro && (
+            <TabsTrigger value="operacion" className="gap-1.5 text-xs sm:text-sm data-[state=active]:shadow-md">
+              <Sliders className="h-4 w-4" />
+              <span className="hidden sm:inline">{getRubroUIConfig(businessConfig.rubro).operationTabLabel}</span>
+              <span className="sm:hidden">{getRubroUIConfig(businessConfig.rubro).operationTabLabel}</span>
+            </TabsTrigger>
+          )}
           <TabsTrigger value="apariencia" className="gap-1.5 text-xs sm:text-sm data-[state=active]:shadow-md">
             <Palette className="h-4 w-4" />
             <span>Apariencia</span>
+          </TabsTrigger>
+          <TabsTrigger value="seo" className="gap-1.5 text-xs sm:text-sm data-[state=active]:shadow-md">
+            <Search className="h-4 w-4" />
+            <span>SEO</span>
           </TabsTrigger>
         </TabsList>
 
@@ -494,6 +827,43 @@ function ConfiguracionContent() {
                     <p className="text-xs text-muted-foreground">
                       Incluye código de país para WhatsApp. Ej: +54 9 11 para Argentina
                     </p>
+                    {!isCatalogRubro && (
+                    <div className="space-y-2 pt-1">
+                      <Label className="text-xs text-muted-foreground">Botones visibles en tu página</Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {([
+                          { value: 'location' as const, label: 'Ubicación', icon: MapPin, need: formData.city },
+                          { value: 'call' as const, label: 'Llamar', icon: Phone, need: formData.phone },
+                          { value: 'whatsapp' as const, label: 'WhatsApp', icon: MessageCircle, need: formData.phone },
+                          { value: 'instagram' as const, label: 'Instagram', icon: Instagram, need: formData.instagram },
+                        ] as const).map(({ value, label, icon: Icon, need }) => {
+                          const active = themeSettings.heroButtons.includes(value);
+                          return (
+                            <button
+                              key={value}
+                              type="button"
+                              onClick={() => {
+                                const next = active
+                                  ? themeSettings.heroButtons.filter((b: string) => b !== value)
+                                  : [...themeSettings.heroButtons, value];
+                                setThemeSettings({ ...themeSettings, heroButtons: next });
+                              }}
+                              disabled={!need}
+                              className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition-all ${
+                                !need ? 'opacity-40 cursor-not-allowed border-border text-muted-foreground'
+                                : active ? 'border-teal-500 bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300'
+                                : 'border-border hover:bg-muted text-muted-foreground'
+                              }`}
+                            >
+                              <Icon className="h-4 w-4" />
+                              {label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <p className="text-xs text-muted-foreground">Completá los datos arriba para habilitar cada botón</p>
+                    </div>
+                    )}
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -578,10 +948,90 @@ function ConfiguracionContent() {
                   <p className="text-xs text-muted-foreground">
                     Recomendado: imagen cuadrada, mínimo 200x200px
                   </p>
+
+                  {/* Logo Scale / Zoom */}
+                  <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium">Zoom de la imagen</span>
+                      <span className="text-xs font-mono text-muted-foreground bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
+                        {Math.round(logoScale * 100)}%
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-2">
+                      Ajustá el encuadre de tu logo dentro del marco
+                    </p>
+                    <div className="flex items-center gap-3">
+                      <span className="text-[10px] text-muted-foreground w-6 text-right">50%</span>
+                      <input
+                        type="range"
+                        min="0.5"
+                        max="3"
+                        step="0.05"
+                        value={logoScale}
+                        onChange={(e) => setLogoScale(parseFloat(e.target.value))}
+                        className="flex-1 h-2 rounded-full appearance-none cursor-pointer accent-amber-500 bg-slate-200 dark:bg-slate-700"
+                      />
+                      <span className="text-[10px] text-muted-foreground w-8">300%</span>
+                    </div>
+                    {/* Position controls */}
+                    <div className="mt-3 space-y-2">
+                      <span className="text-sm font-medium">Posición</span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-[10px] text-muted-foreground w-10 text-right">← Izq</span>
+                        <input
+                          type="range"
+                          min="-50"
+                          max="50"
+                          step="1"
+                          value={logoOffsetX}
+                          onChange={(e) => setLogoOffsetX(parseFloat(e.target.value))}
+                          className="flex-1 h-1.5 rounded-full appearance-none cursor-pointer accent-blue-500 bg-slate-200 dark:bg-slate-700"
+                        />
+                        <span className="text-[10px] text-muted-foreground w-10">Der →</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-[10px] text-muted-foreground w-10 text-right">↑ Arr</span>
+                        <input
+                          type="range"
+                          min="-50"
+                          max="50"
+                          step="1"
+                          value={logoOffsetY}
+                          onChange={(e) => setLogoOffsetY(parseFloat(e.target.value))}
+                          className="flex-1 h-1.5 rounded-full appearance-none cursor-pointer accent-blue-500 bg-slate-200 dark:bg-slate-700"
+                        />
+                        <span className="text-[10px] text-muted-foreground w-10">Abj ↓</span>
+                      </div>
+                      {(logoScale !== 1 || logoOffsetX !== 0 || logoOffsetY !== 0) && (
+                        <button
+                          type="button"
+                          onClick={() => { setLogoOffsetX(0); setLogoOffsetY(0); setLogoScale(1); }}
+                          className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-600 font-medium mt-1"
+                        >
+                          <RotateCcw className="h-3 w-3" />
+                          Reiniciar imagen original
+                        </button>
+                      )}
+                    </div>
+                    {/* Live preview — zoom + position inside fixed frame */}
+                    {formData.logo && (
+                      <div className="mt-4 flex flex-col items-center gap-2">
+                        <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-dashed border-slate-300 dark:border-slate-600 shadow-sm bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
+                          <img
+                            src={formData.logo}
+                            alt="Preview"
+                            className="max-w-full max-h-full object-contain transition-transform duration-150"
+                            style={{ transform: `scale(${logoScale}) translate(${logoOffsetX}%, ${logoOffsetY}%)`, transformOrigin: 'center' }}
+                          />
+                        </div>
+                        <span className="text-[10px] text-muted-foreground">Así se ve tu logo en el panel</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Imagen de portada</Label>
+                  <Label>Foto de portada</Label>
                   <ImageUpload
                     value={formData.coverImage}
                     onChange={(url) => setFormData({ ...formData, coverImage: url })}
@@ -590,13 +1040,14 @@ function ConfiguracionContent() {
                       const api = createApiClient(session.accessToken as string);
                       return api.uploadMedia(file, 'covers');
                     }}
-                    aspectRatio="banner"
-                    placeholder="Subir portada"
+                    aspectRatio="video"
+                    placeholder="Subir foto de portada"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Recomendado: imagen horizontal 3:1, mínimo 1200x400px
+                    Recomendado: imagen horizontal 1200x400px. Se muestra como encabezado de tu página pública.
                   </p>
                 </div>
+
               </CardContent>
             </Card>
 
@@ -644,6 +1095,84 @@ function ConfiguracionContent() {
               </CardContent>
             </Card>
 
+            {/* YouTube Video + Amenidades (per-tenant — para single property) */}
+            <Card className="border-0 shadow-soft lg:col-span-3">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Youtube className="h-5 w-5 text-red-500" />
+                  Contenido de la página
+                </CardTitle>
+                <CardDescription>Video y contenido adicional que se muestra en tu página pública</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="youtubeVideoUrl">Video de YouTube</Label>
+                  <Input
+                    id="youtubeVideoUrl"
+                    type="url"
+                    value={contentSettings.youtubeVideoUrl}
+                    onChange={(e) => setContentSettings(prev => ({ ...prev, youtubeVideoUrl: e.target.value }))}
+                    placeholder="https://www.youtube.com/watch?v=..."
+                  />
+                  <p className="text-xs text-muted-foreground">Pegá el link de YouTube con un tour o presentación. Se muestra en tu página pública.</p>
+                </div>
+
+                {/* Amenidades/Comodidades del negocio — label contextual por rubro */}
+                {(() => {
+                  const catalog = getAmenitiesCatalog(businessConfig.rubro);
+                  const uiCfg = getRubroUIConfig(businessConfig.rubro);
+                  if (catalog.length === 0 || !uiCfg.amenitiesLabel) return null;
+                  return (
+                    <div className="space-y-2">
+                      <Label>{uiCfg.amenitiesLabel}</Label>
+                      <p className="text-xs text-muted-foreground mb-2">{uiCfg.amenitiesDescription}</p>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {catalog.map(amenity => {
+                          const isSelected = contentSettings.amenities.includes(amenity.id);
+                          return (
+                            <button
+                              key={amenity.id}
+                              type="button"
+                              onClick={() => {
+                                setContentSettings(prev => ({
+                                  ...prev,
+                                  amenities: isSelected
+                                    ? prev.amenities.filter(id => id !== amenity.id)
+                                    : [...prev.amenities, amenity.id],
+                                }));
+                              }}
+                              className={`flex items-center gap-2 p-2.5 rounded-lg border text-sm transition-all text-left ${
+                                isSelected
+                                  ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400'
+                                  : 'border-border bg-background hover:bg-muted/50 text-muted-foreground'
+                              }`}
+                            >
+                              {isSelected ? <CheckCircle2 className="h-4 w-4 text-emerald-500 flex-shrink-0" /> : <div className="h-4 w-4 rounded-full border-2 border-muted-foreground/30 flex-shrink-0" />}
+                              <span className="truncate">{amenity.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Toggle: habilitar campos por servicio */}
+                {!isCatalogRubro && (
+                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border">
+                  <div>
+                    <p className="text-sm font-medium">Habilitar contenido por {terms.serviceSingular.toLowerCase()}</p>
+                    <p className="text-xs text-muted-foreground">Permite agregar video y contenido adicional a cada {terms.serviceSingular.toLowerCase()}</p>
+                  </div>
+                  <Switch
+                    checked={contentSettings.enableServiceContent ?? false}
+                    onCheckedChange={(checked) => setContentSettings(prev => ({ ...prev, enableServiceContent: checked }))}
+                  />
+                </div>
+                )}
+              </CardContent>
+            </Card>
+
             {/* Tips */}
             <Card className="border-0 shadow-soft lg:col-span-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 border-blue-100 dark:border-blue-800">
               <CardContent className="py-6">
@@ -667,9 +1196,695 @@ function ConfiguracionContent() {
         </TabsContent>
 
         {/* ─────────────────────────────────────────────────── */}
-        {/* TAB 2: RESERVAS Y AVISOS                           */}
+        {/* TAB: MI NEGOCIO                                     */}
+        {/* ─────────────────────────────────────────────────── */}
+        <TabsContent value="negocio">
+          <div className="space-y-6">
+
+            {/* Seccion A: Rubro */}
+            <Card className="border-0 shadow-soft overflow-hidden">
+              <div className="h-1 bg-gradient-to-r from-teal-500 to-cyan-500" />
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-500 flex items-center justify-center">
+                    <Store className="h-4 w-4 text-white" />
+                  </div>
+                  Rubro de tu negocio
+                </CardTitle>
+                <CardDescription>
+                  {savedRubro
+                    ? 'El rubro no puede cambiarse porque los planes y funcionalidades dependen de la industria seleccionada.'
+                    : 'Selecciona el rubro principal de tu negocio. Esto ajustará automáticamente la terminología y fichas sugeridas.'}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {savedRubro && (
+                  <div className="flex items-center gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/50 text-sm text-amber-700 dark:text-amber-300 mb-4">
+                    <Lock className="h-4 w-4 flex-shrink-0" />
+                    <span>Para cambiar de rubro contactá a soporte ya que implica un cambio de plan.</span>
+                  </div>
+                )}
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {RUBROS.map((rubro) => {
+                    const isSelected = businessConfig.rubro === rubro.key;
+                    const isLocked = !!savedRubro && !isSelected;
+                    return (
+                      <button
+                        key={rubro.key}
+                        disabled={isLocked}
+                        onClick={() => {
+                          if (isLocked) return;
+                          const suggestion = RUBRO_MAP[rubro.key];
+                          setBusinessConfig((prev) => ({
+                            ...prev,
+                            rubro: rubro.key,
+                            clientLabelSingular: suggestion?.suggestedTerminology.singular ?? prev.clientLabelSingular,
+                            clientLabelPlural: suggestion?.suggestedTerminology.plural ?? prev.clientLabelPlural,
+                            enabledFichas: suggestion?.suggestedFichas ?? prev.enabledFichas,
+                          }));
+                          // Auto-sync public terminology preset from centralized config
+                          const rubroUICfg = getRubroUIConfig(rubro.key);
+                          setPublicPageSettings((prev) => ({
+                            ...prev,
+                            terminologyPreset: rubroUICfg.terminologyPreset,
+                            customTerms: {},
+                          }));
+                        }}
+                        className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all text-sm font-medium ${
+                          isSelected
+                            ? 'border-teal-500 bg-teal-50 dark:bg-teal-950/30 text-teal-700 dark:text-teal-300 shadow-md'
+                            : isLocked
+                              ? 'border-border/30 opacity-40 cursor-not-allowed text-muted-foreground'
+                              : 'border-border/50 hover:border-border hover:bg-muted/50 text-muted-foreground'
+                        }`}
+                      >
+                        <CategoryIcon categoryKey={rubro.key} size={36} />
+                        {/* Fallback for rubros without custom icon */}
+                        {!['estetica-belleza','barberia','masajes-spa','salud','odontologia','psicologia','nutricion','fitness','veterinaria','tatuajes-piercing','educacion','consultoria'].includes(rubro.key) && (
+                          <div className={`h-9 w-9 rounded-xl flex items-center justify-center text-white text-lg font-bold ${isSelected ? 'bg-teal-500' : 'bg-muted-foreground/30'}`}>
+                            {rubro.label.charAt(0)}
+                          </div>
+                        )}
+                        <span className="text-center leading-tight">{rubro.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Seccion: Tipo de Tienda — solo rubro mercado (no gastro) */}
+            {isCatalogRubro && !isGastro && (
+            <Card className="border-0 shadow-soft overflow-hidden">
+              <div className="h-1 bg-gradient-to-r from-emerald-500 to-teal-500" />
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center">
+                    <ShoppingCart className="h-4 w-4 text-white" />
+                  </div>
+                  Tipo de Tienda
+                </CardTitle>
+                <CardDescription>
+                  Elegí cómo funciona tu tienda online. Podés cambiarlo en cualquier momento.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {([
+                    {
+                      value: 'catalogo' as const,
+                      label: 'Catálogo',
+                      icon: BookOpen,
+                      desc: 'Mostrá tus productos con precios. Los clientes consultan por WhatsApp o redes.',
+                      features: ['Exhibición de productos', 'Precios visibles', 'Contacto directo', 'Sin carrito de compras'],
+                    },
+                    {
+                      value: 'ecommerce' as const,
+                      label: 'E-commerce',
+                      icon: ShoppingCart,
+                      desc: 'Tienda completa con carrito, checkout y pagos online.',
+                      features: ['Carrito de compras', 'Checkout online', 'Medios de pago', 'Gestión de envíos'],
+                    },
+                  ] as const).map((option) => {
+                    const isSelected = businessConfig.storeType === option.value;
+                    const Icon = option.icon;
+                    const isLocked = option.value === 'ecommerce' && !canEcommerce;
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => {
+                          if (isLocked) {
+                            router.push('/mi-suscripcion');
+                            return;
+                          }
+                          setBusinessConfig(prev => ({ ...prev, storeType: option.value }));
+                        }}
+                        className={`relative p-4 rounded-xl border-2 text-left transition-all ${
+                          isLocked
+                            ? 'border-border opacity-70 cursor-pointer hover:border-amber-400 dark:hover:border-amber-600'
+                            : isSelected
+                              ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-900/20 shadow-sm'
+                              : 'border-border hover:border-emerald-300 dark:hover:border-emerald-700'
+                        }`}
+                      >
+                        {isLocked && (
+                          <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-[10px] font-bold">
+                            <Crown className="h-3 w-3" />
+                            PRO
+                          </div>
+                        )}
+                        {isSelected && !isLocked && (
+                          <div className="absolute top-3 right-3">
+                            <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                          </div>
+                        )}
+                        <div className={`h-10 w-10 rounded-xl flex items-center justify-center mb-3 ${
+                          isLocked
+                            ? 'bg-muted text-muted-foreground'
+                            : isSelected
+                              ? 'bg-emerald-500 text-white'
+                              : 'bg-muted text-muted-foreground'
+                        }`}>
+                          <Icon className="h-5 w-5" />
+                        </div>
+                        <p className="font-semibold text-sm mb-1">{option.label}</p>
+                        <p className="text-xs text-muted-foreground mb-3">{option.desc}</p>
+                        {isLocked && (
+                          <p className="text-xs text-amber-600 dark:text-amber-400 font-medium mb-2 flex items-center gap-1">
+                            <Lock className="h-3 w-3" />
+                            Disponible desde el plan Comercio
+                          </p>
+                        )}
+                        <ul className="space-y-1">
+                          {option.features.map((f) => (
+                            <li key={f} className="text-xs text-muted-foreground flex items-center gap-1.5">
+                              <div className={`h-1.5 w-1.5 rounded-full ${isSelected && !isLocked ? 'bg-emerald-500' : 'bg-muted-foreground/40'}`} />
+                              {f}
+                            </li>
+                          ))}
+                        </ul>
+                      </button>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+            )}
+
+            {/* Seccion: Tipo de productos — solo para rubro 'mercado' genérico */}
+            {businessConfig.rubro === 'mercado' && (
+            <Card className="border-0 shadow-soft overflow-hidden">
+              <div className="h-1 bg-gradient-to-r from-amber-500 to-orange-500" />
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
+                    <Sliders className="h-4 w-4 text-white" />
+                  </div>
+                  Tipo de productos
+                </CardTitle>
+                <CardDescription>
+                  Elegí qué tipo de productos vendés para obtener filtros y fichas técnicas optimizadas. Podés cambiarlo en cualquier momento.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                  {([
+                    { key: 'mercado-indumentaria', label: 'Indumentaria' },
+                    { key: 'mercado-calzado', label: 'Calzado' },
+                    { key: 'mercado-celulares', label: 'Celulares' },
+                    { key: 'mercado-computacion', label: 'Computación' },
+                    { key: 'mercado-electronica', label: 'Electrónica' },
+                    { key: 'mercado-accesorios-tech', label: 'Accesorios Tech' },
+                    { key: 'mercado-automotoras', label: 'Automotora' },
+                    { key: 'mercado-alimentos', label: 'Alimentos' },
+                    { key: 'mercado-muebles', label: 'Muebles' },
+                    { key: 'mercado-juguetes', label: 'Juguetería' },
+                    { key: 'mercado-deportes', label: 'Deportes' },
+                    { key: 'mercado-libreria', label: 'Librería' },
+                    { key: 'mercado-cosmetica', label: 'Cosmética' },
+                    { key: 'mercado-mascotas', label: 'Mascotas' },
+                    { key: 'mercado-joyeria', label: 'Joyería' },
+                    { key: 'mercado-ferreteria', label: 'Ferretería' },
+                    { key: 'mercado-bazar', label: 'Bazar' },
+                  ]).map((sub) => (
+                    <button
+                      key={sub.key}
+                      type="button"
+                      onClick={() => setBusinessConfig(prev => ({ ...prev, rubro: sub.key }))}
+                      className={`p-3 rounded-xl border-2 text-left text-sm font-medium transition-all ${
+                        businessConfig.rubro === sub.key
+                          ? 'border-amber-500 bg-amber-50/50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300'
+                          : 'border-border hover:border-amber-300 dark:hover:border-amber-700 text-foreground'
+                      }`}
+                    >
+                      {sub.label}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground mt-3">
+                  Si tu tienda no encaja en ninguna categoría, dejalo sin seleccionar. Siempre podés elegir una más adelante.
+                </p>
+              </CardContent>
+            </Card>
+            )}
+
+            {/* Seccion: Envíos (solo mercado, no gastro) */}
+            {isCatalogRubro && !isGastro && (
+            <Card className="border-0 shadow-soft overflow-hidden">
+              <div className="h-1 bg-gradient-to-r from-blue-500 to-cyan-500" />
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
+                    <Truck className="h-4 w-4 text-white" />
+                  </div>
+                  Opciones de entrega
+                </CardTitle>
+                <CardDescription>
+                  Configurá cómo pueden recibir los productos tus clientes. Esta información se muestra al momento de la compra.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                {/* Retiro en el local */}
+                <div className={`p-4 rounded-xl border-2 transition-all ${shippingSettings.pickup.enabled ? 'border-blue-200 dark:border-blue-800/50 bg-blue-50/50 dark:bg-blue-950/20' : 'border-border/50'}`}>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className={`h-9 w-9 rounded-xl flex items-center justify-center ${shippingSettings.pickup.enabled ? 'bg-blue-500 text-white' : 'bg-muted text-muted-foreground'}`}>
+                        <MapPin className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-sm">Retiro en el local</p>
+                        <p className="text-xs text-muted-foreground">El cliente retira en tu ubicación</p>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={shippingSettings.pickup.enabled}
+                      onCheckedChange={(checked) => setShippingSettings(prev => ({
+                        ...prev,
+                        pickup: { ...prev.pickup, enabled: checked },
+                      }))}
+                    />
+                  </div>
+                  {shippingSettings.pickup.enabled && (
+                    <div className="space-y-3 pl-12">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Dirección de retiro</Label>
+                        <Input
+                          value={shippingSettings.pickup.address}
+                          onChange={(e) => setShippingSettings(prev => ({
+                            ...prev,
+                            pickup: { ...prev.pickup, address: e.target.value },
+                          }))}
+                          placeholder="Ej: Av. Corrientes 1234, CABA"
+                          className="h-10"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Horarios de retiro</Label>
+                        <Input
+                          value={shippingSettings.pickup.hours}
+                          onChange={(e) => setShippingSettings(prev => ({
+                            ...prev,
+                            pickup: { ...prev.pickup, hours: e.target.value },
+                          }))}
+                          placeholder="Ej: Lun a Vie 10-18hs, Sáb 10-14hs"
+                          className="h-10"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Envío a coordinar */}
+                <div className={`p-4 rounded-xl border-2 transition-all ${shippingSettings.delivery.enabled ? 'border-blue-200 dark:border-blue-800/50 bg-blue-50/50 dark:bg-blue-950/20' : 'border-border/50'}`}>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className={`h-9 w-9 rounded-xl flex items-center justify-center ${shippingSettings.delivery.enabled ? 'bg-blue-500 text-white' : 'bg-muted text-muted-foreground'}`}>
+                        <Truck className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-sm">Envío</p>
+                        <p className="text-xs text-muted-foreground">Envío a domicilio, a coordinar con el cliente</p>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={shippingSettings.delivery.enabled}
+                      onCheckedChange={(checked) => setShippingSettings(prev => ({
+                        ...prev,
+                        delivery: { ...prev.delivery, enabled: checked },
+                      }))}
+                    />
+                  </div>
+                  {shippingSettings.delivery.enabled && (
+                    <div className="pl-12 space-y-1.5">
+                      <Label className="text-xs">Información sobre envíos</Label>
+                      <textarea
+                        value={shippingSettings.delivery.info}
+                        onChange={(e) => setShippingSettings(prev => ({
+                          ...prev,
+                          delivery: { ...prev.delivery, info: e.target.value },
+                        }))}
+                        placeholder="Ej: Envíos por Correo Argentino y Andreani. CABA y GBA: $3.500. Interior: $5.500. Consultar por WhatsApp."
+                        rows={3}
+                        className="w-full px-3 py-2 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                      />
+                      <p className="text-xs text-muted-foreground">Este texto lo verá el comprador al elegir envío</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Punto de encuentro */}
+                <div className={`p-4 rounded-xl border-2 transition-all ${shippingSettings.meetingPoint.enabled ? 'border-blue-200 dark:border-blue-800/50 bg-blue-50/50 dark:bg-blue-950/20' : 'border-border/50'}`}>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className={`h-9 w-9 rounded-xl flex items-center justify-center ${shippingSettings.meetingPoint.enabled ? 'bg-blue-500 text-white' : 'bg-muted text-muted-foreground'}`}>
+                        <Navigation className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-sm">Punto de encuentro</p>
+                        <p className="text-xs text-muted-foreground">Coordinás un lugar para entregar el producto</p>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={shippingSettings.meetingPoint.enabled}
+                      onCheckedChange={(checked) => setShippingSettings(prev => ({
+                        ...prev,
+                        meetingPoint: { ...prev.meetingPoint, enabled: checked },
+                      }))}
+                    />
+                  </div>
+                  {shippingSettings.meetingPoint.enabled && (
+                    <div className="pl-12 space-y-1.5">
+                      <Label className="text-xs">Información sobre puntos de encuentro</Label>
+                      <textarea
+                        value={shippingSettings.meetingPoint.info}
+                        onChange={(e) => setShippingSettings(prev => ({
+                          ...prev,
+                          meetingPoint: { ...prev.meetingPoint, info: e.target.value },
+                        }))}
+                        placeholder="Ej: Nos encontramos en estaciones de subte línea B o D. Coordinar día y hora por WhatsApp."
+                        rows={3}
+                        className="w-full px-3 py-2 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                      />
+                      <p className="text-xs text-muted-foreground">Este texto lo verá el comprador al elegir punto de encuentro</p>
+                    </div>
+                  )}
+                </div>
+
+                {!shippingSettings.pickup.enabled && !shippingSettings.delivery.enabled && !shippingSettings.meetingPoint.enabled && (
+                  <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50">
+                    <p className="text-sm text-amber-700 dark:text-amber-300 flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                      Activá al menos una opción de entrega para que tus clientes puedan comprar.
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+            )}
+
+            {/* Seccion B: Terminologia */}
+            <Card className="border-0 shadow-soft overflow-hidden">
+              <div className="h-1 bg-gradient-to-r from-violet-500 to-purple-500" />
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center">
+                    <Users className="h-4 w-4 text-white" />
+                  </div>
+                  ¿Como llamas a tus usuarios?
+                </CardTitle>
+                <CardDescription>
+                  Esta terminologia se usara en todo el sistema: sidebar, paginas, fichas, etc.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {TERMINOLOGY_OPTIONS.map((opt) => {
+                    const isSelected = businessConfig.clientLabelPlural === opt.plural;
+                    return (
+                      <button
+                        key={opt.plural}
+                        onClick={() => setBusinessConfig((prev) => ({
+                          ...prev,
+                          clientLabelSingular: opt.singular,
+                          clientLabelPlural: opt.plural,
+                        }))}
+                        className={`flex flex-col items-center gap-1 p-4 rounded-xl border-2 transition-all ${
+                          isSelected
+                            ? 'border-violet-500 bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-300 shadow-md'
+                            : 'border-border/50 hover:border-border hover:bg-muted/50 text-muted-foreground'
+                        }`}
+                      >
+                        <span className="text-lg font-bold">{opt.plural}</span>
+                        <span className="text-xs opacity-70">Singular: {opt.singular}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Seccion C: Fichas habilitadas */}
+            {!isCatalogRubro && (
+            <Card className="border-0 shadow-soft overflow-hidden">
+              <div className="h-1 bg-gradient-to-r from-amber-500 to-orange-500" />
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
+                    <ClipboardList className="h-4 w-4 text-white" />
+                  </div>
+                  Fichas habilitadas
+                </CardTitle>
+                <CardDescription>
+                  Elige que secciones mostrar en la ficha de cada {businessConfig.clientLabelSingular.toLowerCase()}.
+                  Los modulos universales (Datos Personales y Notas de Seguimiento) no se pueden desactivar.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {getFichaModulesForRubro(businessConfig.rubro).map((mod) => {
+                    const isEnabled = businessConfig.enabledFichas.includes(mod.id);
+                    return (
+                      <div
+                        key={mod.id}
+                        className={`flex items-center justify-between p-4 rounded-xl border transition-colors ${
+                          isEnabled
+                            ? 'border-amber-200 dark:border-amber-800/50 bg-amber-50/50 dark:bg-amber-950/20'
+                            : 'border-border/50'
+                        }`}
+                      >
+                        <div>
+                          <p className="font-medium text-sm">{mod.label}</p>
+                          {mod.universal && (
+                            <p className="text-xs text-muted-foreground">Siempre activo</p>
+                          )}
+                        </div>
+                        <Switch
+                          checked={isEnabled}
+                          disabled={mod.universal}
+                          onCheckedChange={(checked) => {
+                            setBusinessConfig((prev) => ({
+                              ...prev,
+                              enabledFichas: checked
+                                ? [...prev.enabledFichas, mod.id]
+                                : prev.enabledFichas.filter((f) => f !== mod.id),
+                            }));
+                          }}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+            )}
+
+            {/* Seccion D: Terminologia publica */}
+            {!isCatalogRubro && (
+            <Card className="border-0 shadow-soft overflow-hidden">
+              <div className="h-1 bg-gradient-to-r from-indigo-500 to-blue-500" />
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-indigo-500 to-blue-500 flex items-center justify-center">
+                    <Globe className="h-4 w-4 text-white" />
+                  </div>
+                  Terminología de tu página pública
+                </CardTitle>
+                <CardDescription>
+                  Adapta el lenguaje que ven tus clientes al reservar. Se auto-configura al elegir un rubro.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Label>Preset de industria</Label>
+                <div className="grid gap-2 sm:grid-cols-4">
+                  {[
+                    { value: '', label: 'Genérico', desc: 'Servicio, Turno, Profesional' },
+                    { value: 'beauty', label: 'Belleza', desc: 'Servicio, Turno, Estilista' },
+                    { value: 'health', label: 'Salud', desc: 'Consulta, Turno, Profesional' },
+                    { value: 'psychology', label: 'Psicología', desc: 'Sesión, Sesión, Psicólogo' },
+                    { value: 'legal', label: 'Legal', desc: 'Consulta, Consulta, Abogado' },
+                    { value: 'accounting', label: 'Contable', desc: 'Consulta, Consulta, Contador' },
+                    { value: 'fitness', label: 'Fitness', desc: 'Clase, Reserva, Instructor' },
+                    { value: 'lodging', label: 'Alojamiento', desc: 'Alojamiento, Reserva, —' },
+                  ].map((preset) => (
+                    <button
+                      key={preset.value}
+                      type="button"
+                      onClick={() => setPublicPageSettings(prev => ({
+                        ...prev,
+                        terminologyPreset: preset.value,
+                        customTerms: {},
+                      }))}
+                      className={`p-3 rounded-lg border text-left transition-all ${
+                        publicPageSettings.terminologyPreset === preset.value
+                          ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
+                          : 'border-slate-200 dark:border-neutral-700 hover:border-slate-300 dark:hover:border-neutral-600'
+                      }`}
+                    >
+                      <p className="font-medium text-sm text-slate-900 dark:text-white">{preset.label}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{preset.desc}</p>
+                    </button>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+            )}
+
+            {/* Seccion E: Secciones del menu */}
+            <Card className="border-0 shadow-soft overflow-hidden">
+              <div className="h-1 bg-gradient-to-r from-slate-500 to-slate-600" />
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-slate-500 to-slate-600 flex items-center justify-center">
+                    <Sliders className="h-4 w-4 text-white" />
+                  </div>
+                  Secciones del Menú
+                </CardTitle>
+                <CardDescription>
+                  Oculta secciones que no necesites en tu panel de administración
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {[
+                    { href: '/reportes', label: 'Reportes' },
+                    { href: '/autogestion', label: 'Autogestión' },
+                    { href: '/empleados', label: 'Empleados' },
+                    { href: '/especialidades', label: 'Especialidades' },
+                    { href: '/formularios', label: 'Formularios' },
+                    { href: '/sucursales', label: 'Sucursales' },
+                    { href: '/horarios', label: 'Horarios' },
+                    { href: '/videollamadas', label: 'Videollamadas' },
+                    { href: '/integracion', label: 'Desarrolladores' },
+                  ].map((section) => {
+                    const isHidden = businessConfig.hiddenSections.includes(section.href);
+                    return (
+                      <button
+                        key={section.href}
+                        type="button"
+                        onClick={() => setBusinessConfig(prev => ({
+                          ...prev,
+                          hiddenSections: isHidden
+                            ? prev.hiddenSections.filter(s => s !== section.href)
+                            : [...prev.hiddenSections, section.href],
+                        }))}
+                        className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border text-sm font-medium transition-all ${
+                          !isHidden
+                            ? 'border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300'
+                            : 'border-slate-200 dark:border-neutral-700 bg-slate-50 dark:bg-neutral-800 text-muted-foreground line-through'
+                        }`}
+                      >
+                        {!isHidden ? (
+                          <CheckCircle2 className="h-4 w-4 text-emerald-500 flex-shrink-0" />
+                        ) : (
+                          <X className="h-4 w-4 text-muted-foreground/50 flex-shrink-0" />
+                        )}
+                        {section.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                {/* Toggle grupal para Marketplace de Talento (3 rutas) */}
+                {(() => {
+                  const talentoHrefs = ['/talento', '/talento/propuestas', '/talento/ofertas'];
+                  const talentoHidden = talentoHrefs.every(h => businessConfig.hiddenSections.includes(h));
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => setBusinessConfig(prev => ({
+                        ...prev,
+                        hiddenSections: talentoHidden
+                          ? prev.hiddenSections.filter(s => !talentoHrefs.includes(s))
+                          : [...prev.hiddenSections.filter(s => !talentoHrefs.includes(s)), ...talentoHrefs],
+                      }))}
+                      className={`mt-2 flex items-center gap-2 px-3 py-2.5 rounded-lg border text-sm font-medium transition-all w-full ${
+                        !talentoHidden
+                          ? 'border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300'
+                          : 'border-slate-200 dark:border-neutral-700 bg-slate-50 dark:bg-neutral-800 text-muted-foreground line-through'
+                      }`}
+                    >
+                      {!talentoHidden ? (
+                        <CheckCircle2 className="h-4 w-4 text-emerald-500 flex-shrink-0" />
+                      ) : (
+                        <X className="h-4 w-4 text-muted-foreground/50 flex-shrink-0" />
+                      )}
+                      Marketplace de Talento
+                    </button>
+                  );
+                })()}
+                <p className="text-xs text-muted-foreground mt-3">
+                  Las secciones ocultas no aparecerán en el menú lateral. Siempre podrás volver a activarlas.
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Tips */}
+            <Card className="border-0 shadow-soft bg-gradient-to-r from-teal-50 to-cyan-50 dark:from-teal-900/30 dark:to-cyan-900/30">
+              <CardContent className="py-6">
+                <div className="flex items-start gap-4">
+                  <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-500 flex items-center justify-center flex-shrink-0">
+                    <AlertCircle className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-teal-900 dark:text-teal-200 mb-1">¿Como funciona?</h3>
+                    <ul className="text-sm text-teal-700 dark:text-teal-300 space-y-1">
+                      <li>• Al seleccionar un rubro, se configura automaticamente la terminologia interna, pública y fichas</li>
+                      <li>• Podes cambiar todo manualmente en cualquier momento</li>
+                      <li>• Recorda guardar los cambios para que se apliquen</li>
+                    </ul>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* ─────────────────────────────────────────────────── */}
+        {/* TAB: RESERVAS                                      */}
         {/* ─────────────────────────────────────────────────── */}
         <TabsContent value="operacion">
+          <div className="space-y-6">
+
+            {/* Flujo de reservas */}
+            <Card className="border-0 shadow-soft overflow-hidden">
+              <div className="h-1 bg-gradient-to-r from-teal-500 to-cyan-500" />
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-500 flex items-center justify-center">
+                    <Globe className="h-4 w-4 text-white" />
+                  </div>
+                  Flujo de reservas
+                </CardTitle>
+                <CardDescription>
+                  {`Define cómo tus clientes navegan al ${terms.bookingVerb} en tu página pública`}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {[
+                    { value: 'employee_first', label: 'Profesional primero', desc: 'El cliente elige profesional y después el servicio. Ideal para belleza y terapia.', icon: '👤' },
+                    { value: 'specialty_first', label: 'Especialidad primero', desc: 'El cliente elige un área de práctica, después el servicio. Ideal para salud, legal, contable.', icon: '📋' },
+                    { value: 'service_first', label: 'Servicio primero', desc: 'El cliente elige directamente el servicio. Ideal para negocios con pocos servicios.', icon: '⚡' },
+                  ].map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setPublicPageSettings(prev => ({ ...prev, layout: opt.value }))}
+                      className={`p-4 rounded-xl border-2 text-left transition-all ${
+                        publicPageSettings.layout === opt.value
+                          ? 'border-teal-500 bg-teal-50 dark:bg-teal-900/20'
+                          : 'border-slate-200 dark:border-neutral-700 hover:border-slate-300 dark:hover:border-neutral-600'
+                      }`}
+                    >
+                      <span className="text-2xl">{opt.icon}</span>
+                      <p className="font-semibold text-sm mt-2 text-slate-900 dark:text-white">{opt.label}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{opt.desc}</p>
+                    </button>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
           <div className="grid gap-6 lg:grid-cols-2">
             {/* Deposit/Seña Settings */}
             <Card className="border-0 shadow-soft overflow-hidden">
@@ -679,18 +1894,18 @@ function ConfiguracionContent() {
                   <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center">
                     <CreditCard className="h-4 w-4 text-white" />
                   </div>
-                  Seña / Depósito
+                  {terms.depositLabel}
                 </CardTitle>
                 <CardDescription>
-                  Configura si requieres un pago adelantado para confirmar los turnos
+                  {`Configura si requerís un pago adelantado para confirmar ${terms.bookingPlural.toLowerCase()}`}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="flex items-center justify-between gap-4">
                   <div className="space-y-0.5 min-w-0">
-                    <Label htmlFor="requireDeposit" className="text-base">Requerir seña</Label>
+                    <Label htmlFor="requireDeposit" className="text-base">{`Requerir ${terms.depositLabel.toLowerCase()}`}</Label>
                     <p className="text-sm text-muted-foreground">
-                      Los clientes deberán pagar un porcentaje del servicio para confirmar el turno
+                      {`Los ${businessConfig.clientLabelPlural.toLowerCase()} deberán pagar un porcentaje ${terms.serviceSingular === 'Servicio' ? 'del servicio' : `de ${terms.serviceSingular.toLowerCase()}`} para confirmar`}
                     </p>
                   </div>
                   <Switch
@@ -708,7 +1923,7 @@ function ConfiguracionContent() {
                     <div className="space-y-2">
                       <Label htmlFor="depositPercentage" className="flex items-center gap-2">
                         <Percent className="h-4 w-4 text-muted-foreground" />
-                        Porcentaje de seña
+                        {`Porcentaje de ${terms.depositLabel.toLowerCase()}`}
                       </Label>
                       <div className="flex items-center gap-3">
                         <Input
@@ -728,7 +1943,7 @@ function ConfiguracionContent() {
                         <span className="text-muted-foreground">% del precio del servicio</span>
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        Ejemplo: Si un servicio cuesta $10.000 y la seña es 30%, el cliente paga $3.000 al reservar
+                        {`Ejemplo: Si ${terms.serviceSingular === 'Servicio' ? 'un servicio' : `una ${terms.serviceSingular.toLowerCase()}`} cuesta $10.000 y ${terms.depositLabel.toLowerCase() === 'seña' ? 'la seña' : `el ${terms.depositLabel.toLowerCase()}`} es 30%, se paga $3.000 al ${terms.bookingVerb}`}
                       </p>
                     </div>
 
@@ -1009,10 +2224,11 @@ function ConfiguracionContent() {
               </CardContent>
             </Card>
           </div>
+          </div>
         </TabsContent>
 
         {/* ─────────────────────────────────────────────────── */}
-        {/* TAB 3: APARIENCIA                                  */}
+        {/* TAB: APARIENCIA                                    */}
         {/* ─────────────────────────────────────────────────── */}
         <TabsContent value="apariencia">
           <div className="grid gap-6">
@@ -1275,6 +2491,99 @@ function ConfiguracionContent() {
                       </div>
                     )}
                   </div>
+
+                  {/* Separator */}
+                  <div className="border-t border-dashed border-slate-200 dark:border-neutral-700" />
+
+                  {/* Hero Text Tone */}
+                  <div className="space-y-3">
+                    <div>
+                      <Label className="text-sm font-medium">Tono del texto del encabezado</Label>
+                      <p className="text-xs text-muted-foreground">Elige si el texto sobre la portada debe ser claro (blanco) u oscuro (negro). Útil cuando la foto de portada no combina con el tono automático.</p>
+                    </div>
+                    <div className="flex gap-2">
+                      {([
+                        { value: 'auto' as const, label: 'Automático', desc: 'Según el estilo' },
+                        { value: 'light' as const, label: 'Claro', desc: 'Texto blanco' },
+                        { value: 'dark' as const, label: 'Oscuro', desc: 'Texto negro' },
+                      ]).map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => setThemeSettings({ ...themeSettings, heroTextTone: option.value })}
+                          className={`flex-1 flex flex-col items-center gap-1.5 p-3 rounded-lg border-2 transition-all ${
+                            themeSettings.heroTextTone === option.value
+                              ? 'border-teal-500 bg-teal-50 dark:bg-teal-950/30 ring-2 ring-teal-500/20'
+                              : 'border-slate-200 dark:border-neutral-700 hover:border-slate-300 dark:hover:border-neutral-600'
+                          }`}
+                        >
+                          {/* Preview "Aa" */}
+                          <div className={`w-full h-10 rounded flex items-center justify-center text-lg font-bold ${
+                            option.value === 'light'
+                              ? 'bg-slate-800 text-white'
+                              : option.value === 'dark'
+                              ? 'bg-slate-100 text-slate-900'
+                              : 'bg-gradient-to-r from-slate-700 to-slate-300 text-white'
+                          }`}>
+                            Aa
+                          </div>
+                          <span className={`text-xs font-medium ${themeSettings.heroTextTone === option.value ? 'text-teal-700 dark:text-teal-300' : 'text-slate-700 dark:text-neutral-300'}`}>{option.label}</span>
+                          <span className="text-[10px] text-muted-foreground">{option.desc}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Hero Trust Badges Tone */}
+                  <div className="space-y-3">
+                    <div>
+                      <Label className="text-sm font-medium">Tono de los badges de confianza</Label>
+                      <p className="text-xs text-muted-foreground">Color del texto de la franja inferior del encabezado. Útil si el fundido los opaca.</p>
+                    </div>
+                    {/* Visual reference: mini hero mockup showing which part changes */}
+                    <div className="rounded-lg overflow-hidden border border-slate-200 dark:border-neutral-700">
+                      <div className="bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 px-4 pt-4 pb-0">
+                        {/* Fake title + desc (dimmed, not the focus) */}
+                        <div className="w-24 h-2 rounded-full bg-white/30 mb-1.5" />
+                        <div className="w-36 h-1.5 rounded-full bg-white/15 mb-3" />
+                        {/* Trust badges row — THE PART WE'RE CHANGING */}
+                        <div className={`flex items-center justify-center gap-3 border-t border-white/10 py-2.5 text-[10px] font-medium ${
+                          themeSettings.heroTrustTone === 'dark'
+                            ? 'text-slate-900'
+                            : themeSettings.heroTrustTone === 'light'
+                            ? 'text-white/85'
+                            : 'text-white/60'
+                        }`}>
+                          <span className="flex items-center gap-1"><Zap className="h-3 w-3 text-amber-400" />Inmediato</span>
+                          <span className="text-white/20">|</span>
+                          <span className="flex items-center gap-1"><Shield className="h-3 w-3 text-emerald-400" />Seguro</span>
+                          <span className="text-white/20">|</span>
+                          <span className="flex items-center gap-1"><Heart className="h-3 w-3 text-pink-400" />Garantizado</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      {([
+                        { value: 'auto' as const, label: 'Automático', desc: 'Igual al título' },
+                        { value: 'light' as const, label: 'Claro', desc: 'Texto blanco' },
+                        { value: 'dark' as const, label: 'Oscuro', desc: 'Texto negro' },
+                      ]).map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => setThemeSettings({ ...themeSettings, heroTrustTone: option.value })}
+                          className={`flex-1 flex flex-col items-center gap-1 p-2.5 rounded-lg border-2 transition-all ${
+                            themeSettings.heroTrustTone === option.value
+                              ? 'border-teal-500 bg-teal-50 dark:bg-teal-950/30 ring-2 ring-teal-500/20'
+                              : 'border-slate-200 dark:border-neutral-700 hover:border-slate-300 dark:hover:border-neutral-600'
+                          }`}
+                        >
+                          <span className={`text-xs font-medium ${themeSettings.heroTrustTone === option.value ? 'text-teal-700 dark:text-teal-300' : 'text-slate-700 dark:text-neutral-300'}`}>{option.label}</span>
+                          <span className="text-[10px] text-muted-foreground">{option.desc}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
 
                 {/* Hero Style Selector */}
@@ -1316,9 +2625,13 @@ function ConfiguracionContent() {
                 {/* Card Style Selector */}
                 <div className="space-y-4">
                   <div>
-                    <Label className="text-base font-medium">Estilo de tarjetas de servicios</Label>
+                    <Label className="text-base font-medium">
+                      {isCatalogRubro ? 'Estilo de tarjetas de productos' : 'Estilo de tarjetas de servicios'}
+                    </Label>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Elige cómo se ven las tarjetas de tus servicios. Cada estilo cambia la forma, botones y disposición de la tarjeta.
+                      {isCatalogRubro
+                        ? 'Elige cómo se ven las tarjetas de tus productos en el catálogo. Cada estilo cambia la forma, botones y disposición de la tarjeta.'
+                        : 'Elige cómo se ven las tarjetas de tus servicios. Cada estilo cambia la forma, botones y disposición de la tarjeta.'}
                     </p>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -1361,20 +2674,67 @@ function ConfiguracionContent() {
                           </div>
                         </button>
                       ) : (
-                        <CardStylePreview
-                          key={option.value}
-                          style={option.value}
-                          selected={themeSettings.cardStyle === option.value}
-                          onClick={() => {
-                            setThemeSettings({
-                              ...themeSettings,
-                              cardStyle: option.value,
-                            });
-                          }}
-                          label={option.label}
-                          description={option.description}
-                        />
+                        isCatalogRubro ? (
+                          <ProductCardStylePreview
+                            key={option.value}
+                            style={option.value}
+                            selected={themeSettings.cardStyle === option.value}
+                            onClick={() => {
+                              setThemeSettings({
+                                ...themeSettings,
+                                cardStyle: option.value,
+                              });
+                            }}
+                            label={option.label}
+                            description={option.description}
+                          />
+                        ) : (
+                          <CardStylePreview
+                            key={option.value}
+                            style={option.value}
+                            selected={themeSettings.cardStyle === option.value}
+                            onClick={() => {
+                              setThemeSettings({
+                                ...themeSettings,
+                                cardStyle: option.value,
+                              });
+                            }}
+                            label={option.label}
+                            description={option.description}
+                          />
+                        )
                       )
+                    ))}
+                  </div>
+                </div>
+
+                {/* Mobile Columns Selector */}
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-base font-medium">Columnas en móvil</Label>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Elegí cómo se muestran los productos en celulares y tablets
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    {([
+                      { v: 1 as const, label: '1 columna', desc: 'Tarjetas grandes con más detalle', icon: '▮' },
+                      { v: 2 as const, label: '2 columnas', desc: 'Grilla compacta, más productos visibles', icon: '▮▮' },
+                    ]).map(({ v, label, desc, icon }) => (
+                      <button
+                        key={v}
+                        type="button"
+                        onClick={() => setThemeSettings({ ...themeSettings, mobileColumns: v })}
+                        className={`p-4 rounded-xl border-2 transition-all text-left ${
+                          themeSettings.mobileColumns === v
+                            ? 'border-primary bg-primary/5 dark:bg-primary/10'
+                            : 'border-slate-200 dark:border-neutral-700 hover:border-slate-300 dark:hover:border-neutral-600'
+                        }`}
+                      >
+                        <div className="text-2xl mb-2 tracking-[0.15em]">{icon}</div>
+                        <span className="block font-semibold text-sm">{label}</span>
+                        <span className="block text-xs text-muted-foreground mt-0.5">{desc}</span>
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -1420,6 +2780,13 @@ function ConfiguracionContent() {
             </Card>
           </div>
         </TabsContent>
+
+        {/* ─────────────────────────────────────────────────── */}
+        {/* TAB 5: SEO                                         */}
+        {/* ─────────────────────────────────────────────────── */}
+        <TabsContent value="seo">
+          <SeoSection slug={tenant?.slug} />
+        </TabsContent>
       </Tabs>
 
       {/* Help & Tour — always visible */}
@@ -1450,20 +2817,20 @@ function ConfiguracionContent() {
       </Card>
 
       {/* Spacer for mobile floating buttons */}
-      <div className="h-20 sm:hidden" />
+      <div className="h-16 sm:hidden" />
 
-      {/* Mobile floating action bar */}
-      <div className="fixed bottom-0 left-0 right-0 p-3 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-lg border-t border-slate-200 dark:border-neutral-700 sm:hidden z-50 safe-area-bottom">
+      {/* Mobile floating action bar — sits above the bottom nav (h-16) */}
+      <div className="fixed bottom-16 left-0 right-0 p-3 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-lg border-t border-slate-200 dark:border-neutral-700 sm:hidden z-30">
         <div className="flex gap-2">
           <Button
             onClick={handleSave}
             disabled={saving}
-            className="flex-1 h-12 bg-slate-900 dark:bg-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-white/90 shadow-lg text-base font-semibold"
+            className="flex-1 h-11 bg-slate-900 dark:bg-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-white/90 shadow-lg text-sm font-semibold"
           >
             {saving ? (
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
-              <Save className="mr-2 h-5 w-5" />
+              <Save className="mr-2 h-4 w-4" />
             )}
             Guardar
           </Button>
@@ -1471,9 +2838,9 @@ function ConfiguracionContent() {
             <Button
               type="button"
               variant="outline"
-              className="w-full h-12 text-base font-semibold border-slate-300 dark:border-neutral-600"
+              className="w-full h-11 text-sm font-semibold border-slate-300 dark:border-neutral-600"
             >
-              <ExternalLink className="mr-2 h-5 w-5" />
+              <ExternalLink className="mr-2 h-4 w-4" />
               Ver página
             </Button>
           </Link>

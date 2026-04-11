@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const { execSync } = require('child_process');
 
-const BASE_URL = 'https://turnolink.mubitt.com';
+const BASE_URL = 'https://turnolink.com.ar';
 const OUTPUT_DIR = path.join(__dirname, '../public/mockups');
 
 async function screenshot(page, name) {

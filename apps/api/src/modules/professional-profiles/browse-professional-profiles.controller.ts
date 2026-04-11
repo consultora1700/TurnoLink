@@ -5,11 +5,9 @@ import {
   Param,
   Query,
   Body,
-  UseGuards,
+
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { TenantGuard } from '../../common/guards/tenant.guard';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
 import { ProfessionalProfilesService } from './professional-profiles.service';
 import { BrowseProfilesDto } from './dto/browse-profiles.dto';
@@ -18,7 +16,6 @@ import { CreateProposalDto } from './dto/create-proposal.dto';
 @ApiTags('professional-profiles - browse')
 @ApiBearerAuth()
 @Controller('professional-profiles')
-@UseGuards(JwtAuthGuard, TenantGuard)
 export class BrowseProfessionalProfilesController {
   constructor(
     private readonly profilesService: ProfessionalProfilesService,

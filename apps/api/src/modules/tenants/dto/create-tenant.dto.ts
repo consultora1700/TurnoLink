@@ -51,4 +51,9 @@ export class CreateTenantDto {
   @IsOptional()
   @IsString()
   city?: string;
+
+  @ApiPropertyOptional({ example: 'employee_first' })
+  @IsOptional()
+  @IsString()
+  publicPageLayout?: string;
 }

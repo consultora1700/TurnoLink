@@ -4,19 +4,23 @@ import * as bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Seeding database...');
+  console.log('Seeding database...');
 
-  // Create Super Admin
-  const adminPassword = await bcrypt.hash(
-    process.env.SUPER_ADMIN_PASSWORD || 'admin123456',
-    12,
-  );
+  // Create Super Admin - require env vars in production
+  const adminEmail = process.env.SUPER_ADMIN_EMAIL;
+  const adminPasswordRaw = process.env.SUPER_ADMIN_PASSWORD;
+
+  if (!adminEmail || !adminPasswordRaw) {
+    throw new Error('SUPER_ADMIN_EMAIL and SUPER_ADMIN_PASSWORD env vars are required for seeding');
+  }
+
+  const adminPassword = await bcrypt.hash(adminPasswordRaw, 12);
 
   const superAdmin = await prisma.user.upsert({
-    where: { email: process.env.SUPER_ADMIN_EMAIL || 'admin@turnero.app' },
+    where: { email: adminEmail },
     update: {},
     create: {
-      email: process.env.SUPER_ADMIN_EMAIL || 'admin@turnero.app',
+      email: adminEmail,
       password: adminPassword,
       name: 'Super Admin',
       role: 'SUPER_ADMIN',
@@ -24,7 +28,7 @@ async function main() {
     },
   });
 
-  console.log('✅ Super Admin created:', superAdmin.email);
+  console.log('Super Admin created:', superAdmin.email);
 
   // Create Demo Tenant - Bella Estética
   const demoTenant = await prisma.tenant.upsert({
@@ -94,7 +98,8 @@ async function main() {
   console.log('✅ Demo Tenant created:', demoTenant.name);
 
   // Create Demo Owner
-  const ownerPassword = await bcrypt.hash('demo123456', 12);
+  const demoPasswordRaw = process.env.DEMO_OWNER_PASSWORD || 'demo-' + Math.random().toString(36).slice(2, 10);
+  const ownerPassword = await bcrypt.hash(demoPasswordRaw, 12);
 
   const demoOwner = await prisma.user.upsert({
     where: { email: 'info@bellaestetica.com' },
@@ -870,11 +875,8 @@ async function main() {
 
   console.log('✅ Sample orders created:', ordersData.length);
 
-  console.log('\n🎉 Seed completed successfully!');
-  console.log('\n📋 Demo credentials:');
-  console.log('   Super Admin: admin@turnero.app / admin123456');
-  console.log('   Demo Owner: info@bellaestetica.com / demo123456');
-  console.log('   Demo URL: http://localhost:3000/bella-estetica');
+  console.log('\nSeed completed successfully!');
+  console.log('\nDemo URL: http://localhost:3000/bella-estetica');
   console.log('\n📦 Sample data created:');
   console.log(`   - ${customers.length} customers`);
   console.log(`   - ${services.length} services`);

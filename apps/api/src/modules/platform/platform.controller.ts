@@ -53,15 +53,9 @@ export class PlatformController {
    * This is for the platform owner to connect their account
    */
   @Get('oauth/url')
-  async getOAuthUrl(
-    @Query('admin_key') adminKey: string,
-  ) {
-    const expectedKey = this.configService.get<string>('ADMIN_API_KEY');
-
-    if (!expectedKey || adminKey !== expectedKey) {
-      throw new BadRequestException('Unauthorized');
-    }
-
+  async getOAuthUrl() {
+    // Admin key is now validated via headers only (x-admin-key or Authorization: AdminKey ...)
+    // This endpoint should be protected by AdminKeyGuard
     const url = await this.platformService.getOAuthUrl();
     return { url };
   }
@@ -75,7 +69,7 @@ export class PlatformController {
     @Query('state') state: string,
     @Res() res: Response,
   ) {
-    const webUrl = this.configService.get<string>('WEB_URL') || 'https://turnolink.mubitt.com';
+    const webUrl = this.configService.get<string>('WEB_URL') || 'https://turnolink.com.ar';
 
     try {
       if (!code || !state) {
@@ -96,13 +90,9 @@ export class PlatformController {
    * Disconnect MercadoPago (admin only)
    */
   @Post('disconnect')
-  async disconnect(@Query('admin_key') adminKey: string) {
-    const expectedKey = this.configService.get<string>('ADMIN_API_KEY');
-
-    if (!expectedKey || adminKey !== expectedKey) {
-      throw new BadRequestException('Unauthorized');
-    }
-
+  async disconnect() {
+    // Admin key is now validated via headers only (x-admin-key or Authorization: AdminKey ...)
+    // This endpoint should be protected by AdminKeyGuard
     await this.platformService.disconnect();
     return { success: true, message: 'MercadoPago desconectado' };
   }

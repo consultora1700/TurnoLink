@@ -7,15 +7,15 @@ services:
     container_name: turnero_db
     restart: unless-stopped
     environment:
-      POSTGRES_USER: turnero
-      POSTGRES_PASSWORD: turnero123
-      POSTGRES_DB: turnero_db
+      POSTGRES_USER: ${POSTGRES_USER:-turnero}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-turnero_db}
     ports:
       - '5433:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U turnero -d turnero_db']
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-turnero} -d ${POSTGRES_DB:-turnero_db}']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -46,7 +46,7 @@ services:
       - '3001:3001'
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=postgresql://turnero:turnero123@db:5432/turnero_db?schema=public
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-turnero}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-turnero_db}?schema=public
       - REDIS_URL=redis://redis:6379
     depends_on:
       db:

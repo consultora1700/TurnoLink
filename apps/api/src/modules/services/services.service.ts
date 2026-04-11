@@ -4,10 +4,14 @@ import { CreateServiceDto } from './dto/create-service.dto';
 import { UpdateServiceDto } from './dto/update-service.dto';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { Decimal } from '@prisma/client/runtime/library';
+import { CacheService } from '../../common/cache';
 
 @Injectable()
 export class ServicesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cacheService: CacheService,
+  ) {}
 
   /**
    * Convert Prisma Decimal to number for JSON serialization
@@ -20,12 +24,19 @@ export class ServicesService {
     let parsedVariations: unknown[] = [];
     try {
       parsedVariations = service.variations ? JSON.parse(service.variations as string) : [];
+      // Sanitize: remove empty groups and options
+      parsedVariations = (parsedVariations as any[])
+        .filter((g: any) => g.label?.trim() && Array.isArray(g.options))
+        .map((g: any) => ({ ...g, options: (g.options || []).filter((o: any) => o.name?.trim()) }))
+        .filter((g: any) => g.options.length > 0);
     } catch { parsedVariations = []; }
     return {
       ...service,
       price: Number(service.price),
       images: parsedImages,
       variations: parsedVariations,
+      packOriginalPrice: (service as any).packOriginalPrice != null ? Number((service as any).packOriginalPrice) : null,
+      promoPrice: (service as any).promoPrice != null ? Number((service as any).promoPrice) : null,
     };
   }
 
@@ -40,7 +51,7 @@ export class ServicesService {
       _max: { order: true },
     });
 
-    const { images, variations, ...rest } = createServiceDto;
+    const { images, variations, packCheckIn, packCheckOut, promoStartDate, promoEndDate, ...rest } = createServiceDto;
     const service = await this.prisma.service.create({
       data: {
         ...rest,
@@ -48,13 +59,24 @@ export class ServicesService {
         variations: variations || '[]',
         tenantId,
         order: (maxOrder._max.order || 0) + 1,
+        packCheckIn: packCheckIn ? new Date(packCheckIn) : null,
+        packCheckOut: packCheckOut ? new Date(packCheckOut) : null,
+        promoStartDate: promoStartDate ? new Date(promoStartDate) : null,
+        promoEndDate: promoEndDate ? new Date(promoEndDate) : null,
       },
     });
 
+    await this.cacheService.invalidateTenantServices(tenantId);
     return this.serializeService(service);
   }
 
-  async findAll(tenantId: string, includeInactive = false) {
+  async findAll(tenantId: string, includeInactive = false, skipCache = false) {
+    // Cache only for public-facing queries (not admin panel)
+    if (!includeInactive && !skipCache) {
+      const cached = await this.cacheService.getTenantServices(tenantId);
+      if (cached) return cached;
+    }
+
     const services = await this.prisma.service.findMany({
       where: {
         tenantId,
@@ -62,17 +84,25 @@ export class ServicesService {
       },
       include: {
         category: true,
+        specialty: true,
       },
       orderBy: { order: 'asc' },
     });
 
-    return this.serializeServices(services);
+    const result = this.serializeServices(services);
+
+    // Only populate cache for non-admin queries
+    if (!includeInactive && !skipCache) {
+      await this.cacheService.setTenantServices(tenantId, result);
+    }
+
+    return result;
   }
 
   async findById(tenantId: string, id: string) {
     const service = await this.prisma.service.findFirst({
       where: { id, tenantId },
-      include: { category: true },
+      include: { category: true, specialty: true },
     });
 
     if (!service) {
@@ -98,7 +128,7 @@ export class ServicesService {
       }
 
       // Safe to update - ownership verified within same transaction
-      const { images, variations, ...rest } = updateServiceDto;
+      const { images, variations, packCheckIn, packCheckOut, promoStartDate, promoEndDate, ...rest } = updateServiceDto;
       const data: Record<string, unknown> = { ...rest };
       if (images !== undefined) {
         data.images = JSON.stringify(images);
@@ -106,6 +136,10 @@ export class ServicesService {
       if (variations !== undefined) {
         data.variations = variations;
       }
+      if (packCheckIn !== undefined) data.packCheckIn = packCheckIn ? new Date(packCheckIn) : null;
+      if (packCheckOut !== undefined) data.packCheckOut = packCheckOut ? new Date(packCheckOut) : null;
+      if (promoStartDate !== undefined) data.promoStartDate = promoStartDate ? new Date(promoStartDate) : null;
+      if (promoEndDate !== undefined) data.promoEndDate = promoEndDate ? new Date(promoEndDate) : null;
       return tx.service.update({
         where: { id },
         data,
@@ -113,6 +147,7 @@ export class ServicesService {
       });
     });
 
+    await this.cacheService.invalidateTenantServices(tenantId);
     return this.serializeService(updated);
   }
 
@@ -147,6 +182,7 @@ export class ServicesService {
       return tx.service.delete({ where: { id } });
     });
 
+    await this.cacheService.invalidateTenantServices(tenantId);
     return this.serializeService(result);
   }
 
@@ -227,6 +263,43 @@ export class ServicesService {
         data: { name },
       });
     });
+  }
+
+  // --- Service-Employee management ---
+
+  /**
+   * Get employees assigned to a service with custom pricing.
+   */
+  async getServiceEmployees(tenantId: string, serviceId: string) {
+    await this.findById(tenantId, serviceId);
+
+    const employeeServices = await this.prisma.employeeService.findMany({
+      where: { serviceId },
+      include: {
+        employee: {
+          select: {
+            id: true,
+            name: true,
+            image: true,
+            specialty: true,
+            bio: true,
+            credentials: true,
+            seniority: true,
+            isActive: true,
+            isPubliclyVisible: true,
+          },
+        },
+      },
+      orderBy: {
+        employee: { order: 'asc' },
+      },
+    });
+
+    return employeeServices.map((es) => ({
+      ...es.employee,
+      customPrice: es.customPrice ? Number(es.customPrice) : null,
+      customDuration: es.customDuration,
+    }));
   }
 
   /**

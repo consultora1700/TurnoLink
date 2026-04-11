@@ -1,0 +1,268 @@
+================================================================================
+            TURNOLINK - NEGOCIOS DEMO POR SECCIÓN DE LANDING
+================================================================================
+            Fecha: 2026-03-20
+            Archivo fuente: apps/web/app/_landing/page.tsx (SHOWCASE_DATA)
+================================================================================
+
+
+La landing principal (/) muestra 16 negocios demo organizados en 8 categorías.
+Cada categoría se muestra como un carrusel de "capturas" tipo celular.
+Contraseña de todas las cuentas: demo123456
+
+
+================================================================================
+  SECCIÓN 1: PELUQUERÍAS & BARBERÍAS
+================================================================================
+
+  1. Salon Noir
+     Slug:       salon-noir
+     Email:      demo@salonnoir.com
+     Dueña:      Julieta Montes
+     Ubicación:  Palermo
+     Rating:     4.8/5 (127 reseñas)
+     Servicios:
+       - Corte Mujer ................. $8.000
+       - Mechas Balayage ............. $25.000
+       - Alisado Keratina ............ $35.000
+
+  2. The Barber Club
+     Slug:       the-barber-club
+     Email:      demo@thebarberclub.com
+     Dueño:      Martin Rossi
+     Ubicación:  San Isidro
+     Rating:     4.7/5 (203 reseñas)
+     Servicios:
+       - Corte Clásico ............... $5.000
+       - Corte + Barba ............... $7.000
+       - Combo Premium ............... $12.000
+
+
+================================================================================
+  SECCIÓN 2: ESTÉTICA & BELLEZA
+================================================================================
+
+  3. Nails & Co.
+     Slug:       nails-and-co
+     Email:      demo@nailsandco.com
+     Dueña:      Carolina Ruiz
+     Ubicación:  Palermo
+     Rating:     4.9/5 (184 reseñas)
+     Servicios:
+       - Uñas Esculpidas ............ $15.000
+       - Semi Clásico ................ $8.000
+       - Nail Art Premium ............ $18.000
+
+  4. Lash Studio BA
+     Slug:       lash-studio-ba
+     Email:      demo@lashstudioba.com
+     Dueña:      Agustina Paz
+     Ubicación:  Núñez
+     Rating:     4.8/5 (112 reseñas)
+     Servicios:
+       - Extensiones Clásicas ........ $14.000
+       - Volumen Ruso ................ $18.000
+       - Lifting Pestañas ............ $10.000
+
+
+================================================================================
+  SECCIÓN 3: SPA & BIENESTAR
+================================================================================
+
+  5. Zen Spa & Masajes
+     Slug:       zen-spa-masajes
+     Email:      demo@zenspaba.com
+     Dueña:      Andrea Villalba
+     Ubicación:  Palermo
+     Rating:     4.8/5 (145 reseñas)
+     Servicios:
+       - Masaje Relajante ............ $12.000
+       - Piedras Calientes ........... $16.000
+       - Circuito Spa ................ $25.000
+
+  6. Alma Relax Spa
+     Slug:       alma-relax-spa
+     Email:      demo@almarelaxspa.com
+     Dueña:      Valentina Rosas
+     Ubicación:  San Telmo
+     Rating:     4.9/5 (89 reseñas)
+     Servicios:
+       - Masaje Hot Stones ........... $18.000
+       - Reflexología Podal .......... $12.000
+       - Facial Antiage .............. $18.000
+
+
+================================================================================
+  SECCIÓN 4: SALUD & CONSULTORIOS
+================================================================================
+
+  7. Dra. Martínez Dermatología
+     Slug:       dra-martinez-dermatologia
+     Email:      demo@dramartinezdermo.com
+     Dueña:      Dra. Laura Martinez
+     Ubicación:  Recoleta
+     Rating:     4.9/5 (231 reseñas)
+     Servicios:
+       - Consulta Primera Vez ........ $15.000
+       - Peeling Químico ............. $18.000
+       - Botox ....................... $45.000
+
+  8. Sonrisas Odontología
+     Slug:       sonrisas-odontologia
+     Email:      demo@sonrisasodonto.com
+     Dueño:      Dr. Pablo Suarez
+     Ubicación:  Belgrano
+     Rating:     4.8/5 (167 reseñas)
+     Servicios:
+       - Limpieza Dental ............. $10.000
+       - Blanqueamiento .............. $35.000
+       - Carillas .................... $45.000
+
+
+================================================================================
+  SECCIÓN 5: FITNESS & CANCHAS
+================================================================================
+
+  9. FitZone Training
+     Slug:       fitzone-training
+     Email:      demo@fitzonetraining.com
+     Dueño:      Rodrigo Acevedo
+     Ubicación:  Palermo
+     Rating:     4.7/5 (189 reseñas)
+     Servicios:
+       - Sesión Personal 1h .......... $8.000
+       - Clase Funcional .............. $4.000
+       - Pilates Reformer ............. $6.000
+
+ 10. Pádel & Fútbol Sur
+     Slug:       padel-futbol-sur
+     Email:      demo@padelfutbolsur.com
+     Dueño:      Martín Giménez
+     Ubicación:  Zona Sur
+     Rating:     4.6/5 (134 reseñas)
+     Servicios:
+       - Cancha Pádel 1h ............. $12.000
+       - Fútbol 5 1h ................. $15.000
+       - Clase Grupal Pádel .......... $6.000
+
+
+================================================================================
+  SECCIÓN 6: PROFESIONALES
+================================================================================
+
+ 11. Lic. Gómez Psicología
+     Slug:       lic-gomez-psicologia
+     Email:      (solo en SHOWCASE_DATA, no tiene cuenta seed)
+     Ubicación:  Belgrano
+     Rating:     4.9/5 (94 reseñas)
+     Servicios:
+       - Sesión Individual ........... $12.000
+       - Terapia Pareja .............. $18.000
+       - Evaluación Inicial .......... $15.000
+
+ 12. Estudio Contable Ríos
+     Slug:       estudio-contable-rios
+     Email:      (solo en SHOWCASE_DATA, no tiene cuenta seed)
+     Ubicación:  Microcentro
+     Rating:     4.7/5 (68 reseñas)
+     Servicios:
+       - Consulta Impositiva ......... $10.000
+       - Declaración Jurada .......... $25.000
+       - Asesoría Monotributo ........ $8.000
+
+
+================================================================================
+  SECCIÓN 7: HOSPEDAJE
+================================================================================
+
+ 13. Cabañas del Lago
+     Slug:       cabanas-del-lago
+     Email:      (solo en SHOWCASE_DATA, no tiene cuenta seed)
+     Ubicación:  Villa La Angostura
+     Rating:     4.9/5 (312 reseñas)
+     Servicios:
+       - Cabaña Doble ................ $45.000/noche
+       - Cabaña Familiar ............. $65.000/noche
+       - Suite Premium ............... $85.000/noche
+
+ 14. Urban Apart Hotel
+     Slug:       apart-hotel-centro
+     Email:      (solo en SHOWCASE_DATA, no tiene cuenta seed)
+     Ubicación:  Córdoba Capital
+     Rating:     4.7/5 (187 reseñas)
+     Servicios:
+       - Studio ...................... $35.000/noche
+       - Depto 1 Ambiente ............ $48.000/noche
+       - Depto 2 Ambientes ........... $62.000/noche
+
+
+================================================================================
+  SECCIÓN 8: AUTOMOTRIZ & SERVICIOS
+================================================================================
+
+ 15. Taller Martínez Hnos.
+     Slug:       taller-martinez-hnos
+     Email:      (solo en SHOWCASE_DATA, no tiene cuenta seed)
+     Ubicación:  Avellaneda
+     Rating:     4.6/5 (143 reseñas)
+     Servicios:
+       - Service Completo ............ $35.000
+       - Cambio Aceite ............... $15.000
+       - Diagnóstico General ......... $8.000
+
+ 16. WashPro Lavadero
+     Slug:       wash-pro-lavadero
+     Email:      (solo en SHOWCASE_DATA, no tiene cuenta seed)
+     Ubicación:  Vicente López
+     Rating:     4.8/5 (256 reseñas)
+     Servicios:
+       - Lavado Exterior ............. $5.000
+       - Lavado Completo ............. $9.000
+       - Detailing Premium ........... $25.000
+
+
+================================================================================
+  NEGOCIOS DEMO QUE NO APARECEN EN LA LANDING
+================================================================================
+
+  Estas cuentas existen en la DB pero NO se muestran en ninguna sección
+  del showcase de la landing principal:
+
+  - Bella Estética (demo@bellaestetica.com) ........... seed-landing-demos
+  - Centro Médico Salud Integral (admin@saludintegral.com) seed-landing-demos
+  - Hotel Costa Serena (admin@costaserena.com) ........ seed-landing-demos
+  - Barber Club (admin@barberclub.com) ................ seed-landing-demos
+  - Albergue Luxury (admin@albergueluxury.com) ........ seed-landing-demos
+  - WorkHub Coworking (demo@workhubco.com) ............ seed-landing-screenshots
+  - Fine Line Studio (demo@finelinestudio.com) ........ seed-showcase
+  - VetCare Centro Veterinario (demo@vetcarecentro.com) seed-showcase
+  - Happy Paws (demo@happypaws.com) ................... seed-businesses
+  - Ink Master Studio (demo@inkmasterstudio.com) ...... seed-businesses
+  - Quinta Los Álamos (martin@quintalosalamos.com.ar) . seed-casa-campo
+
+
+================================================================================
+  NEGOCIOS EN LANDING SIN CUENTA REAL EN LA DB
+================================================================================
+
+  Estos aparecen en el SHOWCASE_DATA de la landing pero NO tienen
+  cuenta seed (son solo datos visuales para el carrusel):
+
+  - Lic. Gómez Psicología (lic-gomez-psicologia)
+  - Estudio Contable Ríos (estudio-contable-rios)
+  - Cabañas del Lago (cabanas-del-lago)
+  - Urban Apart Hotel (apart-hotel-centro)
+  - Taller Martínez Hnos. (taller-martinez-hnos)
+  - WashPro Lavadero (wash-pro-lavadero)
+
+
+================================================================================
+  RESUMEN
+================================================================================
+
+  Negocios en SHOWCASE_DATA landing:     16 (en 8 secciones)
+  Con cuenta real en DB:                 10
+  Solo visuales (sin cuenta):            6
+  Cuentas demo que NO están en landing:  11
+
+================================================================================

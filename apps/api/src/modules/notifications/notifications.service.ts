@@ -1,8 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EmailService } from './email.service';
+import { EmailNotificationsService } from './email-notifications.service';
 import { WhatsAppService } from './whatsapp.service';
 import { Booking } from '@prisma/client';
+import { RubroTerms, getTermsForTenant, bookingGender } from '@common/utils/rubro-terms';
 
 // Notification constants
 const NotificationType = {
@@ -25,7 +27,8 @@ const NotificationStatus = {
 } as const;
 
 interface BookingWithDetails extends Booking {
-  service: { name: string; duration: number };
+  service?: { name: string; duration: number; price?: number } | null;
+  product?: { name: string; price?: number } | null;
   customer: { name: string; phone: string; email: string | null };
   tenant?: { name: string; phone: string | null };
 }
@@ -35,18 +38,20 @@ export class NotificationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly emailService: EmailService,
+    private readonly emailNotificationsService: EmailNotificationsService,
     private readonly whatsAppService: WhatsAppService,
   ) {}
 
   async sendBookingConfirmation(booking: BookingWithDetails) {
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: booking.tenantId },
-      select: { name: true, address: true, city: true, phone: true },
+      select: { name: true, slug: true, address: true, city: true, phone: true, settings: true },
     });
 
     if (!tenant) return;
 
-    const message = this.formatBookingConfirmation(booking, tenant);
+    const terms = getTermsForTenant(tenant.settings as any);
+    const message = this.formatBookingConfirmation(booking, tenant, terms);
 
     // Send WhatsApp
     await this.sendNotification({
@@ -58,16 +63,56 @@ export class NotificationsService {
       content: message,
     });
 
-    // Send Email if available
-    if (booking.customer.email) {
-      await this.sendNotification({
-        tenantId: booking.tenantId,
-        bookingId: booking.id,
-        type: NotificationType.BOOKING_CONFIRMATION,
-        channel: NotificationChannel.EMAIL,
-        recipient: booking.customer.email,
-        content: message,
+    // Send professional HTML email
+    const recipientEmail = (booking as any).customerEmail || booking.customer.email;
+    if (recipientEmail) {
+      const date = new Date(booking.date).toLocaleDateString('es-AR', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
       });
+      try {
+        await this.emailNotificationsService.sendBookingConfirmationEmail(
+          recipientEmail,
+          booking.customer.name,
+          tenant.name,
+          date,
+          booking.startTime,
+          booking.service?.name ?? booking.product?.name ?? 'Sin detalle',
+          tenant.slug || '',
+          {
+            address: tenant.address || undefined,
+            city: tenant.city || undefined,
+            phone: tenant.phone || undefined,
+            videoJoinUrl: (booking as any).videoJoinUrl || undefined,
+          },
+          terms,
+        );
+        // Record notification
+        await this.prisma.notification.create({
+          data: {
+            tenantId: booking.tenantId,
+            bookingId: booking.id,
+            type: NotificationType.BOOKING_CONFIRMATION,
+            channel: NotificationChannel.EMAIL,
+            recipient: recipientEmail,
+            content: 'Professional HTML email',
+            status: NotificationStatus.SENT,
+            sentAt: new Date(),
+          },
+        });
+      } catch (error) {
+        await this.prisma.notification.create({
+          data: {
+            tenantId: booking.tenantId,
+            bookingId: booking.id,
+            type: NotificationType.BOOKING_CONFIRMATION,
+            channel: NotificationChannel.EMAIL,
+            recipient: recipientEmail,
+            content: 'Professional HTML email',
+            status: NotificationStatus.FAILED,
+            error: error instanceof Error ? error.message : 'Unknown error',
+          },
+        });
+      }
     }
   }
 
@@ -93,6 +138,8 @@ export class NotificationsService {
     // If explicitly disabled, skip
     if (settings.notifyOwnerByEmail === false) return;
 
+    const terms = getTermsForTenant(settings);
+
     // Determine recipient: notificationEmail setting > tenant.email > owner user email
     let recipientEmail = settings.notificationEmail || tenant.email;
 
@@ -107,27 +154,67 @@ export class NotificationsService {
 
     if (!recipientEmail) return;
 
-    const message = this.formatNewBookingForOwner(booking);
-
-    await this.sendNotification({
-      tenantId: booking.tenantId,
-      bookingId: booking.id,
-      type: 'BOOKING_NEW_OWNER',
-      channel: NotificationChannel.EMAIL,
-      recipient: recipientEmail,
-      content: message,
+    const date = new Date(booking.date).toLocaleDateString('es-AR', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
     });
+
+    try {
+      await this.emailNotificationsService.sendNewBookingOwnerEmail(
+        recipientEmail,
+        tenant.name,
+        booking.customer.name,
+        booking.customer.phone,
+        booking.customer.email,
+        date,
+        booking.startTime,
+        booking.service?.name ?? booking.product?.name ?? 'Sin detalle',
+        booking.service?.duration ?? 15,
+        {
+          videoJoinUrl: (booking as any).videoJoinUrl || undefined,
+          bookingMode: (booking as any).bookingMode || undefined,
+        },
+        terms,
+      );
+      await this.prisma.notification.create({
+        data: {
+          tenantId: booking.tenantId,
+          bookingId: booking.id,
+          type: 'BOOKING_NEW_OWNER',
+          channel: NotificationChannel.EMAIL,
+          recipient: recipientEmail,
+          content: 'Professional HTML email',
+          status: NotificationStatus.SENT,
+          sentAt: new Date(),
+        },
+      });
+    } catch (error) {
+      await this.prisma.notification.create({
+        data: {
+          tenantId: booking.tenantId,
+          bookingId: booking.id,
+          type: 'BOOKING_NEW_OWNER',
+          channel: NotificationChannel.EMAIL,
+          recipient: recipientEmail,
+          content: 'Professional HTML email',
+          status: NotificationStatus.FAILED,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        },
+      });
+    }
   }
 
   async sendBookingReminder(booking: BookingWithDetails) {
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: booking.tenantId },
+      select: { name: true, slug: true, settings: true },
     });
 
     if (!tenant) return;
 
-    const message = this.formatBookingReminder(booking, tenant.name);
+    const terms = getTermsForTenant(tenant.settings as any);
+    const message = this.formatBookingReminder(booking, tenant.name, terms);
 
+    // Send WhatsApp
     await this.sendNotification({
       tenantId: booking.tenantId,
       bookingId: booking.id,
@@ -136,17 +223,66 @@ export class NotificationsService {
       recipient: booking.customer.phone,
       content: message,
     });
+
+    // Send professional HTML email
+    const recipientEmail = (booking as any).customerEmail || booking.customer.email;
+    if (recipientEmail) {
+      const date = new Date(booking.date).toLocaleDateString('es-AR', {
+        weekday: 'long', day: 'numeric', month: 'long',
+      });
+      try {
+        await this.emailNotificationsService.sendBookingReminderEmail(
+          recipientEmail,
+          booking.customer.name,
+          tenant.name,
+          date,
+          booking.startTime,
+          booking.service?.name ?? booking.product?.name ?? 'Sin detalle',
+          tenant.slug || '',
+          (booking as any).videoJoinUrl || undefined,
+          terms,
+        );
+        await this.prisma.notification.create({
+          data: {
+            tenantId: booking.tenantId,
+            bookingId: booking.id,
+            type: NotificationType.BOOKING_REMINDER,
+            channel: NotificationChannel.EMAIL,
+            recipient: recipientEmail,
+            content: 'Professional HTML email',
+            status: NotificationStatus.SENT,
+            sentAt: new Date(),
+          },
+        });
+      } catch (error) {
+        await this.prisma.notification.create({
+          data: {
+            tenantId: booking.tenantId,
+            bookingId: booking.id,
+            type: NotificationType.BOOKING_REMINDER,
+            channel: NotificationChannel.EMAIL,
+            recipient: recipientEmail,
+            content: 'Professional HTML email',
+            status: NotificationStatus.FAILED,
+            error: error instanceof Error ? error.message : 'Unknown error',
+          },
+        });
+      }
+    }
   }
 
   async sendBookingCancellation(booking: BookingWithDetails) {
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: booking.tenantId },
+      select: { name: true, slug: true, settings: true },
     });
 
     if (!tenant) return;
 
-    const message = this.formatBookingCancellation(booking, tenant.name);
+    const terms = getTermsForTenant(tenant.settings as any);
+    const message = this.formatBookingCancellation(booking, tenant.name, terms);
 
+    // Send WhatsApp
     await this.sendNotification({
       tenantId: booking.tenantId,
       bookingId: booking.id,
@@ -155,6 +291,51 @@ export class NotificationsService {
       recipient: booking.customer.phone,
       content: message,
     });
+
+    // Send professional HTML email
+    const recipientEmail = (booking as any).customerEmail || booking.customer.email;
+    if (recipientEmail) {
+      const date = new Date(booking.date).toLocaleDateString('es-AR', {
+        weekday: 'long', day: 'numeric', month: 'long',
+      });
+      try {
+        await this.emailNotificationsService.sendBookingCancellationEmail(
+          recipientEmail,
+          booking.customer.name,
+          tenant.name,
+          date,
+          booking.startTime,
+          booking.service?.name ?? booking.product?.name ?? 'Sin detalle',
+          tenant.slug || '',
+          terms,
+        );
+        await this.prisma.notification.create({
+          data: {
+            tenantId: booking.tenantId,
+            bookingId: booking.id,
+            type: NotificationType.BOOKING_CANCELLED,
+            channel: NotificationChannel.EMAIL,
+            recipient: recipientEmail,
+            content: 'Professional HTML email',
+            status: NotificationStatus.SENT,
+            sentAt: new Date(),
+          },
+        });
+      } catch (error) {
+        await this.prisma.notification.create({
+          data: {
+            tenantId: booking.tenantId,
+            bookingId: booking.id,
+            type: NotificationType.BOOKING_CANCELLED,
+            channel: NotificationChannel.EMAIL,
+            recipient: recipientEmail,
+            content: 'Professional HTML email',
+            status: NotificationStatus.FAILED,
+            error: error instanceof Error ? error.message : 'Unknown error',
+          },
+        });
+      }
+    }
   }
 
   private async sendNotification(data: {
@@ -179,10 +360,10 @@ export class NotificationsService {
         await this.whatsAppService.send(data.recipient, data.content);
       } else if (data.channel === NotificationChannel.EMAIL) {
         const subject = data.type === 'BOOKING_NEW_OWNER'
-          ? 'Nuevo turno recibido'
+          ? 'Nueva reserva recibida'
           : data.type === NotificationType.BOOKING_CANCELLED
-          ? 'Turno cancelado'
-          : 'Confirmación de turno';
+          ? 'Reserva cancelada'
+          : 'Confirmación de reserva';
         await this.emailService.send(data.recipient, subject, data.content);
       }
 
@@ -208,8 +389,11 @@ export class NotificationsService {
 
   private formatBookingConfirmation(
     booking: BookingWithDetails,
-    tenant: { name: string; address?: string | null; city?: string | null; phone?: string | null }
+    tenant: { name: string; address?: string | null; city?: string | null; phone?: string | null },
+    terms?: RubroTerms,
   ): string {
+    const t = terms || getTermsForTenant(null);
+    const g = bookingGender(t);
     const date = new Date(booking.date).toLocaleDateString('es-AR', {
       weekday: 'long',
       year: 'numeric',
@@ -230,22 +414,29 @@ export class NotificationsService {
       contactInfo = `\n📞 *Teléfono:* ${tenant.phone}`;
     }
 
-    return `✅ *Turno confirmado*
+    let videoInfo = '';
+    if ((booking as any).videoJoinUrl) {
+      videoInfo = `\n\n📹 *Sesión online:* ${(booking as any).videoJoinUrl}`;
+    }
+
+    return `✅ *${t.bookingSingular} confirmad${g.suffix}*
 
 Hola ${booking.customer.name}!
 
-Tu turno en *${tenant.name}* ha sido confirmado.
+Tu ${t.bookingSingular.toLowerCase()} en *${tenant.name}* ha sido confirmad${g.suffix}.
 
 📅 *Fecha:* ${date}
 🕐 *Hora:* ${booking.startTime}
-💇 *Servicio:* ${booking.service.name}${locationInfo}${contactInfo}
+${t.emoji} *${t.serviceSingular}:* ${booking.service?.name ?? booking.product?.name ?? 'Sin detalle'}${locationInfo}${contactInfo}${videoInfo}
 
 Te esperamos!
 
 _Este mensaje es automático. Por favor no responder._`;
   }
 
-  private formatNewBookingForOwner(booking: BookingWithDetails): string {
+  private formatNewBookingForOwner(booking: BookingWithDetails, terms?: RubroTerms): string {
+    const t = terms || getTermsForTenant(null);
+    const g = bookingGender(t);
     const date = new Date(booking.date).toLocaleDateString('es-AR', {
       weekday: 'long',
       year: 'numeric',
@@ -258,55 +449,71 @@ _Este mensaje es automático. Por favor no responder._`;
       customerInfo += `\n✉️ *Email:* ${booking.customer.email}`;
     }
 
-    return `📋 *Nuevo turno recibido*
+    let videoLine = '';
+    if ((booking as any).videoJoinUrl) {
+      videoLine = `\n📹 *Modo:* Online\n🔗 *Link:* ${(booking as any).videoJoinUrl}`;
+    } else if ((booking as any).bookingMode === 'online') {
+      videoLine = '\n📹 *Modo:* Online (link pendiente)';
+    }
+
+    return `${t.emoji} *Nuev${g.suffix} ${t.bookingSingular.toLowerCase()} recibid${g.suffix}*
 
 ${customerInfo}
 
 📅 *Fecha:* ${date}
 🕐 *Hora:* ${booking.startTime}
-💇 *Servicio:* ${booking.service.name}
-⏱ *Duración:* ${booking.service.duration} minutos
+${t.emoji} *${t.serviceSingular}:* ${booking.service?.name ?? booking.product?.name ?? 'Sin detalle'}
+⏱ *Duración:* ${booking.service?.duration ?? 15} minutos${videoLine}
 
 _Ingresá a TurnoLink para ver los detalles._`;
   }
 
-  private formatBookingReminder(booking: BookingWithDetails, businessName: string): string {
+  private formatBookingReminder(booking: BookingWithDetails, businessName: string, terms?: RubroTerms): string {
+    const t = terms || getTermsForTenant(null);
+    const g = bookingGender(t);
     const date = new Date(booking.date).toLocaleDateString('es-AR', {
       weekday: 'long',
       day: 'numeric',
       month: 'long',
     });
 
-    return `⏰ *Recordatorio de turno*
+    let videoReminder = '';
+    if ((booking as any).videoJoinUrl) {
+      videoReminder = `\n\n📹 *Sesión online:* ${(booking as any).videoJoinUrl}`;
+    }
+
+    return `⏰ *Recordatorio de ${t.bookingSingular.toLowerCase()}*
 
 Hola ${booking.customer.name}!
 
-Te recordamos que tienes un turno mañana en *${businessName}*.
+Te recordamos que tienes ${g.articleUn} ${t.bookingSingular.toLowerCase()} mañana en *${businessName}*.
 
 📅 *Fecha:* ${date}
 🕐 *Hora:* ${booking.startTime}
-💇 *Servicio:* ${booking.service.name}
+${t.emoji} *${t.serviceSingular}:* ${booking.service?.name ?? booking.product?.name ?? 'Sin detalle'}${videoReminder}
 
 Te esperamos!`;
   }
 
-  private formatBookingCancellation(booking: BookingWithDetails, businessName: string): string {
+  private formatBookingCancellation(booking: BookingWithDetails, businessName: string, terms?: RubroTerms): string {
+    const t = terms || getTermsForTenant(null);
+    const g = bookingGender(t);
     const date = new Date(booking.date).toLocaleDateString('es-AR', {
       weekday: 'long',
       day: 'numeric',
       month: 'long',
     });
 
-    return `❌ *Turno cancelado*
+    return `❌ *${t.bookingSingular} cancelad${g.suffix}*
 
 Hola ${booking.customer.name},
 
-Tu turno en *${businessName}* ha sido cancelado.
+Tu ${t.bookingSingular.toLowerCase()} en *${businessName}* ha sido cancelad${g.suffix}.
 
 📅 *Fecha:* ${date}
 🕐 *Hora:* ${booking.startTime}
-💇 *Servicio:* ${booking.service.name}
+${t.emoji} *${t.serviceSingular}:* ${booking.service?.name ?? booking.product?.name ?? 'Sin detalle'}
 
-Para reservar un nuevo turno, visita nuestra página.`;
+Para ${t.bookingVerb} ${g.articleUn} nuev${g.suffix} ${t.bookingSingular.toLowerCase()}, visita nuestra página.`;
   }
 }

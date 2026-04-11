@@ -7,12 +7,10 @@ import {
   Param,
   Body,
   Req,
-  UseGuards,
+
   ForbiddenException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { TenantGuard } from '../../common/guards/tenant.guard';
 import { ProfessionalProfilesService } from './professional-profiles.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { CreateExperienceDto } from './dto/create-experience.dto';
@@ -25,7 +23,6 @@ import { RespondProposalDto } from './dto/respond-proposal.dto';
 @ApiTags('professional-profiles - self')
 @ApiBearerAuth()
 @Controller('professional-profiles/my-profile')
-@UseGuards(JwtAuthGuard, TenantGuard)
 export class SelfProfessionalProfilesController {
   constructor(
     private readonly profilesService: ProfessionalProfilesService,

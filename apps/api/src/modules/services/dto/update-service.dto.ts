@@ -2,14 +2,16 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsString,
   IsNumber,
+  IsInt,
   IsOptional,
-  IsUUID,
   IsBoolean,
   IsArray,
+  IsIn,
   Min,
   Max,
   MaxLength,
   ArrayMaxSize,
+  ValidateIf,
 } from 'class-validator';
 
 export class UpdateServiceDto {
@@ -44,9 +46,22 @@ export class UpdateServiceDto {
   @Max(480)
   duration?: number;
 
+  @ApiPropertyOptional({ example: 1, description: 'Max simultaneous bookings per time slot' })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  capacity?: number;
+
+  @ApiPropertyOptional({ example: 'presencial', description: 'Service mode: presencial, online, or ambos' })
+  @IsOptional()
+  @IsString()
+  @IsIn(['presencial', 'online', 'ambos'])
+  mode?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
-  @IsUUID()
+  @IsString()
   categoryId?: string;
 
   @ApiPropertyOptional()
@@ -81,4 +96,50 @@ export class UpdateServiceDto {
   @IsOptional()
   @IsNumber()
   order?: number;
+
+  @ApiPropertyOptional({ description: 'ID de la especialidad asociada' })
+  @IsOptional()
+  @IsString()
+  specialtyId?: string;
+
+  @ApiPropertyOptional({
+    example: 'client_chooses',
+    description: 'Modo de asignación: client_chooses, auto_assign, round_robin',
+  })
+  @IsOptional()
+  @IsString()
+  @IsIn(['client_chooses', 'auto_assign', 'round_robin'])
+  assignmentMode?: string;
+
+  @ApiPropertyOptional({ description: 'Visible en la página pública de reservas' })
+  @IsOptional()
+  @IsBoolean()
+  visibleOnPublicPage?: boolean;
+
+  @ApiPropertyOptional({ description: 'ID del formulario de admisión vinculado' })
+  @IsOptional()
+  @IsString()
+  intakeFormId?: string;
+
+  // Per-service check-in/out times (daily mode) — nullable for clearing
+  @ApiPropertyOptional({ example: '14:00' }) @IsOptional() @ValidateIf((_o, v) => v !== null) @IsString() @MaxLength(5) checkInTime?: string | null;
+  @ApiPropertyOptional({ example: '10:00' }) @IsOptional() @ValidateIf((_o, v) => v !== null) @IsString() @MaxLength(5) checkOutTime?: string | null;
+
+  // Rich content per service — nullable for clearing
+  @ApiPropertyOptional() @IsOptional() @ValidateIf((_o, v) => v !== null) @IsString() @MaxLength(500) youtubeVideoUrl?: string | null;
+  @ApiPropertyOptional() @IsOptional() @ValidateIf((_o, v) => v !== null) @IsString() @MaxLength(5000) amenities?: string | null;
+
+  // Pack fields (daily mode only) — nullable for clearing
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() isPack?: boolean;
+  @ApiPropertyOptional() @IsOptional() @ValidateIf((_o, v) => v !== null) @IsString() packCheckIn?: string | null;
+  @ApiPropertyOptional() @IsOptional() @ValidateIf((_o, v) => v !== null) @IsString() packCheckOut?: string | null;
+  @ApiPropertyOptional() @IsOptional() @ValidateIf((_o, v) => v !== null) @IsInt() @Min(1) packNights?: number | null;
+  @ApiPropertyOptional() @IsOptional() @ValidateIf((_o, v) => v !== null) @IsNumber() @Min(0) packOriginalPrice?: number | null;
+
+  // Promotion fields — nullable for clearing
+  @ApiPropertyOptional() @IsOptional() @ValidateIf((_o, v) => v !== null) @IsNumber() @Min(0) promoPrice?: number | null;
+  @ApiPropertyOptional() @IsOptional() @ValidateIf((_o, v) => v !== null) @IsString() promoStartDate?: string | null;
+  @ApiPropertyOptional() @IsOptional() @ValidateIf((_o, v) => v !== null) @IsString() promoEndDate?: string | null;
+  @ApiPropertyOptional() @IsOptional() @ValidateIf((_o, v) => v !== null) @IsInt() @Min(1) promoMaxBookings?: number | null;
+  @ApiPropertyOptional() @IsOptional() @ValidateIf((_o, v) => v !== null) @IsString() @MaxLength(50) promoLabel?: string | null;
 }

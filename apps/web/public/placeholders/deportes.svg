@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f5d0b0"/>
+      <stop offset="100%" style="stop-color:#e4b08a"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="400" rx="16" fill="url(#g)"/>
+  <g transform="translate(200,138)" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.9">
+    <!-- Trophy -->
+    <path d="M-12,-18 L-10,6 C-10,14 10,14 10,6 L12,-18 Z"/>
+    <path d="M-12,-14 C-22,-14 -24,-2 -16,4" opacity="0.5"/>
+    <path d="M12,-14 C22,-14 24,-2 16,4" opacity="0.5"/>
+    <line x1="0" y1="14" x2="0" y2="22"/>
+    <rect x="-8" y="22" width="16" height="4" rx="2" fill="#fff" opacity="0.25"/>
+    <!-- Star -->
+    <circle cx="0" cy="-4" r="4" fill="#fff" opacity="0.3"/>
+  </g>
+  <text x="200" y="218" text-anchor="middle" fill="#fff" font-family="system-ui,sans-serif" font-size="16" font-weight="600" opacity="0.95">Agrega tu imagen</text>
+  <text x="200" y="240" text-anchor="middle" fill="#fff" font-family="system-ui,sans-serif" font-size="12" font-weight="400" opacity="0.65">Mostra tus instalaciones</text>
+</svg>

@@ -1,0 +1,901 @@
+================================================================================
+   TURNOLINK - SISTEMA DE COMANDAS E IMPRESION DE COCINA
+   PLAN COMPLETO DE IMPLEMENTACION
+   Fecha: 3 de Abril 2026
+================================================================================
+
+Este documento tiene 3 secciones:
+
+  SECCION 1: Lo que se implementa DENTRO de TurnoLink (servidor)
+  SECCION 2: El programa instalable para el comercio (agente de impresion)
+  SECCION 3: Prompt completo para crear el programa en tu computadora local
+
+
+================================================================================
+SECCION 1: IMPLEMENTACION EN TURNOLINK (SERVIDOR)
+================================================================================
+
+Resumen: Cuando un comensal hace un pedido desde la carta QR, TurnoLink
+separa ese pedido por estaciones de cocina y genera una "comanda" para cada
+estacion. Esa comanda viaja por WebSocket al programa del local, que la
+imprime en la impresora termica correspondiente.
+
+--------------------------------------------------------------------------------
+1.1 NUEVOS MODELOS EN LA BASE DE DATOS
+--------------------------------------------------------------------------------
+
+Se agregan 3 tablas nuevas al schema de Prisma. No se modifican tablas
+existentes (servicios, mercado, bookings NO se tocan).
+
+TABLA: KitchenStation (estaciones de cocina)
+---------------------------------------------
+Representa cada sector de la cocina que tiene su propia impresora.
+Ejemplos: "Cocina Caliente", "Cocina Fria", "Barra", "Postres", "Parrilla"
+
+Campos:
+  - id              UUID (clave primaria)
+  - tenantId        UUID (referencia al comercio)
+  - name            texto ("Cocina Caliente")
+  - displayName     texto (lo que sale impreso en el ticket)
+  - printerId       texto (identificador unico de la impresora, lo asigna
+                    el programa del local cuando detecta las impresoras)
+  - printerName     texto (nombre legible: "Epson TM-T20III Cocina")
+  - isActive        booleano (si esta activa o deshabilitada)
+  - order           numero (para ordenar en la interfaz)
+  - createdAt       fecha
+  - updatedAt       fecha
+
+Indices:
+  - (tenantId, isActive) para filtrar estaciones activas por comercio
+
+Relaciones:
+  - Cada KitchenStation pertenece a un Tenant
+  - Cada KitchenStation tiene muchas KitchenComanda
+
+
+TABLA: KitchenComanda (tickets de cocina)
+------------------------------------------
+Cada vez que un comensal hace un pedido, se crean tantas comandas como
+estaciones involucradas. Si pidio una hamburguesa (cocina caliente) y
+un fernet (barra), se crean 2 comandas: una para cocina y otra para barra.
+
+Campos:
+  - id                    UUID (clave primaria)
+  - tenantId              UUID (referencia al comercio)
+  - stationId             UUID (referencia a KitchenStation)
+  - tableSessionId        UUID (referencia a la sesion de mesa)
+  - tableSessionOrderId   UUID (referencia al pedido especifico)
+  - tableNumber           numero (mesa)
+  - orderNumber           numero (numero de pedido dentro de la sesion)
+  - items                 JSON (solo los items que corresponden a esta estacion)
+                          Formato: [{name, quantity, notes, options}]
+  - status                texto, valores posibles:
+                            PENDING       = recien creada, esperando impresion
+                            PRINTED       = se imprimio correctamente
+                            PRINT_FAILED  = fallo la impresion
+                            ACCEPTED      = cocina confirmo que la recibio
+                            PREPARING     = cocina esta preparando
+                            READY         = plato listo para servir
+                            CANCELLED     = cancelada
+  - printAttempts         numero (cuantas veces se intento imprimir)
+  - printedAt             fecha (cuando se imprimio)
+  - printError            texto (mensaje de error si fallo)
+  - acceptedAt            fecha
+  - startedAt             fecha (cuando empezo a preparar)
+  - readyAt               fecha (cuando esta listo)
+  - cancelledAt           fecha
+  - createdAt             fecha
+  - updatedAt             fecha
+
+Indices:
+  - (tenantId, stationId, status) para filtrar comandas pendientes por estacion
+  - (tableSessionId) para ver todas las comandas de una mesa
+  - (status, createdAt) para ordenar por prioridad (FIFO)
+
+Restriccion unica:
+  - (tableSessionOrderId, stationId) = no puede haber 2 comandas del mismo
+    pedido para la misma estacion
+
+
+CAMPO NUEVO EN PRODUCTO (Product):
+-----------------------------------
+Se agrega UN campo al modelo Product existente:
+
+  - kitchenStationId    UUID opcional (referencia a KitchenStation)
+
+Esto indica a que estacion de cocina va cada producto.
+Si un producto no tiene estacion asignada, la comanda va a la estacion
+por defecto (la primera activa del comercio).
+Si el comercio no tiene estaciones configuradas, no se generan comandas
+(el sistema funciona igual que ahora, sin impresion).
+
+
+--------------------------------------------------------------------------------
+1.2 FLUJO COMPLETO: DESDE QUE EL COMENSAL PIDE HASTA QUE SALE EL TICKET
+--------------------------------------------------------------------------------
+
+Paso 1: Comensal escanea QR de la mesa, ve la carta, elige productos,
+        toca "Enviar pedido"
+
+Paso 2: Frontend envia POST /gastro/session/:id/order con los items
+
+Paso 3: API recibe el pedido, crea el TableSessionOrder (esto YA existe)
+
+Paso 4: NUEVO - API revisa si el comercio tiene estaciones de cocina:
+        - Si NO tiene estaciones: no hace nada mas (funciona como ahora)
+        - Si SI tiene estaciones: continua al paso 5
+
+Paso 5: NUEVO - API separa los items por estacion:
+        Ejemplo del pedido:
+          2x Hamburguesa (kitchenStationId: "cocina-caliente")
+          1x Fernet con Coca (kitchenStationId: "barra")
+          1x Flan casero (kitchenStationId: "postres")
+
+        Se crean 3 registros KitchenComanda:
+          Comanda 1: estacion="Cocina Caliente", items=[2x Hamburguesa]
+          Comanda 2: estacion="Barra", items=[1x Fernet con Coca]
+          Comanda 3: estacion="Postres", items=[1x Flan casero]
+
+Paso 6: NUEVO - API emite evento 'gastro.comanda.created' por cada comanda
+
+Paso 7: NUEVO - El WebSocket Gateway escucha el evento y envia la comanda
+        al room 'printer:{tenantId}' donde esta conectado el programa
+        del local
+
+Paso 8: NUEVO - El programa del local recibe la comanda por WebSocket,
+        la formatea como ticket ESC/POS, y la envia a la impresora
+        fisica que corresponde a esa estacion
+
+Paso 9: NUEVO - El programa del local confirma la impresion enviando
+        un evento WebSocket 'comanda:printed' con el ID de la comanda.
+        Si fallo, envia 'comanda:print-failed' con el error.
+
+Paso 10: API actualiza el status de la KitchenComanda:
+         - Si imprimio OK: status = "PRINTED"
+         - Si fallo: status = "PRINT_FAILED", guarda el error,
+           reintenta hasta 3 veces con delay de 5 segundos
+
+
+--------------------------------------------------------------------------------
+1.3 NUEVOS ENDPOINTS EN LA API
+--------------------------------------------------------------------------------
+
+ENDPOINTS PRIVADOS (requieren login del dueno/mozo):
+
+  GET  /gastro/kitchen/stations
+       Lista las estaciones de cocina del comercio
+
+  POST /gastro/kitchen/stations
+       Crea una estacion nueva
+       Body: { name, displayName, printerId?, printerName? }
+
+  PATCH /gastro/kitchen/stations/:id
+       Actualiza una estacion (nombre, impresora asignada, activa/inactiva)
+
+  DELETE /gastro/kitchen/stations/:id
+       Desactiva una estacion (soft delete)
+
+  GET  /gastro/kitchen/comandas?status=PENDING&stationId=xxx
+       Lista comandas filtradas por estado y/o estacion
+
+  PATCH /gastro/kitchen/comandas/:id/status
+       Cambia el status de una comanda (ACCEPTED, PREPARING, READY, etc)
+
+  POST /gastro/kitchen/comandas/:id/reprint
+       Reintenta imprimir una comanda que fallo
+
+  POST /gastro/kitchen/printer-register
+       El programa del local llama a este endpoint para registrar las
+       impresoras que detecto. Envia la lista de impresoras disponibles
+       y el sistema las guarda para que el dueno las asigne a estaciones.
+       Body: { printers: [{ id, name, type, connectionType }] }
+
+
+ENDPOINTS PUBLICOS (programa del local sin sesion de usuario):
+
+  POST /gastro/printer-agent/auth
+       El programa se autentica con un token unico generado desde el panel.
+       Devuelve un JWT de corta duracion para la conexion WebSocket.
+       Body: { agentToken: "xxx" }
+
+  GET  /gastro/printer-agent/pending
+       Devuelve comandas pendientes de impresion (backup si WebSocket falla).
+       El programa puede llamar a esto cada 30 segundos como fallback.
+
+
+--------------------------------------------------------------------------------
+1.4 NUEVOS EVENTOS WEBSOCKET
+--------------------------------------------------------------------------------
+
+Namespace: /gastro (el mismo que ya existe)
+
+Nuevos rooms:
+  - 'printer:{tenantId}' = donde se conecta el programa del local
+
+Eventos Server -> Programa del local:
+  - 'comanda:new'          = nueva comanda para imprimir
+                             Payload: { comandaId, stationId, stationName,
+                             printerId, tableNumber, orderNumber, items,
+                             timestamp }
+  - 'comanda:cancel'       = cancelar una comanda antes de imprimir
+                             Payload: { comandaId }
+  - 'comanda:reprint'      = reimprimir una comanda
+                             Payload: (mismo que comanda:new)
+
+Eventos Programa del local -> Server:
+  - 'printer:join'         = programa se conecta y se une al room
+                             Payload: { tenantId, agentToken }
+  - 'comanda:printed'      = confirma impresion exitosa
+                             Payload: { comandaId }
+  - 'comanda:print-failed' = reporta error de impresion
+                             Payload: { comandaId, error }
+  - 'printer:status'       = reporta estado de impresoras
+                             Payload: { printers: [{id, name, online, paperOk}] }
+
+Eventos Server -> Dashboard del dueno/mozo:
+  - 'kitchen:comanda-ready'    = un plato esta listo
+                                 Payload: { comandaId, tableNumber, stationName, items }
+  - 'kitchen:print-failed'    = fallo una impresion (alerta al dueno)
+                                 Payload: { comandaId, stationName, error }
+  - 'kitchen:printer-offline' = una impresora se desconecto
+                                 Payload: { stationId, stationName, printerId }
+
+
+--------------------------------------------------------------------------------
+1.5 INTERFAZ EN EL PANEL DE TURNOLINK
+--------------------------------------------------------------------------------
+
+CONFIGURACION -> COCINA Y COMANDAS (nueva seccion)
+----------------------------------------------------
+Solo visible para rubros de gastronomia.
+
+Contenido:
+  1. Switch "Habilitar sistema de comandas" (on/off)
+  2. Lista de estaciones de cocina:
+     - Boton "Agregar estacion"
+     - Cada estacion muestra: nombre, impresora asignada (o "Sin asignar"),
+       estado (online/offline), boton editar, boton eliminar
+  3. Asignacion de productos a estaciones:
+     - Lista de productos con dropdown para elegir estacion
+     - Opcion "Asignar por categoria" (todos los de una categoria van
+       a la misma estacion)
+  4. Estado del agente de impresion:
+     - Indicador: "Agente conectado" (verde) / "Agente desconectado" (rojo)
+     - Boton "Generar token de conexion" (para vincular el programa)
+     - Boton "Descargar agente de impresion" (link al .exe / .dmg)
+  5. Historial de impresion:
+     - Ultimas 50 comandas con estado (impresa, fallida, reintentada)
+
+PANEL SALON (pagina existente)
+-------------------------------
+Agregar a la vista de mesa:
+  - Indicador de estado de comanda: "En cocina", "Preparando", "Listo"
+  - Alerta sonora cuando un plato esta listo
+  - Boton "Reimprimir comanda" en cada pedido
+
+PANEL COCINA (nueva pagina, opcional)
+--------------------------------------
+Ruta: /dashboard/cocina
+Vista tipo "kanban" por estacion con las comandas en columnas:
+  PENDIENTE | PREPARANDO | LISTO
+Cada comanda muestra: mesa, items, tiempo transcurrido.
+Util si el local quiere usar una tablet en la cocina en vez de impresora.
+
+
+--------------------------------------------------------------------------------
+1.6 FORMATO DEL TICKET IMPRESO
+--------------------------------------------------------------------------------
+
+El ticket se formatea en el servidor como texto plano con marcas ESC/POS.
+El programa del local recibe el texto ya formateado y solo lo envia a la
+impresora.
+
+Ejemplo de ticket para impresora termica de 80mm:
+
+  ================================================
+  COMANDA #2                    14:23 hs
+  MESA: 5
+  ESTACION: COCINA CALIENTE
+  ================================================
+
+  2x  Hamburguesa Completa
+      > Sin cebolla, extra queso
+
+  1x  Milanesa Napolitana
+      > Con papas fritas
+
+  3x  Papas Gratinadas
+
+  ================================================
+  MOZO: Juan P.
+  PEDIDO: 14:23 - 03/04/2026
+  ================================================
+
+Caracteristicas:
+  - Texto grande para nombre de mesa y estacion (ESC/POS doble altura)
+  - Separadores claros entre items
+  - Notas del comensal en linea aparte con ">"
+  - Hora del pedido y nombre del mozo
+  - Corte automatico del papel al final
+
+
+--------------------------------------------------------------------------------
+1.7 COLA DE IMPRESION (BULLMQ)
+--------------------------------------------------------------------------------
+
+Se agrega una nueva cola llamada KITCHEN_PRINT_QUEUE al sistema de colas
+existente (que ya tiene EMAIL_QUEUE).
+
+Configuracion:
+  - Nombre: 'kitchen-print'
+  - Reintentos: 3 intentos
+  - Backoff: 5 segundos entre reintentos
+  - Timeout: 10 segundos por job
+  - Limpiar jobs completados: si (no acumular en Redis)
+  - Mantener jobs fallidos: si (para diagnostico)
+
+Flujo:
+  1. Servicio gastro crea la comanda en DB
+  2. Agrega job a KITCHEN_PRINT_QUEUE con {comandaId, tenantId}
+  3. Processor toma el job:
+     a. Busca la comanda en DB con su estacion y printerId
+     b. Genera el texto del ticket formateado
+     c. Emite evento WebSocket 'comanda:new' al room 'printer:{tenantId}'
+     d. Espera confirmacion del programa (comanda:printed) con timeout 10s
+     e. Si confirma: actualiza status a PRINTED
+     f. Si no confirma en 10s: reintenta
+     g. Si falla 3 veces: status PRINT_FAILED, notifica al dashboard
+
+NOTA: La cola es un respaldo. El camino principal es WebSocket directo.
+La cola maneja reintentos y garantiza que ninguna comanda se pierda.
+
+
+================================================================================
+SECCION 2: EL PROGRAMA INSTALABLE (AGENTE DE IMPRESION)
+================================================================================
+
+Resumen: Es una aplicacion de escritorio liviana que corre en la PC del
+local. Se conecta a TurnoLink por WebSocket, recibe las comandas, y las
+envia a las impresoras termicas del local.
+
+--------------------------------------------------------------------------------
+2.1 QUE HACE EL PROGRAMA
+--------------------------------------------------------------------------------
+
+1. Se instala en la PC del local (Windows .exe, tambien Mac .dmg)
+2. Al abrir, pide un "codigo de vinculacion" que el dueno genera
+   desde el panel de TurnoLink (Configuracion > Cocina > Generar token)
+3. Se conecta a TurnoLink via WebSocket (wss://api.turnolink.com.ar/gastro)
+4. Detecta las impresoras disponibles en el equipo (USB, red local, Bluetooth)
+5. Envia la lista de impresoras a TurnoLink para que el dueno las asigne
+   a estaciones desde el panel
+6. Queda escuchando comandas en segundo plano
+7. Cuando llega una comanda:
+   a. Identifica la impresora de destino (por printerId)
+   b. Convierte el texto del ticket a comandos ESC/POS
+   c. Envia a la impresora
+   d. Confirma a TurnoLink que se imprimio OK (o reporta error)
+8. Si pierde conexion, se reconecta automaticamente
+9. Si hay comandas que no se pudieron imprimir, las encola y reintenta
+10. Muestra un icono en la barra de tareas:
+    - Verde: conectado y funcionando
+    - Amarillo: reconectando
+    - Rojo: desconectado o error de impresora
+
+--------------------------------------------------------------------------------
+2.2 TECNOLOGIA
+--------------------------------------------------------------------------------
+
+Framework: Tauri 2.0
+  - Mucho mas liviano que Electron (~5 MB vs ~150 MB)
+  - Usa el motor web del sistema (WebView2 en Windows, WebKit en Mac)
+  - Acceso nativo a impresoras USB/red
+  - Genera instaladores .exe (Windows) y .dmg (Mac)
+
+Lenguaje backend (logica nativa): Rust
+  - Maneja la conexion WebSocket
+  - Maneja la comunicacion con impresoras (ESC/POS sobre USB/red)
+  - Maneja la cola local de impresion
+  - Corre como servicio en segundo plano
+
+Lenguaje frontend (interfaz): HTML/CSS/JS simple
+  - Pantalla de vinculacion (ingresar token)
+  - Pantalla de estado (impresoras detectadas, conexion, ultimas impresiones)
+  - No necesita React ni nada pesado, es una interfaz minima
+
+Librerias clave:
+  - tokio-tungstenite: WebSocket client en Rust
+  - escpos-rs: comandos ESC/POS para impresoras termicas
+  - serialport: comunicacion USB con impresoras
+  - tauri-plugin-autostart: iniciar con Windows automaticamente
+  - tauri-plugin-notification: notificaciones del sistema si hay errores
+
+--------------------------------------------------------------------------------
+2.3 PANTALLAS DEL PROGRAMA
+--------------------------------------------------------------------------------
+
+PANTALLA 1: VINCULACION (solo la primera vez)
+-----------------------------------------------
+  +------------------------------------------+
+  |                                          |
+  |     [Logo TurnoLink]                     |
+  |                                          |
+  |     Agente de Impresion                  |
+  |                                          |
+  |     Ingresa el codigo de vinculacion     |
+  |     que generaste en el panel:           |
+  |                                          |
+  |     [________________________]           |
+  |                                          |
+  |     [ Vincular ]                         |
+  |                                          |
+  |     El codigo lo encontras en:           |
+  |     Panel > Configuracion > Cocina       |
+  |                                          |
+  +------------------------------------------+
+
+El token se guarda encriptado en el disco del local. No hay que ingresarlo
+de nuevo a menos que se desvincule.
+
+
+PANTALLA 2: ESTADO (ventana principal, normalmente minimizada)
+---------------------------------------------------------------
+  +------------------------------------------+
+  |  TurnoLink - Agente de Impresion         |
+  +------------------------------------------+
+  |                                          |
+  |  Estado: Conectado          [*] verde    |
+  |  Comercio: Lo de Jesus                   |
+  |                                          |
+  |  IMPRESORAS DETECTADAS:                  |
+  |  +---------+-------------+--------+     |
+  |  | Nombre  | Tipo        | Estado |     |
+  |  +---------+-------------+--------+     |
+  |  | Epson1  | USB         | OK     |     |
+  |  | Star2   | Red (WiFi)  | OK     |     |
+  |  | HP3     | USB         | Error  |     |
+  |  +---------+-------------+--------+     |
+  |                                          |
+  |  ULTIMAS IMPRESIONES:                    |
+  |  14:23 Mesa 5 - Cocina Caliente [OK]    |
+  |  14:23 Mesa 5 - Barra [OK]             |
+  |  14:20 Mesa 3 - Cocina Caliente [OK]    |
+  |  14:18 Mesa 7 - Postres [FALLO]        |
+  |                                          |
+  |  [ Reimprimir fallidas ] [ Desvincular ] |
+  |                                          |
+  +------------------------------------------+
+
+ICONO EN BARRA DE TAREAS (system tray):
+  Click derecho:
+    - Abrir ventana
+    - Estado: Conectado
+    - Pausar impresion
+    - Salir
+
+--------------------------------------------------------------------------------
+2.4 COMUNICACION CON IMPRESORAS TERMICAS
+--------------------------------------------------------------------------------
+
+El programa soporta 3 tipos de conexion a impresoras:
+
+1. USB (la mas comun en locales chicos)
+   - Usa la API de impresion del sistema operativo
+   - Windows: winspool API
+   - La impresora aparece como cualquier impresora instalada
+   - No requiere drivers especiales si el comercio ya la tiene funcionando
+
+2. Red local / WiFi (comun en locales medianos)
+   - Conexion TCP directa al IP de la impresora
+   - Puerto estandar: 9100 (RAW printing)
+   - El programa escanea la red local buscando impresoras en el puerto 9100
+   - Tambien acepta IP manual
+
+3. Bluetooth (poco comun, portatiles)
+   - Via perfil Bluetooth SPP (Serial Port Profile)
+   - Solo si la impresora lo soporta
+
+Protocolo de impresion: ESC/POS
+  - Es el estandar universal de impresoras termicas
+  - Lo soportan: Epson, Star, Bixolon, Citizen, genericas chinas
+  - Comandos basicos:
+    ESC @         = inicializar impresora
+    ESC !         = seleccionar fuente (normal, doble alto, doble ancho)
+    GS V          = cortar papel
+    ESC a          = alinear texto (izquierda, centro, derecha)
+    ESC d         = avanzar N lineas
+
+El programa recibe el ticket como texto plano con marcas de formato
+(ejemplo: {{BOLD}}Mesa 5{{/BOLD}}) y las convierte a los comandos
+ESC/POS correspondientes.
+
+
+--------------------------------------------------------------------------------
+2.5 RESILIENCIA Y MANEJO DE ERRORES
+--------------------------------------------------------------------------------
+
+Situacion: Se cae internet
+  - El programa muestra icono amarillo "Reconectando"
+  - Intenta reconectar cada 3 segundos con backoff exponencial (max 30s)
+  - Al reconectar, pide a TurnoLink las comandas pendientes que se perdieron
+    via GET /gastro/printer-agent/pending
+  - Las imprime en orden
+
+Situacion: La impresora esta apagada o sin papel
+  - El programa detecta el error y envia 'comanda:print-failed' a TurnoLink
+  - La comanda queda en cola local
+  - Cada 10 segundos chequea si la impresora volvio
+  - Cuando vuelve, imprime las comandas pendientes en orden
+  - En el dashboard del dueno aparece alerta "Impresora X offline"
+
+Situacion: Se cierra el programa (accidental)
+  - Configurado para iniciar con Windows (autostart)
+  - Al reiniciar, se reconecta y pide comandas pendientes
+
+Situacion: Se reinicia la PC
+  - Mismo que arriba, autostart
+
+Situacion: Dos programas corriendo en el mismo local
+  - El token es unico por comercio
+  - Si un segundo programa intenta conectarse con el mismo token,
+    TurnoLink desconecta al primero y conecta al segundo
+  - Solo una instancia activa por comercio
+
+
+--------------------------------------------------------------------------------
+2.6 COMPILACION E INSTALADORES
+--------------------------------------------------------------------------------
+
+El programa se compila usando GitHub Actions (CI/CD en la nube).
+NO se compila en tu servidor de produccion.
+
+Proceso:
+  1. Subis el codigo a un repositorio de GitHub (ej: turnolink-print-agent)
+  2. GitHub Actions tiene un workflow que automaticamente:
+     - En una maquina Windows virtual: compila y genera el .exe + instalador
+     - En una maquina Mac virtual: compila y genera el .dmg
+  3. Los archivos generados se suben como "Release" en GitHub
+  4. Vos descargas esos archivos y los subis a Cloudflare R2
+  5. El boton "Descargar agente" en TurnoLink apunta al archivo en R2
+
+Archivo de workflow (se crea dentro del repositorio):
+  .github/workflows/build.yml
+
+Este workflow usa acciones oficiales de Tauri:
+  - tauri-apps/tauri-action@v0
+  - Genera instaladores para Windows (NSIS .exe) y Mac (.dmg)
+  - Los publica como GitHub Release automaticamente
+
+Resultado:
+  - turnolink-print-agent-1.0.0-setup.exe  (~15 MB)
+  - turnolink-print-agent-1.0.0.dmg        (~10 MB)
+
+
+================================================================================
+SECCION 3: PROMPT PARA CREAR EL PROGRAMA EN TU COMPUTADORA LOCAL
+================================================================================
+
+IMPORTANTE: Este prompt es para que lo uses en Claude, Cursor, o la
+herramienta de IA que prefieras. Copialo completo y pegalo como instruccion.
+
+Podes usar Ubuntu o PowerShell, el prompt contempla ambos.
+NO va a romper nada porque es un proyecto separado, no toca TurnoLink.
+
+--- INICIO DEL PROMPT ---
+
+Necesito que me ayudes a crear un programa de escritorio llamado
+"TurnoLink Print Agent" usando Tauri 2.0. Es un agente de impresion
+que corre en la PC de un restaurante y conecta las impresoras termicas
+del local con la plataforma TurnoLink (SaaS de gestion comercial).
+
+CONTEXTO DEL SISTEMA:
+- TurnoLink es una plataforma SaaS en produccion (turnolink.com.ar)
+- La API corre en api.turnolink.com.ar (NestJS, puerto 3001)
+- WebSocket esta en wss://api.turnolink.com.ar/gastro (Socket.IO v4)
+- Cuando un comensal hace un pedido desde la carta QR del restaurante,
+  TurnoLink genera "comandas" (tickets de cocina) y las envia por
+  WebSocket a este programa
+- El programa recibe la comanda y la imprime en la impresora termica
+  que corresponda segun la estacion de cocina configurada
+
+REQUISITOS FUNCIONALES:
+
+1. VINCULACION:
+   - Primera vez: el usuario ingresa un token alfanumerico de 32 caracteres
+   - El programa llama a POST https://api.turnolink.com.ar/api/gastro/printer-agent/auth
+     con body { "agentToken": "xxx" }
+   - Si es valido, recibe un JWT y los datos del comercio (tenantId, nombre)
+   - Guarda el token y JWT encriptados en disco (directorio de la app)
+   - Las siguientes veces, se conecta automaticamente usando el token guardado
+
+2. DETECCION DE IMPRESORAS:
+   - Al iniciar (y cada 60 segundos), escanea impresoras disponibles:
+     a) Impresoras del sistema operativo (Windows: via winspool/win32 API)
+     b) Impresoras de red: escanea la red local buscando dispositivos
+        en el puerto TCP 9100 (RAW printing, estandar ESC/POS)
+   - Envia la lista de impresoras detectadas a TurnoLink via WebSocket
+     evento 'printer:status' con payload:
+     { printers: [{ id: "string", name: "string", type: "usb"|"network",
+       address?: "string", online: boolean }] }
+   - El dueno del comercio asigna cada impresora a una estacion
+     desde el panel web de TurnoLink (eso no lo hace este programa)
+
+3. CONEXION WEBSOCKET:
+   - Conectar a: wss://api.turnolink.com.ar/gastro
+   - Usar Socket.IO v4 protocol (no WebSocket puro)
+   - Transport: solo WebSocket (no polling, causa problemas con cluster PM2)
+   - Auth: enviar JWT en el handshake { auth: { token: "jwt" } }
+   - Al conectar, emitir evento 'printer:join' con { tenantId }
+   - El servidor lo une al room 'printer:{tenantId}'
+   - Reconexion automatica: intentar cada 3s, backoff hasta 30s, infinitos intentos
+   - Heartbeat: cada 25 segundos (Socket.IO default es 25s ping)
+
+4. RECEPCION E IMPRESION DE COMANDAS:
+   - Escuchar evento 'comanda:new' con payload:
+     {
+       comandaId: "uuid",
+       stationId: "uuid",
+       stationName: "Cocina Caliente",
+       printerId: "string" (id de la impresora asignada a esta estacion),
+       tableNumber: 5,
+       orderNumber: 2,
+       items: [
+         { name: "Hamburguesa Completa", quantity: 2, notes: "Sin cebolla" },
+         { name: "Papas Gratinadas", quantity: 1, notes: null }
+       ],
+       waiterName: "Juan",
+       timestamp: "2026-04-03T14:23:00Z"
+     }
+   - Buscar la impresora con el printerId indicado
+   - Si la impresora existe y esta online:
+     a) Formatear el ticket en ESC/POS (ver formato abajo)
+     b) Enviar a la impresora
+     c) Emitir evento 'comanda:printed' con { comandaId }
+   - Si la impresora NO existe o esta offline:
+     a) Guardar comanda en cola local (SQLite o archivo JSON)
+     b) Emitir evento 'comanda:print-failed' con { comandaId, error: "mensaje" }
+     c) Reintentar cada 10 segundos hasta que la impresora este disponible
+
+5. FORMATO DEL TICKET ESC/POS:
+   Impresora termica de 80mm (48 caracteres por linea).
+   Usar comandos ESC/POS estandar:
+
+   [Inicializar impresora: ESC @]
+   [Centrar texto: ESC a 1]
+   [Doble altura + doble ancho: ESC ! 0x30]
+   COMANDA #{orderNumber}
+   [Normal: ESC ! 0x00]
+   [Linea separadora: ================================================]
+   [Alinear izquierda: ESC a 0]
+   [Negrita: ESC E 1]
+   MESA: {tableNumber}
+   [Normal: ESC E 0]
+   ESTACION: {stationName}
+   HORA: {hora del timestamp en formato HH:MM}
+   [Linea separadora: ================================================]
+   [Por cada item:]
+   [Negrita: ESC E 1]
+   {quantity}x  {name}
+   [Normal: ESC E 0]
+   [Si tiene notes:]
+       > {notes}
+   [Linea en blanco entre items]
+   [Linea separadora: ================================================]
+   MOZO: {waiterName}
+   {fecha en formato DD/MM/YYYY - HH:MM}
+   [Avanzar 3 lineas: ESC d 3]
+   [Cortar papel: GS V 66 3]
+
+6. COLA LOCAL DE IMPRESION:
+   - Si una comanda no se puede imprimir, guardarla en un archivo local
+     (SQLite DB preferido, o JSON como alternativa)
+   - Campos: comandaId, printerId, ticketData, attempts, lastAttempt, status
+   - Proceso de reintento: cada 10 segundos, revisar cola, intentar imprimir
+   - Si logra imprimir, emitir 'comanda:printed' y borrar de cola
+   - Despues de 10 intentos fallidos, marcar como ABANDONED y notificar
+
+7. FALLBACK HTTP (si WebSocket se cae):
+   - Si la conexion WebSocket lleva mas de 30 segundos caida:
+   - Cada 15 segundos, llamar GET /api/gastro/printer-agent/pending
+     con header Authorization: Bearer {jwt}
+   - Respuesta: array de comandas pendientes (mismo formato que 'comanda:new')
+   - Imprimirlas y confirmar via POST /api/gastro/printer-agent/confirm
+     con body { comandaIds: ["uuid1", "uuid2"] }
+   - Cuando WebSocket se restablece, dejar de hacer polling
+
+8. INTERFAZ VISUAL (minima):
+   - Ventana principal (normalmente minimizada a system tray):
+     a) Estado de conexion: "Conectado" (verde) / "Reconectando" (amarillo) /
+        "Desconectado" (rojo)
+     b) Nombre del comercio vinculado
+     c) Lista de impresoras detectadas con estado (Online/Offline)
+     d) Log de ultimas 20 impresiones (hora, mesa, estacion, ok/error)
+     e) Boton "Reimprimir fallidas" (reintenta las de la cola local)
+     f) Boton "Desvincular" (borra token, vuelve a pantalla de vinculacion)
+   - System tray icon:
+     a) Icono con color segun estado (verde/amarillo/rojo)
+     b) Click derecho: "Abrir" / "Pausar" / "Salir"
+     c) Al cerrar ventana: minimizar a tray, NO cerrar el programa
+   - Notificacion del sistema (toast) si una impresora se desconecta
+
+9. AUTOSTART:
+   - En Windows: registrar en Startup del usuario (Run registry key)
+   - Usar tauri-plugin-autostart
+   - El usuario puede desactivarlo desde la interfaz
+
+10. CONFIGURACION LOCAL (archivo config):
+    - Guardar en el directorio de datos de la app (AppData en Windows)
+    - Formato JSON:
+      {
+        "agentToken": "encrypted_token",
+        "jwt": "encrypted_jwt",
+        "tenantId": "uuid",
+        "tenantName": "Lo de Jesus",
+        "autoStart": true,
+        "printerScanInterval": 60,
+        "reconnectDelay": 3000,
+        "maxPrintRetries": 10,
+        "apiUrl": "https://api.turnolink.com.ar",
+        "wsUrl": "wss://api.turnolink.com.ar/gastro"
+      }
+
+ESTRUCTURA DEL PROYECTO:
+
+turnolink-print-agent/
+  src-tauri/
+    src/
+      main.rs              -- Entry point Tauri
+      lib.rs               -- Modulos
+      websocket.rs         -- Conexion Socket.IO, manejo de eventos
+      printer.rs           -- Deteccion de impresoras, envio ESC/POS
+      escpos.rs            -- Generador de comandos ESC/POS
+      queue.rs             -- Cola local de impresion (SQLite)
+      config.rs            -- Lectura/escritura de config encriptada
+      tray.rs              -- System tray icon y menu
+    Cargo.toml             -- Dependencias Rust
+    tauri.conf.json         -- Config Tauri (ventana, permisos, plugins)
+    icons/                 -- Iconos de la app (.ico, .png)
+  src/
+    index.html             -- Pagina principal
+    styles.css             -- Estilos minimos
+    app.js                 -- Logica de la interfaz
+    setup.html             -- Pagina de vinculacion (ingreso de token)
+    setup.js               -- Logica de vinculacion
+  package.json
+  .github/
+    workflows/
+      build.yml            -- GitHub Actions para compilar Windows + Mac
+
+DEPENDENCIAS RUST (Cargo.toml):
+  tauri = "2"
+  tauri-plugin-autostart = "2"
+  tauri-plugin-notification = "2"
+  tauri-plugin-store = "2"        -- para guardar config encriptada
+  tokio = { version = "1", features = ["full"] }
+  rust_socketio = "0.6"           -- cliente Socket.IO
+  serde = { version = "1", features = ["derive"] }
+  serde_json = "1"
+  chrono = "0.4"
+  rusqlite = "0.31"               -- cola local SQLite
+  log = "0.4"
+  env_logger = "0.11"
+  escpos = "0.1"                  -- comandos ESC/POS (o implementar manual)
+  network-scanner = "0.1"         -- escaneo de red para impresoras
+  anyhow = "1"                    -- manejo de errores
+
+DEPENDENCIAS JS (package.json):
+  "@tauri-apps/api": "^2"
+  "@tauri-apps/plugin-autostart": "^2"
+  "@tauri-apps/plugin-notification": "^2"
+  "@tauri-apps/plugin-store": "^2"
+
+GITHUB ACTIONS WORKFLOW (.github/workflows/build.yml):
+  - Trigger: push to main, o tag v*.*.*
+  - Jobs:
+    1. build-windows:
+       - runs-on: windows-latest
+       - steps: checkout, setup-node, setup-rust, install deps, build tauri
+       - artifact: .exe installer
+    2. build-macos:
+       - runs-on: macos-latest
+       - steps: checkout, setup-node, setup-rust, install deps, build tauri
+       - artifact: .dmg
+  - Release: crear GitHub Release con los 2 archivos adjuntos
+
+INSTRUCCIONES PARA EMPEZAR:
+
+Si estoy en Ubuntu:
+  1. Instalar prerequisites:
+     sudo apt update
+     sudo apt install libwebkit2gtk-4.1-dev build-essential curl wget
+     sudo apt install file libxdo-dev libssl-dev libayatana-appindicator3-dev
+     sudo apt install librsvg2-dev
+  2. Instalar Rust: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+  3. Instalar Node.js 20+ (si no lo tengo)
+  4. Instalar Tauri CLI: cargo install tauri-cli --version "^2"
+  5. Crear proyecto: cargo tauri init (en el directorio del proyecto)
+
+Si estoy en Windows (PowerShell):
+  1. Instalar Rust: descargar de rustup.rs
+  2. Instalar Node.js 20+ de nodejs.org
+  3. Instalar Tauri CLI: cargo install tauri-cli --version "^2"
+  4. Instalar Visual Studio Build Tools (C++ workload)
+  5. Crear proyecto: cargo tauri init
+
+NOTA: Desarrollar y probar en Ubuntu funciona perfecto. El .exe para
+Windows se genera via GitHub Actions, NO necesitas Windows para compilar.
+Solo necesitas Windows si queres probar la deteccion de impresoras USB
+localmente (en Ubuntu podes probar con impresoras de red simuladas).
+
+Crea todos los archivos del proyecto con el codigo completo y funcional.
+Empeza por la estructura de archivos y luego implementa cada modulo.
+
+--- FIN DEL PROMPT ---
+
+
+================================================================================
+RESUMEN DE FASES DE IMPLEMENTACION
+================================================================================
+
+FASE A: Base de datos y API (en el servidor de TurnoLink)
+  1. Agregar modelos KitchenStation y KitchenComanda al schema.prisma
+  2. Agregar campo kitchenStationId a Product
+  3. Correr migracion: npx prisma migrate dev --name add-kitchen-comandas
+  4. Crear endpoints REST para estaciones y comandas
+  5. Agregar logica de separacion de pedido por estacion en gastro.service.ts
+  6. Agregar cola KITCHEN_PRINT_QUEUE en BullMQ
+  7. Agregar eventos WebSocket para comandas en gastro.gateway.ts
+  8. Agregar endpoint de autenticacion del agente de impresion
+  9. Build y deploy API: pnpm build:api && pm2 restart turnolink-api
+
+FASE B: Interfaz en el panel de TurnoLink (frontend web)
+  1. Crear componente kitchen-station-settings.tsx (config de estaciones)
+  2. Crear seccion "Cocina y Comandas" en pagina de configuracion
+  3. Agregar asignacion de productos a estaciones
+  4. Agregar indicador de estado del agente en el panel
+  5. Agregar alertas de comanda en el dashboard salon
+  6. Build y deploy web: pnpm build:web && pm2 restart web
+
+FASE C: Programa instalable (en tu computadora local)
+  1. Crear el proyecto Tauri siguiendo el prompt de la Seccion 3
+  2. Implementar y probar localmente contra la API de TurnoLink
+  3. Configurar GitHub Actions para generar .exe y .dmg
+  4. Subir el primer release a GitHub
+  5. Subir los instaladores a Cloudflare R2
+  6. Agregar boton de descarga en el panel de TurnoLink
+
+ORDEN RECOMENDADO:
+  Fase A primero (sin esto no hay nada que imprimir)
+  Fase B y C en paralelo (son independientes)
+
+TIEMPO ESTIMADO:
+  No doy estimados de tiempo, pero las fases A y B las puedo hacer yo
+  (Claude) directamente en el servidor. La fase C la haces vos en tu
+  computadora con el prompt que te di.
+
+
+================================================================================
+NOTAS FINALES
+================================================================================
+
+1. NADA de esto afecta a servicios, mercado, ni landing pages.
+   Son modelos nuevos y endpoints nuevos en el modulo gastro existente.
+
+2. Si el comercio NO configura estaciones de cocina, todo sigue
+   funcionando exactamente como ahora. Las comandas son opcionales.
+
+3. El programa del local es 100% independiente del servidor.
+   Si se cae, TurnoLink sigue funcionando. Los pedidos se siguen
+   viendo en el dashboard del mozo. Solo no se imprimen hasta que
+   el programa vuelva.
+
+4. El programa NO accede a datos sensibles del comercio.
+   Solo recibe las comandas (mesa, items, estacion) y las imprime.
+   No tiene acceso a clientes, pagos, ni configuracion del negocio.
+
+5. La compilacion del .exe se hace en GitHub Actions, no en tu
+   servidor. Tu servidor no corre ningun riesgo.
+
+================================================================================
+FIN DEL DOCUMENTO
+================================================================================

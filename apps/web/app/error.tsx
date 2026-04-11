@@ -4,6 +4,37 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 
+const HYDRATION_PATTERNS = [
+  'removeChild',
+  'insertBefore',
+  'Hydration',
+  'hydrating',
+  'server-rendered',
+  'Text content does not match',
+  'did not match',
+];
+
+// ChunkLoadError happens when a user navigates with a stale HTML (referencing
+// chunks from a previous build) after a redeploy. The browser tries to fetch
+// a chunk that no longer exists. Reloading pulls the fresh HTML and fixes it.
+const CHUNK_LOAD_PATTERNS = [
+  'ChunkLoadError',
+  'Loading chunk',
+  'Loading CSS chunk',
+  'failed to fetch dynamically imported module',
+];
+
+function isHydrationError(error: Error): boolean {
+  const msg = error.message || '';
+  return HYDRATION_PATTERNS.some((p) => msg.includes(p));
+}
+
+function isChunkLoadError(error: Error): boolean {
+  const msg = error.message || '';
+  const name = error.name || '';
+  return CHUNK_LOAD_PATTERNS.some((p) => msg.includes(p) || name.includes(p));
+}
+
 export default function Error({
   error,
   reset,
@@ -15,6 +46,35 @@ export default function Error({
 
   useEffect(() => {
     console.error('App error:', error);
+
+    // Auto-reload on hydration errors — transparent to the user
+    if (isHydrationError(error)) {
+      const reloadKey = 'turnolink-hydration-reload';
+      const lastReload = sessionStorage.getItem(reloadKey);
+      const now = Date.now();
+
+      // Only auto-reload once per 30 seconds to avoid infinite loops
+      if (!lastReload || now - Number(lastReload) > 30000) {
+        sessionStorage.setItem(reloadKey, String(now));
+        window.location.reload();
+        return;
+      }
+    }
+
+    // Auto-reload on chunk load errors (stale HTML after a redeploy).
+    // Same debounce pattern to prevent infinite reload loops if the chunk is
+    // actually missing (e.g., CDN glitch).
+    if (isChunkLoadError(error)) {
+      const reloadKey = 'turnolink-chunk-reload';
+      const lastReload = sessionStorage.getItem(reloadKey);
+      const now = Date.now();
+
+      if (!lastReload || now - Number(lastReload) > 30000) {
+        sessionStorage.setItem(reloadKey, String(now));
+        window.location.reload();
+        return;
+      }
+    }
   }, [error]);
 
   return (
@@ -44,7 +104,7 @@ export default function Error({
           </div>
         )}
         <div className="flex gap-3 justify-center">
-          <Button onClick={reset}>Reintentar</Button>
+          <Button onClick={() => window.location.reload()}>Reintentar</Button>
           <Link href="/">
             <Button variant="outline">Ir al inicio</Button>
           </Link>

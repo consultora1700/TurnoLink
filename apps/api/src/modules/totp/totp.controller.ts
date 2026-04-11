@@ -3,16 +3,14 @@ import {
   Get,
   Post,
   Body,
-  UseGuards,
+
 } from '@nestjs/common';
 import { TotpService } from './totp.service';
 import { VerifyTotpDto, DisableTotpDto } from './dto/totp.dto';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { User } from '@prisma/client';
 
 @Controller('auth/2fa')
-@UseGuards(JwtAuthGuard)
 export class TotpController {
   constructor(private readonly totpService: TotpService) {}
 

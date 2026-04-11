@@ -1,0 +1,269 @@
+{
+  "brand": {
+    "name": "TurnoLink",
+    "tagline": "Reservas y cobros automáticos para tu negocio",
+    "description": "Plataforma SaaS argentina de gestión de turnos, reservas online y cobros automáticos con Mercado Pago. Más de 40 industrias: belleza, salud, deportes, hospedaje, profesionales, espacios flexibles y alquiler temporario.",
+    "target_audience": "Dueños de negocios y profesionales independientes en Argentina y LATAM que gestionan turnos o reservas: peluquerías, barberías, consultorios médicos, centros de estética, canchas deportivas, estudios de yoga, spas, abogados, contadores, psicólogos.",
+    "tone": "Profesional pero cercano. Directo, sin rodeos. Confiable y moderno. Usa voseo argentino (vos, tu negocio, empezá, gestioná).",
+    "personality": [
+      "confiable",
+      "moderno",
+      "eficiente",
+      "accesible",
+      "profesional",
+      "empático"
+    ],
+    "value_proposition": "Tu negocio abierto 24/7. Tus clientes reservan solos, vos cobrás automático. Sin WhatsApp ida y vuelta. Empezá gratis."
+  },
+  "visual_identity": {
+    "colors": {
+      "primary": "#3F8697",
+      "primary_dark": "#346E7D",
+      "primary_darker": "#28545F",
+      "secondary": "#4DA4B8",
+      "accent": "#6FBBCB",
+      "soft": "#ECF6F8",
+      "background_light": "#FFFFFF",
+      "background_dark": "#0A1518",
+      "foreground_light": "#12262C",
+      "foreground_dark": "#FAFAFA",
+      "card_light": "#FFFFFF",
+      "card_dark": "#1A1A1A",
+      "border_light": "#E0EDF0",
+      "border_dark": "#333333",
+      "muted_light": "#F5F7F8",
+      "muted_dark": "#262626",
+      "success": "#22C55E",
+      "warning": "#F59E0B",
+      "error": "#EF4444",
+      "info_blue": "#3B82F6",
+      "info_violet": "#8B5CF6",
+      "info_amber": "#F59E0B",
+      "info_emerald": "#10B981",
+      "gradient_primary": "linear-gradient(135deg, #3F8697, #346E7D)",
+      "gradient_hero": "linear-gradient(135deg, #3F8697, #346E7D, #28545F)",
+      "gradient_soft": "linear-gradient(180deg, rgba(63,134,151,0.08), transparent)",
+      "stats_blue": "linear-gradient(to bottom-right, #3B82F6, #2563EB)",
+      "stats_emerald": "linear-gradient(to bottom-right, #10B981, #059669)",
+      "stats_violet": "linear-gradient(to bottom-right, #8B5CF6, #7C3AED)",
+      "stats_amber": "linear-gradient(to bottom-right, #F59E0B, #F97316)"
+    },
+    "typography": {
+      "primary_font": "DM Sans",
+      "secondary_font": "system-ui, -apple-system, sans-serif",
+      "heading_weight": "600-700",
+      "body_weight": "400-500",
+      "heading_tracking": "-0.02em to -0.01em",
+      "sizes": {
+        "hero": "text-4xl to text-6xl",
+        "page_title": "text-2xl to text-3xl",
+        "card_title": "text-lg to text-xl semibold",
+        "stat_number": "text-3xl bold",
+        "body": "text-sm to text-base",
+        "caption": "text-xs",
+        "micro": "text-[10px] to text-[11px]"
+      }
+    },
+    "style_keywords": [
+      "clean",
+      "minimal",
+      "teal",
+      "gradient",
+      "rounded corners 12-16px",
+      "soft shadows",
+      "glassmorphism subtle",
+      "generous whitespace",
+      "modern SaaS",
+      "professional",
+      "friendly",
+      "tech-forward",
+      "backdrop-blur",
+      "DM Sans font"
+    ],
+    "design_style_description": "Estilo visual inspirado en startups como Stripe, Cal.com y Notion. Fondos claros (#FFFFFF) con acentos en teal (#3F8697). Tarjetas blancas con bordes redondeados (12-16px), sombras suaves (shadow-sm), glassmorphism sutil (bg-white/80 backdrop-blur-sm). Interfaz aireada con mucho espacio en blanco. Tipografía DM Sans. Iconografía lineal Lucide React. Dark mode con fondo #0A1518 y cards #1A1A1A. Gradientes de stats cards: azul, esmeralda, violeta, ámbar. Header sticky con backdrop-blur-md y 80% opacidad.",
+    "effects": {
+      "glass": "background white/70, backdrop-blur-xl, border white/20, shadow-xl",
+      "glass_card": "background white/50, backdrop-blur-lg, border white/30, shadow-lg",
+      "shadow_glow": "0 0 40px -10px rgba(63, 134, 151, 0.4)",
+      "shadow_brand": "0 4px 14px 0 rgba(63, 134, 151, 0.25)",
+      "hover_lift": "translateY(-4px) + shadow-lg transition 200ms",
+      "animations": "float 6s ease-in-out, pulse-slow 4s, gradient 8s, shimmer 2s"
+    }
+  },
+  "product_context": {
+    "type": "SaaS",
+    "category": "Gestión de turnos, reservas online y cobros automáticos",
+    "platforms": ["web", "mobile-responsive", "PWA"],
+    "country": "Argentina",
+    "currency": "ARS",
+    "payment_gateway": "Mercado Pago",
+    "main_features": [
+      "Página de reservas pública personalizable por negocio",
+      "Calendario de turnos con vista día/semana/mes",
+      "Cobros automáticos con Mercado Pago",
+      "Confirmación por WhatsApp y email",
+      "Portal de autogestión para empleados",
+      "Gestión de clientes con historial",
+      "Reportes y analytics del negocio",
+      "Multi-sucursal con empleados por sede",
+      "Horarios y disponibilidad por empleado",
+      "Bloqueo de fechas (vacaciones, feriados)",
+      "Suscripciones con planes por industria",
+      "Soporte para +40 rubros diferentes",
+      "Dark mode completo"
+    ],
+    "industries": [
+      "Belleza y bienestar",
+      "Salud y consultorios",
+      "Deportes y recreación",
+      "Profesionales independientes",
+      "Hospedaje por horas",
+      "Alquiler temporario",
+      "Espacios flexibles y coworking"
+    ],
+    "benefits": [
+      "Ahorrás horas de WhatsApp ida y vuelta",
+      "Tus clientes reservan 24/7 desde cualquier dispositivo",
+      "Cobrás automático antes del turno",
+      "Reducís ausencias con recordatorios automáticos",
+      "Profesionalizás tu negocio con una página propia",
+      "Tus empleados se autogestionan desde su portal",
+      "Empezás gratis, escalás cuando necesités"
+    ]
+  },
+  "ui_screenshots_description": {
+    "dashboard": {
+      "layout": "Left sidebar (w-64) with logo top, collapsible nav sections, main content right. Mobile: bottom nav bar (5 icons) with hamburger sheet.",
+      "header": "Sticky top bar with backdrop-blur-md, 80% opacity background. Right side: notification bell with animated teal badge, theme toggle (sun/moon), user avatar dropdown (h-10 w-10 teal circle with user icon).",
+      "greeting_card": "Full-width card with teal gradient background (from-primary via-primary/90 to-teal-600). White text: greeting (Buenos días/tardes/noches + user name), current date. Decorative: white/10 opacity circular blur orbs top-right and bottom-left, grid pattern overlay opacity-10. Sparkles icon.",
+      "stats_cards": "4 cards in a row (2x2 mobile). Each has gradient background, white icon (h-5 w-5, 80% opacity), large white number (text-3xl bold), subtitle text. Card 1 BLUE (from-blue-500 to-blue-600): 'Hoy' with Calendar icon, shows today's booking count. Card 2 EMERALD (from-emerald-500 to-emerald-600): 'Esta Semana' with TrendingUp icon. Card 3 VIOLET (from-violet-500 to-violet-600): 'Este Mes' with Clock icon. Card 4 AMBER-ORANGE (from-amber-500 to-orange-500): 'Clientes' with Users icon, shows total customers. All cards: border-0, shadow-md, rounded-xl, decorative white/10 circular blur top-right.",
+      "upcoming_bookings": "White card with subtle border and shadow-sm. Header: blue icon badge (Calendar, bg-blue-500/10), title 'Próximos Turnos', ghost button 'Ver todos' with arrow. List of bookings: gradient avatar circle (h-10 w-10) with customer initial, name bold, service name muted, date 'dd/MM - HH:MM', status badge (PENDING=amber, CONFIRMED=blue, COMPLETED=emerald, CANCELLED=red). First row highlighted bg-blue-50/30.",
+      "recent_customers": "Same card style. Amber icon badge. Avatar circles with index-based gradients (amber, emerald, violet, slate). Shows name, phone, booking count badge (bg-primary/10 text-primary)."
+    },
+    "sidebar": {
+      "desktop": "Fixed left, w-64, full height. Top: TurnoLink logo (h-16). Collapsible sections with chevron icons. Nav items: text-[13px] font-medium, Lucide icons (h-4 w-4), rounded-lg, active=bg-primary text-white shadow-sm, inactive=text-muted hover:bg-muted. Sections: General (Dashboard, Reportes), Turnos (Autogestión, Turnos, Servicios, Empleados, Especialidades, Formularios, Sucursales, Clientes, Horarios), Configuración (General, Pagos, Videollamadas, Seguridad), Cuenta (Mi Suscripción, Reseñas, Desarrolladores).",
+      "mobile": "Bottom fixed bar, grid-cols-5, h-16. Icons h-5 w-5, text-[10px]. Active: text-primary with bg-primary/10 behind icon. 5th button opens full sidebar sheet (w-72)."
+    },
+    "calendar": {
+      "booking_cards_compact": "Status-colored background (PENDING=amber-50, CONFIRMED=blue-50, COMPLETED=emerald-50, CANCELLED=red-50). Left border 3px matching status color. Content: time bold, customer name truncated, service name, tiny status badge. Rounded-lg, hover shadow-md.",
+      "booking_cards_full": "Same color scheme. Time display: h-14 w-14 centered block with start time (text-base bold) and end time (text-[10px]). Customer name with User icon, service + duration with Clock icon. Status badge right-aligned.",
+      "views": "Day/Week/Month toggle. Day shows hourly grid with booking cards. Week shows 7 columns. Month shows calendar grid with booking count dots."
+    },
+    "public_booking_page": {
+      "hero": "Full-width cover image with customizable color overlay + opacity. Tenant logo (h-16, rounded, shadow-xl). Business name large. Description text. Trust badges with star ratings. Contact buttons: Location, Call, WhatsApp, Instagram.",
+      "service_cards": "Grid: 1 col mobile, 2 cols tablet, 3 cols desktop. Cards: rounded-2xl, border, shadow, overflow-hidden. Service image (16:9 aspect, object-cover). Service name (text-xl bold). Description (text-sm muted). Price display with optional promo pricing (strikethrough + discount badge). Duration with clock icon. 'Reservar' button with teal gradient and arrow icon. Hover: scale + shadow lift.",
+      "booking_calendar": "Rounded-lg, border, padded. Month navigation with chevron buttons. Weekday headers grid-cols-7. Day cells: h-10, rounded-md. Today=border-primary, Selected=bg-primary text-white, Disabled=opacity-30, Unavailable=opacity-40 with diagonal line.",
+      "time_slots": "Grouped by period: morning (sunrise icon, amber), afternoon (sun icon, orange), night (moon icon, indigo). Period tabs: grid-cols-3, active=bg-slate-900 text-white. Slot buttons: grid-cols-3, rounded-xl, py-2.5. Selected=bg-slate-900 text-white border-2. Unselected=bg-white border-2 border-slate-200.",
+      "customer_form": "Name, phone, email, optional notes. Inputs: rounded-lg, border, px-3 py-2. Validation errors in red text-xs."
+    },
+    "status_colors": {
+      "PENDING": { "bg": "amber-50", "text": "amber-700", "border": "amber-500", "label": "Pendiente" },
+      "CONFIRMED": { "bg": "blue-50", "text": "blue-700", "border": "blue-500", "label": "Confirmado" },
+      "COMPLETED": { "bg": "emerald-50", "text": "emerald-700", "border": "emerald-500", "label": "Completado" },
+      "CANCELLED": { "bg": "red-50", "text": "red-700", "border": "red-500", "label": "Cancelado" },
+      "NO_SHOW": { "bg": "slate-50", "text": "slate-700", "border": "slate-500", "label": "No asistió" }
+    }
+  },
+  "ui_patterns": {
+    "layout_style": "Dashboard sidebar left (w-64 desktop), bottom nav (h-16, 5 icons mobile). Header sticky con backdrop-blur-md. Contenido centrado con max-width. Cards como unidad principal de información.",
+    "components": [
+      "Cards blancas con bordes redondeados (rounded-xl), border sutil, shadow-sm, bg-white/80 backdrop-blur-sm",
+      "Stats cards con gradiente de color (azul, esmeralda, violeta, ámbar) y números grandes blancos",
+      "Greeting card full-width con gradiente teal, orbs decorativos white/10, patrón grid",
+      "Badges de estado semánticos: amber=pendiente, blue=confirmado, emerald=completado, red=cancelado",
+      "Booking cards con borde izquierdo 3px color del estado y fondo tintado",
+      "Avatar circles con gradiente y letra inicial del nombre",
+      "Tablas responsivas que colapsan a cards en mobile",
+      "Modals/Sheets para formularios y confirmaciones",
+      "Toasts para feedback de acciones",
+      "Calendarios interactivos con booking cards inline",
+      "Time slot selector agrupado por mañana/tarde/noche con íconos",
+      "Skeleton loaders durante carga",
+      "Empty states con ilustración y CTA",
+      "Notification bell con badge animado (pulse) teal",
+      "Theme toggle sun/moon para dark mode"
+    ],
+    "visual_elements": [
+      "Gradiente teal (135deg, #3F8697 → #346E7D → #28545F) en headers, CTAs, greeting card",
+      "Stats gradients: blue-500→blue-600, emerald-500→emerald-600, violet-500→violet-600, amber-500→orange-500",
+      "Iconos Lucide React lineales (h-4 w-4 en sidebar, h-5 w-5 en stats, h-8 w-8 en card headers)",
+      "Glassmorphism: bg-white/80 backdrop-blur-sm en cards, bg-background/80 backdrop-blur-md en header",
+      "Bordes redondeados: rounded-xl cards, rounded-lg inputs/buttons, rounded-md calendar days, rounded-full avatars",
+      "Sombras: shadow-sm cards, shadow-md stats/hover, shadow-lg modals, shadow-xl popovers",
+      "Glow effect: 0 0 40px rgba(63,134,151,0.4) en CTAs hover",
+      "Transiciones suaves (200ms ease), hover-lift translateY(-4px)",
+      "Staggered animations: fade-in + slide-from-bottom con delays escalonados",
+      "Decorative orbs: círculos white/10 blur en greeting card y stats cards"
+    ],
+    "ux_description": "Interfaz pensada para dueños de negocios no técnicos. Flujos cortos (máximo 3 pasos). Acciones principales siempre visibles. Feedback inmediato en cada acción. Mobile-first con bottom nav de 5 ítems. Textos en español argentino claro. Tipografía DM Sans."
+  },
+  "marketing_context": {
+    "content_types": [
+      "instagram_post",
+      "instagram_story",
+      "instagram_reel_cover",
+      "facebook_ad",
+      "google_display_ad",
+      "email_header",
+      "landing_hero",
+      "blog_cover",
+      "whatsapp_status"
+    ],
+    "common_scenarios": [
+      "Peluquería mostrando su página de turnos online",
+      "Barbería recibiendo reservas mientras duerme",
+      "Consultorio médico con agenda digital organizada",
+      "Centro de estética con cobro automático antes del turno",
+      "Cancha de pádel con reservas 24/7",
+      "Psicóloga gestionando sesiones desde el celular",
+      "Spa con empleados autogestionándose",
+      "Dueño de negocio viendo reportes de facturación",
+      "Cliente reservando turno desde su celular a las 2am",
+      "Estudio de uñas sin faltas por recordatorios automáticos"
+    ],
+    "emotional_triggers": [
+      "Libertad — no estar atado al teléfono",
+      "Profesionalismo — tu negocio se ve premium",
+      "Tranquilidad — todo funciona solo",
+      "Crecimiento — más clientes con menos esfuerzo",
+      "Control — ves todo tu negocio en un dashboard",
+      "Orgullo — tu página de reservas propia",
+      "Tiempo — recuperás horas de gestión manual"
+    ],
+    "cta_examples": [
+      "Empezá gratis",
+      "Creá tu página de turnos",
+      "Probalo 14 días gratis",
+      "Tu negocio abierto 24/7",
+      "Dejá de perder turnos",
+      "Activá cobro automático",
+      "Digitalizá tu agenda hoy",
+      "Reservas online en 5 minutos"
+    ]
+  },
+  "image_generation": {
+    "base_prompt_style": "Modern SaaS booking platform UI, clean minimal design, teal (#3F8697) and white color scheme, DM Sans font, soft gradients, white cards with rounded-xl corners and subtle shadow-sm, glassmorphism effect (semi-transparent white with backdrop blur), Lucide line icons, high-end startup aesthetic similar to Stripe and Cal.com, crisp 4K render",
+    "dashboard_description": "Left sidebar (dark teal or white) with TurnoLink logo at top and navigation items with small Lucide icons. Main area shows: (1) full-width greeting card with teal gradient background and white text showing 'Buenos días' + user name + date, decorative translucent white circular blur orbs, (2) row of 4 colorful stats cards — blue gradient showing today's bookings count '12', emerald gradient showing week count, violet gradient showing month count, amber-orange gradient showing total customers — each with white icon and large white number, (3) two white cards below: left shows 'Próximos Turnos' list with avatar circles and colored status badges (amber pending, blue confirmed, emerald completed), right shows 'Clientes Recientes' with gradient avatar circles and booking count badges. Top header bar is semi-transparent with blur effect, notification bell with teal animated badge, theme toggle, user avatar circle.",
+    "mobile_description": "Smartphone showing same dashboard but with bottom navigation bar (5 teal icons), stacked cards layout, greeting card full-width, 2x2 stats grid (blue, emerald, violet, amber gradients with white numbers), booking list below. Clean white background, teal accents, DM Sans font.",
+    "booking_page_description": "Public booking page showing: hero section with business cover photo and logo overlay, business name and description, star rating badges, contact buttons (WhatsApp, phone, location). Below: grid of service cards with 16:9 photos, service names in bold, prices in teal, duration with clock icon, teal gradient 'Reservar' buttons with arrow. Calendar component with selectable dates (today=teal border, selected=teal filled white text, unavailable=grayed diagonal line). Time slot selector grouped by morning/afternoon/night tabs with sun/moon icons, grid of rounded-xl time buttons.",
+    "calendar_description": "Weekly calendar view with hourly grid. Booking blocks are color-coded: amber background for pending, blue for confirmed, emerald for completed, red for cancelled. Each block has 3px left border in matching saturated color, shows time, customer name, service name, and tiny status badge. Cards have rounded-lg corners and hover shadow.",
+    "negative_prompt": "blurry, low quality, pixelated, cluttered, dark moody, neon colors, cartoon, comic, anime, watermark, stock photo feel, generic, outdated UI, skeuomorphic, Windows XP style, Bootstrap default, Material Design default, flat boring, lorem ipsum, wireframe, grayscale only",
+    "lighting": "Soft natural daylight from left, clean white ambient fill, subtle warm highlights on gradient cards, no harsh shadows, studio-quality product lighting for device mockup shots, soft teal ambient glow reflecting off screen",
+    "composition": "Centered product focus with generous whitespace, slight perspective tilt (5-10 degrees) for 3D depth on device mockups, devices floating with soft drop shadow on clean gradient or white surface, rule of thirds for lifestyle shots, hero sections with teal gradient backgrounds fading to white",
+    "render_style": "Photorealistic UI renders with actual dashboard data visible on screens. Device mockups should show real interface elements (colored stats cards, booking calendar, sidebar navigation, status badges). Lifestyle photos should be warm, natural, Argentine aesthetic. All screens must look like a real working application, not a wireframe or concept.",
+    "device_mockup_specs": {
+      "laptop": "Modern thin MacBook-style laptop, silver, slightly angled (5-10 deg perspective), screen showing full dashboard with sidebar + greeting card + stats + bookings",
+      "smartphone": "Modern iPhone-style smartphone, borderless display, slight tilt, screen showing either mobile dashboard (bottom nav + stats cards + booking list) or public booking page (services grid + calendar + time slots)",
+      "tablet": "iPad-style tablet, portrait or landscape, showing calendar view with color-coded booking cards",
+      "multi_device": "Laptop center-left, smartphone right and slightly forward, both showing different views of the same platform. Optional: tablet floating behind. All on clean white/teal gradient surface with soft shadows."
+    },
+    "aspect_ratios": {
+      "instagram_post": "1:1 (1080x1080)",
+      "instagram_story": "9:16 (1080x1920)",
+      "facebook_ad": "1.91:1 (1200x628)",
+      "google_display": "various (300x250, 728x90, 160x600)",
+      "landing_hero": "16:9 (1920x1080)",
+      "og_image": "1.91:1 (1200x630)"
+    }
+  }
+}

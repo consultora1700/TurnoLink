@@ -502,6 +502,55 @@ export class ProfessionalProfilesService {
     };
   }
 
+  /**
+   * Get full public profile — for the shareable CV page.
+   */
+  async getFullPublicProfile(profileId: string) {
+    const profile = await this.prisma.professionalProfile.findFirst({
+      where: {
+        id: profileId,
+        profileVisible: true,
+        consentedAt: { not: null },
+      },
+      include: {
+        experiences: { orderBy: { startDate: 'desc' } },
+      },
+    });
+
+    if (!profile) {
+      throw new NotFoundException('Perfil no encontrado');
+    }
+
+    let skills: string[] = [];
+    try { skills = typeof profile.skills === 'string' ? JSON.parse(profile.skills) : (profile.skills || []); } catch { skills = []; }
+
+    let certifications: string[] = [];
+    try { certifications = typeof profile.certifications === 'string' ? JSON.parse(profile.certifications) : (profile.certifications || []); } catch { certifications = []; }
+
+    let preferredZones: string[] = [];
+    try { preferredZones = typeof profile.preferredZones === 'string' ? JSON.parse(profile.preferredZones) : (profile.preferredZones || []); } catch { preferredZones = []; }
+
+    return {
+      id: profile.id,
+      name: profile.name,
+      image: profile.image,
+      specialty: profile.specialty,
+      category: profile.category,
+      coverImage: profile.coverImage,
+      headerTemplate: profile.headerTemplate,
+      headline: profile.headline,
+      bio: profile.bio,
+      yearsExperience: profile.yearsExperience,
+      skills,
+      certifications,
+      availability: profile.availability,
+      preferredZones,
+      openToWork: profile.openToWork,
+      profileVisible: profile.profileVisible,
+      experiences: profile.experiences,
+    };
+  }
+
   // ============ BROWSE (Fase 3) ============
 
   /**

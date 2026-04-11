@@ -1,0 +1,285 @@
+import type { NicheConfig } from './types';
+
+const ACCENT = '#3B82F6';
+const PARENT_URL = '/salud';
+const PARENT_LABEL = 'Salud';
+
+const SHARED_PRICING = {
+  hasFree: false,
+  tiers: [
+    {
+      name: 'Starter',
+      price: '$16.990',
+      period: '/mes',
+      features: [
+        '1 profesional',
+        '1 consultorio',
+        'Reservas ilimitadas',
+        'Videollamadas integradas',
+        'Cobro de señas con Mercado Pago',
+        'Recordatorios automáticos por email',
+        'Ficha de paciente',
+      ],
+    },
+    {
+      name: 'Profesional',
+      price: '$29.990',
+      period: '/mes',
+      popular: true,
+      features: [
+        'Hasta 5 profesionales',
+        '2 consultorios',
+        'Reservas ilimitadas',
+        'Videollamadas integradas',
+        'Cobro de señas con Mercado Pago',
+        'Reportes avanzados',
+        'Control de finanzas',
+        'Portal de empleados (hasta 3)',
+        'Dashboard completo',
+      ],
+    },
+    {
+      name: 'Clínica',
+      price: '$49.990',
+      period: '/mes',
+      features: [
+        'Todo lo de Profesional',
+        'Profesionales ilimitados',
+        'Multi-sede sin límite',
+        'Portal de empleados ilimitado',
+        'Reportes gerenciales',
+        'Control de finanzas',
+        'Soporte prioritario',
+        'API disponible',
+        'Onboarding personalizado',
+      ],
+    },
+  ],
+};
+
+const saludConfig: NicheConfig = {
+  slug: 'salud',
+  label: 'Salud',
+  accent: ACCENT,
+  url: PARENT_URL,
+  subNiches: {
+    'consultorios-medicos': {
+      accent: ACCENT,
+      parentNicheUrl: PARENT_URL,
+      parentNicheLabel: PARENT_LABEL,
+      seo: {
+        title: 'TurnoLink para Consultorios Médicos — Turnos Online y Gestión de Pacientes',
+        description: 'Sistema de turnos para consultorios médicos. Agenda online, recordatorios automáticos y gestión de pacientes. Empezá gratis.',
+        keywords: ['turnos consultorio médico online', 'sistema turnos médicos', 'agenda médica digital', 'software consultorio argentina', 'turnos médicos online'],
+      },
+      pill: '🏥 Consultorios Médicos',
+      heroTitle: 'Tu consultorio lleno,',
+      heroSubtitle: 'tu secretaria descansada.',
+      painPoints: [
+        { title: 'Teléfono que no para', desc: 'Tu secretaria pasa el día atendiendo llamadas para dar turnos. No puede hacer nada más.' },
+        { title: 'Pacientes que no vienen', desc: 'Turnos reservados que quedan vacíos. Sin recordatorio, el paciente se olvida. Sin seña, no hay consecuencia.' },
+        { title: 'Agenda de papel', desc: 'Turnos anotados en cuadernos, tachones, superposiciones. Encontrar un hueco libre lleva 5 minutos por paciente.' },
+      ],
+      capabilities: [
+        { icon: 'CalendarCheck', title: 'Agenda digital', desc: 'Turnos organizados por especialidad, duración y profesional. Tu secretaria solo confirma lo que el sistema organizó.' },
+        { icon: 'Bell', title: 'Recordatorios automáticos', desc: 'Email de confirmación al reservar y recordatorio antes del turno. Además, enviá un recordatorio por WhatsApp con un clic desde tu panel.' },
+        { icon: 'Users', title: 'Ficha de paciente', desc: 'Datos de contacto, obra social, historial de turnos y notas. Todo en un solo lugar.' },
+        { icon: 'Globe', title: 'Turnos 24/7', desc: 'Tus pacientes reservan desde la web a cualquier hora. No dependen del horario de tu secretaria.' },
+        { icon: 'Building2', title: 'Múltiples consultorios', desc: 'Si tenés más de un consultorio, gestioná todos desde una sola cuenta.' },
+        { icon: 'LayoutDashboard', title: 'Panel de control', desc: 'Turnos del día, ausencias, ocupación por profesional. Todo visible en un vistazo.' },
+      ],
+      subIndustries: ['Clínica médica', 'Pediatría', 'Cardiología', 'Dermatología', 'Ginecología', 'Traumatología'],
+      pricing: SHARED_PRICING,
+      testimonials: [
+        { quote: 'Nuestra secretaria pasaba 5 horas por día al teléfono. Ahora los pacientes reservan solos y ella se ocupa de lo importante.', name: 'Dr. Martín Giménez', role: 'Director', business: 'Centro Médico Giménez', image: 'https://randomuser.me/api/portraits/men/31.jpg' },
+        { quote: 'Los recordatorios por WhatsApp redujeron las ausencias un 70%. Es increíble la diferencia.', name: 'Dra. Laura Pacheco', role: 'Pediatra', business: 'Consultorio Dra. Pacheco', image: 'https://randomuser.me/api/portraits/women/50.jpg' },
+        { quote: 'Gestiono 3 consultorios con 8 profesionales desde una sola cuenta. Antes era imposible.', name: 'Silvia Morales', role: 'Administradora', business: 'Policlínico San Martín', image: 'https://randomuser.me/api/portraits/women/51.jpg' },
+      ],
+      faqs: [
+        { q: '¿Puedo configurar turnos por especialidad?', a: 'Sí. Cada especialidad tiene su duración, profesional y disponibilidad propia.' },
+        { q: '¿Funciona con obras sociales?', a: 'Podés registrar la obra social del paciente en su ficha. La facturación la seguís manejando como siempre.' },
+        { q: '¿Puedo tener varios médicos en la misma agenda?', a: 'Sí. Cada profesional tiene su propia agenda y los pacientes eligen a quién reservarle.' },
+        { q: '¿Los pacientes pueden cancelar su turno?', a: 'Sí. Podés definir hasta cuántas horas antes pueden cancelar sin costo.' },
+        { q: '¿Es seguro para datos de pacientes?', a: 'Sí. Los datos están encriptados y cumplimos con las normas de protección de datos personales.' },
+        { q: '¿Puedo ver el historial de turnos de un paciente?', a: 'Sí. Cada paciente tiene su historial completo de turnos, cancelaciones y notas.' },
+        { q: '¿Funciona para consultorios compartidos?', a: 'Sí. Varios profesionales pueden compartir el mismo espacio en distintos horarios sin conflictos.' },
+      ],
+      cta: { headline: 'Modernizá tu consultorio', subtitle: 'en 5 minutos.', description: 'Creá tu cuenta gratis, configurá tus profesionales y horarios. Tus pacientes reservan solos.' },
+    },
+
+    odontologos: {
+      accent: ACCENT,
+      parentNicheUrl: PARENT_URL,
+      parentNicheLabel: PARENT_LABEL,
+      seo: {
+        title: 'TurnoLink para Odontólogos — Turnos Online y Cobro de Señas',
+        description: 'Sistema de turnos para odontólogos y consultorios dentales. Agenda online, recordatorios y cobro automático. Empezá gratis.',
+        keywords: ['turnos odontólogo online', 'agenda dental digital', 'sistema turnos dentista', 'software odontología argentina', 'turnos consultorio dental'],
+      },
+      pill: '🦷 Odontólogos',
+      heroTitle: 'Tu consultorio dental',
+      heroSubtitle: 'con agenda llena y organizada.',
+      painPoints: [
+        { title: 'Pacientes que no aparecen', desc: 'Reservan una limpieza o un tratamiento largo y no vienen. El sillón queda vacío y perdés ingresos.' },
+        { title: 'Tratamientos multi-sesión', desc: 'Endodoncias, ortodoncia, implantes. Si el paciente no sigue el plan, el tratamiento falla y vos perdés.' },
+        { title: 'Secretaria saturada', desc: 'Tu secretaria pasa el día al teléfono dando turnos cuando debería estar gestionando la clínica.' },
+      ],
+      capabilities: [
+        { icon: 'CalendarCheck', title: 'Agenda por profesional', desc: 'Cada odontólogo con su agenda, servicios y horarios. El paciente elige a quién reservarle.' },
+        { icon: 'CreditCard', title: 'Señas por tratamiento', desc: 'Tratamientos largos requieren compromiso. Cobrá una seña para garantizar asistencia.' },
+        { icon: 'Bell', title: 'Recordatorios y seguimiento', desc: 'Recordá turnos y también avisá cuando toca la próxima sesión del tratamiento.' },
+        { icon: 'Timer', title: 'Duración por servicio', desc: 'Limpieza 30 min, extracción 45 min, implante 2hs. La agenda nunca se superpone.' },
+        { icon: 'Users', title: 'Historial odontológico', desc: 'Tratamientos realizados, próximos pasos, radiografías de referencia y notas clínicas.' },
+        { icon: 'Globe', title: 'Turnos online 24/7', desc: 'Pacientes que reservan desde Google Maps, tu web o WhatsApp. A cualquier hora.' },
+      ],
+      subIndustries: ['Odontología general', 'Ortodoncia', 'Implantes', 'Endodoncia', 'Estética dental', 'Periodoncia'],
+      pricing: SHARED_PRICING,
+      testimonials: [
+        { quote: 'Las ausencias en tratamientos largos bajaron un 75% con las señas. Ahora los pacientes se comprometen.', name: 'Dr. Pablo Herrera', role: 'Odontólogo', business: 'Dental Herrera', image: 'https://randomuser.me/api/portraits/men/33.jpg' },
+        { quote: 'Mi secretaria dejó de atender llamadas todo el día. Los pacientes reservan solos y ella se ocupa de la clínica.', name: 'Dra. Claudia Méndez', role: 'Directora', business: 'Odonto Smile Clínica', image: 'https://randomuser.me/api/portraits/women/52.jpg' },
+        { quote: 'Tengo 4 odontólogos y cada uno maneja su agenda. Cero conflictos, todo organizado.', name: 'Dr. Federico Luna', role: 'Director', business: 'Centro Odontológico Luna', image: 'https://randomuser.me/api/portraits/men/34.jpg' },
+      ],
+      faqs: [
+        { q: '¿Puedo configurar tratamientos multi-sesión?', a: 'Sí. Creás el tratamiento y programás las sesiones de seguimiento con recordatorios automáticos.' },
+        { q: '¿Funciona con varios odontólogos?', a: 'Sí. Cada profesional tiene su propia agenda y los pacientes eligen a quién reservarle.' },
+        { q: '¿Puedo guardar el historial odontológico?', a: 'Sí. Notas de cada consulta, tratamientos realizados y plan de tratamiento pendiente.' },
+        { q: '¿Se integra con obras sociales?', a: 'Podés registrar la obra social del paciente. La facturación se maneja por fuera del sistema.' },
+        { q: '¿El paciente puede elegir el tipo de consulta?', a: 'Sí. Limpieza, consulta general, urgencia, seguimiento. Cada uno con su duración y precio.' },
+        { q: '¿Puedo bloquear horarios de cirugía?', a: 'Sí. Bloqueás horarios para procedimientos que requieren más tiempo sin que alguien pueda reservar.' },
+      ],
+      cta: { headline: 'Modernizá tu consultorio dental', subtitle: 'en minutos.', description: 'Creá tu cuenta gratis, cargá tus servicios y que tus pacientes reserven solos.' },
+    },
+
+    nutricionistas: {
+      accent: ACCENT,
+      parentNicheUrl: PARENT_URL,
+      parentNicheLabel: PARENT_LABEL,
+      seo: {
+        title: 'TurnoLink para Nutricionistas — Agenda Online y Seguimiento de Pacientes',
+        description: 'Sistema de turnos para nutricionistas. Consultas online y presenciales, seguimiento de pacientes y cobro automático. Empezá gratis.',
+        keywords: ['turnos nutricionista online', 'agenda nutricionista digital', 'sistema turnos nutrición', 'software nutricionista argentina', 'reservas consulta nutricional'],
+      },
+      pill: '🥗 Nutricionistas',
+      heroTitle: 'Tu consultorio nutricional',
+      heroSubtitle: 'organizado y rentable.',
+      painPoints: [
+        { title: 'Pacientes que abandonan', desc: 'Hacen 2 consultas y no vuelven más. Sin seguimiento, los perdés y tu facturación baja.' },
+        { title: 'Turnos desperdiciados', desc: 'Consultas de 40 minutos que quedan vacías porque el paciente se olvidó o no avisó.' },
+        { title: 'Administración manual', desc: 'Agendás turnos, mandás planes, cobrás honorarios. Todo manual y desordenado.' },
+      ],
+      capabilities: [
+        { icon: 'CalendarCheck', title: 'Agenda flexible', desc: 'Primera consulta 60 min, seguimiento 30 min. Cada tipo de consulta con su duración.' },
+        { icon: 'Bell', title: 'Seguimiento de pacientes', desc: 'Recordatorios de control periódico para que tus pacientes no abandonen el tratamiento.' },
+        { icon: 'CreditCard', title: 'Cobro por consulta', desc: 'El paciente paga al reservar. Sin incomodidad de cobrar en persona.' },
+        { icon: 'Users', title: 'Ficha nutricional', desc: 'Peso, talla, objetivos, alergias alimentarias. Historial completo de cada paciente.' },
+        { icon: 'Globe', title: 'Consultas online', desc: 'Tus pacientes reservan consultas presenciales u online según su preferencia.' },
+        { icon: 'LayoutDashboard', title: 'Métricas de consultorio', desc: 'Pacientes activos, consultas por semana, tasa de retorno y facturación mensual.' },
+      ],
+      subIndustries: ['Nutrición clínica', 'Nutrición deportiva', 'Nutrición infantil', 'Celiaquía', 'Vegetarianismo', 'Control de peso'],
+      pricing: SHARED_PRICING,
+      testimonials: [
+        { quote: 'Los recordatorios de control me recuperaron muchos pacientes que antes se perdían después de la segunda consulta.', name: 'Lic. Marina Torres', role: 'Nutricionista', business: 'Nutrición MT', image: 'https://randomuser.me/api/portraits/women/53.jpg' },
+        { quote: 'El cobro automático me simplificó la vida. Mis pacientes pagan al reservar y yo me enfoco en sus planes.', name: 'Lic. Diego Almada', role: 'Nutricionista deportivo', business: 'NutriSport BA', image: 'https://randomuser.me/api/portraits/men/35.jpg' },
+        { quote: 'Atiendo presencial y online. TurnoLink me permite gestionar ambas modalidades sin problemas.', name: 'Lic. Carla Bianchi', role: 'Nutricionista', business: 'Consultorio Bianchi', image: 'https://randomuser.me/api/portraits/women/54.jpg' },
+      ],
+      faqs: [
+        { q: '¿Puedo diferenciar primera consulta de seguimiento?', a: 'Sí. Primera consulta 60 min y seguimiento 30 min, cada una con su precio y duración.' },
+        { q: '¿El sistema me avisa si un paciente no vuelve?', a: 'Podés configurar recordatorios periódicos para que tus pacientes agenden su próximo control.' },
+        { q: '¿Funciona para consultas online?', a: 'Sí. Creás un servicio de consulta online y el paciente elige la modalidad al reservar.' },
+        { q: '¿Puedo guardar datos nutricionales del paciente?', a: 'Sí. En la ficha de paciente guardás peso, talla, objetivos, alergias y notas de cada consulta.' },
+        { q: '¿Funciona para nutricionistas que atienden en clínicas?', a: 'Sí. Podés configurar tu disponibilidad por consultorio si atendés en más de un lugar.' },
+        { q: '¿Puedo cobrar paquetes de consultas?', a: 'Sí. Creás paquetes de 4, 6 u 8 consultas a un precio especial.' },
+      ],
+      cta: { headline: 'Organizá tu consultorio', subtitle: 'nutricional hoy.', description: 'Creá tu cuenta gratis, configurá tus consultas y que tus pacientes reserven y paguen solos.' },
+    },
+
+    kinesiologos: {
+      accent: ACCENT,
+      parentNicheUrl: PARENT_URL,
+      parentNicheLabel: PARENT_LABEL,
+      seo: {
+        title: 'TurnoLink para Kinesiólogos — Turnos Online y Gestión de Pacientes',
+        description: 'Sistema de turnos para kinesiólogos. Sesiones de rehabilitación, cobro automático y seguimiento de pacientes. Empezá gratis.',
+        keywords: ['turnos kinesiólogo online', 'agenda kinesiología digital', 'sistema turnos kinesiología', 'software kinesiólogo argentina', 'reservas sesión kinesiología'],
+      },
+      pill: '💪 Kinesiólogos',
+      heroTitle: 'Tu consultorio de kinesiología',
+      heroSubtitle: 'con agenda llena y pacientes constantes.',
+      painPoints: [
+        { title: 'Pacientes que abandonan', desc: 'La rehabilitación requiere constancia. Si el paciente falta, pierde el progreso y vos perdés ingresos.' },
+        { title: 'Sesiones frecuentes, agenda compleja', desc: 'Pacientes que vienen 2-3 veces por semana. Coordinar eso por WhatsApp es imposible.' },
+        { title: 'Cobro de obras sociales', desc: 'Algunos pagan particular, otros con obra social. Gestionar los dos sistemas manualmente es un caos.' },
+      ],
+      capabilities: [
+        { icon: 'CalendarCheck', title: 'Sesiones recurrentes', desc: 'Programá sesiones semanales para cada paciente. El sistema reserva automáticamente.' },
+        { icon: 'Bell', title: 'Recordatorios de sesión', desc: 'Email automático de confirmación y recordatorio. Además, enviá un recordatorio por WhatsApp con un clic desde tu panel. Menos faltas, más continuidad.' },
+        { icon: 'Users', title: 'Historial de rehabilitación', desc: 'Diagnóstico, ejercicios, progreso sesión a sesión. Todo documentado en la ficha.' },
+        { icon: 'CreditCard', title: 'Cobro flexible', desc: 'Cobrá por sesión, por paquete o marcá como obra social. Adaptate a cada paciente.' },
+        { icon: 'Timer', title: 'Sesiones de distinta duración', desc: 'Evaluación 60 min, sesión 30 min, post-quirúrgico 45 min. Todo configurado.' },
+        { icon: 'LayoutDashboard', title: 'Panel de rendimiento', desc: 'Sesiones por día, pacientes activos, tasa de adherencia y facturación.' },
+      ],
+      subIndustries: ['Rehabilitación', 'Kinesiología deportiva', 'RPG', 'Osteopatía', 'Fisiatría', 'Post-quirúrgico'],
+      pricing: SHARED_PRICING,
+      testimonials: [
+        { quote: 'Mis pacientes vienen 3 veces por semana. Antes coordinar todo eso era imposible. Ahora reservan sus sesiones solos.', name: 'Lic. Gonzalo Ramos', role: 'Kinesiólogo', business: 'Kinesis Centro', image: 'https://randomuser.me/api/portraits/men/36.jpg' },
+        { quote: 'El seguimiento de sesiones me ayuda a que los pacientes no abandonen. La adherencia mejoró un 50%.', name: 'Lic. Agustina Pardo', role: 'Kinesióloga', business: 'Kine Pardo', image: 'https://randomuser.me/api/portraits/women/55.jpg' },
+        { quote: 'Los recordatorios por email y el refuerzo por WhatsApp me ahorraron horas de llamadas. Mis pacientes vienen más y faltan menos.', name: 'Lic. Nicolás Vera', role: 'Kinesiólogo deportivo', business: 'SportKine BA', image: 'https://randomuser.me/api/portraits/men/37.jpg' },
+      ],
+      faqs: [
+        { q: '¿Puedo programar sesiones recurrentes?', a: 'Sí. Configurás que un paciente tenga sesión lunes, miércoles y viernes a la misma hora automáticamente.' },
+        { q: '¿Funciona con obras sociales?', a: 'Podés marcar cada sesión como particular u obra social para llevar un registro diferenciado.' },
+        { q: '¿Puedo registrar el progreso del paciente?', a: 'Sí. Notas por sesión, ejercicios indicados, evolución y próximos pasos.' },
+        { q: '¿Se puede configurar por tipo de sesión?', a: 'Sí. Evaluación inicial, sesión de tratamiento, sesión post-quirúrgica. Cada una con su duración.' },
+        { q: '¿Funciona para centros con varios kinesiólogos?', a: 'Sí. Cada profesional tiene su agenda y sus pacientes. Vos supervisás todo.' },
+        { q: '¿Los pacientes pueden ver su historial?', a: 'No. Solo vos ves la ficha del paciente. El paciente solo ve su agenda de turnos futuros.' },
+      ],
+      cta: { headline: 'Organizá tu consultorio', subtitle: 'de kinesiología.', description: 'Creá tu cuenta gratis, configurá tus sesiones y que tus pacientes reserven solos.' },
+    },
+
+    fonoaudiologos: {
+      accent: ACCENT,
+      parentNicheUrl: PARENT_URL,
+      parentNicheLabel: PARENT_LABEL,
+      seo: {
+        title: 'TurnoLink para Fonoaudiólogos — Agenda Online y Seguimiento',
+        description: 'Sistema de turnos para fonoaudiólogos. Sesiones de terapia, recordatorios y gestión de pacientes. Empezá gratis.',
+        keywords: ['turnos fonoaudiólogo online', 'agenda fonoaudiología digital', 'sistema turnos fonoaudiólogo', 'software fonoaudiología argentina'],
+      },
+      pill: '🗣️ Fonoaudiólogos',
+      heroTitle: 'Tu consultorio fonológico',
+      heroSubtitle: 'organizado y profesional.',
+      painPoints: [
+        { title: 'Terapias que requieren constancia', desc: 'El tratamiento fonológico es progresivo. Si el paciente falta, pierde avances logrados en semanas.' },
+        { title: 'Padres que olvidan turnos', desc: 'Los turnos de niños dependen de los padres. Si se olvidan, el chico pierde la sesión.' },
+        { title: 'Gestión informal', desc: 'Turnos por WhatsApp, notas en cuadernos, cobros irregulares. Nada profesional.' },
+      ],
+      capabilities: [
+        { icon: 'CalendarCheck', title: 'Sesiones semanales', desc: 'Programá la frecuencia de cada paciente: 1, 2 o 3 veces por semana automáticamente.' },
+        { icon: 'Bell', title: 'Recordatorios a padres', desc: 'Email automático de confirmación y recordatorio al padre/madre. Y con un clic enviás un refuerzo por WhatsApp. Menos olvidos, menos ausencias.' },
+        { icon: 'Users', title: 'Ficha de paciente', desc: 'Diagnóstico, plan de tratamiento, evolución sesión a sesión y derivaciones.' },
+        { icon: 'CreditCard', title: 'Cobro ordenado', desc: 'Por sesión o por mes. El padre paga al reservar y vos no tenés que pedir plata.' },
+        { icon: 'Timer', title: 'Sesiones de 30-45 min', desc: 'Evaluación, terapia de lenguaje, voz. Cada servicio con su duración precisa.' },
+        { icon: 'Shield', title: 'Datos protegidos', desc: 'Información de menores encriptada y accesible solo para vos.' },
+      ],
+      subIndustries: ['Terapia de lenguaje', 'Terapia de voz', 'Audiología', 'Disfagia', 'Estimulación temprana', 'Lectoescritura'],
+      pricing: SHARED_PRICING,
+      testimonials: [
+        { quote: 'Los padres reciben el recordatorio y traen al nene sin falta. Antes faltaban 3 de cada 10 sesiones.', name: 'Lic. Vanesa Quiroz', role: 'Fonoaudióloga', business: 'Fono Kids', image: 'https://randomuser.me/api/portraits/women/56.jpg' },
+        { quote: 'Tengo toda la evolución de cada paciente registrada. Es mucho más profesional que mis cuadernos anteriores.', name: 'Lic. Santiago Morales', role: 'Fonoaudiólogo', business: 'Consultorio Morales Fono', image: 'https://randomuser.me/api/portraits/men/38.jpg' },
+        { quote: 'El cobro automático me sacó la incomodidad de pedir plata a los padres en cada sesión.', name: 'Lic. Paula Suárez', role: 'Fonoaudióloga', business: 'Espacio Fono PS', image: 'https://randomuser.me/api/portraits/women/57.jpg' },
+      ],
+      faqs: [
+        { q: '¿Puedo programar sesiones semanales fijas?', a: 'Sí. Configurás que un paciente tenga sesión los martes y jueves a la misma hora automáticamente.' },
+        { q: '¿El recordatorio llega al padre?', a: 'Sí. El turno se reserva con el contacto del padre/madre y ahí llega el recordatorio.' },
+        { q: '¿Puedo registrar la evolución sesión a sesión?', a: 'Sí. Notas por sesión, objetivos logrados, próximos pasos y observaciones.' },
+        { q: '¿Funciona para pacientes adultos también?', a: 'Por supuesto. TurnoLink funciona para cualquier tipo de paciente, niños y adultos.' },
+        { q: '¿Puedo cobrar por mes en vez de por sesión?', a: 'Podés configurar el precio por sesión. Para cobro mensual, creás un servicio con el valor del mes.' },
+        { q: '¿Es seguro para datos de menores?', a: 'Sí. Todos los datos están encriptados y solo vos tenés acceso a la información.' },
+      ],
+      cta: { headline: 'Profesionalizá tu consultorio', subtitle: 'de fonoaudiología.', description: 'Creá tu cuenta gratis, configurá tus sesiones y organizá tu agenda de pacientes.' },
+    },
+
+  },
+};
+
+export default saludConfig;

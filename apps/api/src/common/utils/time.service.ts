@@ -31,17 +31,28 @@ export class TimeUtilsService {
   private static readonly TIME_REGEX = /^([01]?[0-9]|2[0-3]):([0-5][0-9])$/;
 
   /**
+   * Normalizes a time string to "HH:MM" format.
+   * Accepts "HH:MM", "HH:MM:SS", "H:MM" — strips seconds if present.
+   */
+  private normalize(time: string): string {
+    const parts = time.split(':');
+    if (parts.length >= 2) return `${parts[0]}:${parts[1]}`;
+    return time;
+  }
+
+  /**
    * Parses a time string into its components
-   * @param time Time string in "HH:MM" format
+   * @param time Time string in "HH:MM" or "HH:MM:SS" format
    * @returns Parsed time object with hours, minutes, and totalMinutes
    * @throws Error if time format is invalid
    */
   parse(time: TimeString): ParsedTime {
-    if (!TimeUtilsService.TIME_REGEX.test(time)) {
+    const normalized = this.normalize(time);
+    if (!TimeUtilsService.TIME_REGEX.test(normalized)) {
       throw new Error(`Invalid time format: "${time}". Expected "HH:MM" (24-hour format)`);
     }
 
-    const [hours, minutes] = time.split(':').map(Number);
+    const [hours, minutes] = normalized.split(':').map(Number);
     return {
       hours,
       minutes,
@@ -188,7 +199,7 @@ export class TimeUtilsService {
    * @returns True if valid "HH:MM" format
    */
   isValidTime(time: string): boolean {
-    return TimeUtilsService.TIME_REGEX.test(time);
+    return TimeUtilsService.TIME_REGEX.test(this.normalize(time));
   }
 
   /**

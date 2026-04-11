@@ -7,24 +7,26 @@ import {
   Body,
   Param,
   Query,
-  UseGuards,
+
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ServicesService } from './services.service';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { TenantGuard } from '../../common/guards/tenant.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { User } from '@prisma/client';
 import { CreateServiceDto } from './dto/create-service.dto';
 import { UpdateServiceDto } from './dto/update-service.dto';
 import { CreateCategoryDto } from './dto/create-category.dto';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import { ForbiddenException } from '@nestjs/common';
 
 @ApiTags('services')
 @Controller('services')
-@UseGuards(JwtAuthGuard, TenantGuard)
 @ApiBearerAuth()
 export class ServicesController {
-  constructor(private readonly servicesService: ServicesService) {}
+  constructor(
+    private readonly servicesService: ServicesService,
+    private readonly subscriptionsService: SubscriptionsService,
+  ) {}
 
   // Services
   @Post()
@@ -33,6 +35,10 @@ export class ServicesController {
     @CurrentUser() user: User,
     @Body() createServiceDto: CreateServiceDto,
   ) {
+    const { hasReachedLimit, current, limit } = await this.subscriptionsService.checkLimit(user.tenantId!, 'services');
+    if (hasReachedLimit) {
+      throw new ForbiddenException(`Límite de ${limit} servicios alcanzado (tenés ${current}). Mejorá tu plan para agregar más.`);
+    }
     return this.servicesService.create(user.tenantId!, createServiceDto);
   }
 
@@ -42,7 +48,8 @@ export class ServicesController {
     @CurrentUser() user: User,
     @Query('includeInactive') includeInactive = false,
   ) {
-    return this.servicesService.findAll(user.tenantId!, includeInactive);
+    // Admin panel always skips cache to avoid stale data across PM2 workers
+    return this.servicesService.findAll(user.tenantId!, includeInactive, true);
   }
 
   @Get(':id')
@@ -106,5 +113,15 @@ export class ServicesController {
   @ApiOperation({ summary: 'Delete a category' })
   async deleteCategory(@CurrentUser() user: User, @Param('id') id: string) {
     return this.servicesService.deleteCategory(user.tenantId!, id);
+  }
+
+  // Service-Employee management
+  @Get(':id/employees')
+  @ApiOperation({ summary: 'Obtener empleados asignados a un servicio' })
+  async getServiceEmployees(
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+  ) {
+    return this.servicesService.getServiceEmployees(user.tenantId!, id);
   }
 }

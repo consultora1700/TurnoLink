@@ -254,7 +254,7 @@ function TalentoContent() {
   const availabilityLabel = (val: string | null) => {
     switch (val) {
       case 'full-time': return 'Jornada completa';
-      case 'part-time': return 'Medio turno';
+      case 'part-time': return 'Media jornada';
       case 'freelance': return 'Independiente';
       default: return val;
     }
@@ -343,7 +343,7 @@ function TalentoContent() {
                 <SelectContent>
                   <SelectItem value="all">Todos</SelectItem>
                   <SelectItem value="full-time">Jornada completa</SelectItem>
-                  <SelectItem value="part-time">Medio turno</SelectItem>
+                  <SelectItem value="part-time">Media jornada</SelectItem>
                   <SelectItem value="freelance">Independiente</SelectItem>
                 </SelectContent>
               </Select>
@@ -686,7 +686,7 @@ function TalentoContent() {
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="full-time">Jornada completa</SelectItem>
-                              <SelectItem value="part-time">Medio turno</SelectItem>
+                              <SelectItem value="part-time">Media jornada</SelectItem>
                               <SelectItem value="freelance">Independiente</SelectItem>
                             </SelectContent>
                           </Select>

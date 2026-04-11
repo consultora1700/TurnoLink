@@ -2,27 +2,27 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsNotEmpty,
   IsString,
-  IsUUID,
   IsOptional,
   IsEmail,
+  IsIn,
   Matches,
   MaxLength,
 } from 'class-validator';
 
 export class CreatePublicBookingDto {
   @ApiProperty()
-  @IsUUID()
+  @IsString()
   @IsNotEmpty()
   serviceId: string;
 
   @ApiPropertyOptional({ description: 'ID de la sucursal' })
   @IsOptional()
-  @IsUUID()
+  @IsString()
   branchId?: string;
 
   @ApiPropertyOptional({ description: 'ID del empleado preferido' })
   @IsOptional()
-  @IsUUID()
+  @IsString()
   employeeId?: string;
 
   @ApiProperty({ example: '2024-01-15', description: 'Date in YYYY-MM-DD format' })
@@ -63,4 +63,19 @@ export class CreatePublicBookingDto {
   @IsString()
   @MaxLength(500)
   notes?: string;
+
+  @ApiPropertyOptional({ example: 'online', description: 'Booking mode: presencial or online' })
+  @IsOptional()
+  @IsString()
+  @IsIn(['presencial', 'online'])
+  bookingMode?: string;
+
+  @ApiPropertyOptional({ description: 'Intake form submission data' })
+  @IsOptional()
+  intakeFormData?: Record<string, unknown>;
+
+  @ApiPropertyOptional({ description: 'Intake form ID' })
+  @IsOptional()
+  @IsString()
+  intakeFormId?: string;
 }

@@ -1,0 +1,78 @@
+================================================================================
+                    TURNOLINK - CUENTAS DEMO / TESTING
+================================================================================
+                    Fecha: 2026-03-20
+                    Contraseña universal: demo123456
+================================================================================
+
+
+ #   EMAIL                              NOMBRE                    NEGOCIO / RUBRO
+---- ---------------------------------- ------------------------- ------------------------------------------
+
+ SEED: seed-landing-demos.ts
+ ─────────────────────────────────────────────────────────────────────────────────
+  1  demo@bellaestetica.com             María González            Bella Estética (Belleza)
+  2  admin@saludintegral.com            Dr. Roberto Alvarez       Centro Médico Salud Integral (Salud)
+  3  admin@costaserena.com              Ricardo Mendez            Hotel Costa Serena (Hospedaje)
+  4  admin@barberclub.com               Lucas Barbero             Barber Club (Barbería)
+  5  admin@albergueluxury.com           Admin Luxury              Albergue Luxury (Albergue transitorio)
+
+ SEED: seed-landing-screenshots.ts
+ ─────────────────────────────────────────────────────────────────────────────────
+  6  demo@padelfutbolsur.com            Martín Giménez            Pádel & Fútbol Sur (Deportes)
+  7  demo@workhubco.com                 Nicolás Fernández         WorkHub Coworking (Espacios flexibles)
+
+ SEED: seed-showcase.ts
+ ─────────────────────────────────────────────────────────────────────────────────
+  8  demo@almarelaxspa.com              Valentina Rosas           Alma Relax Spa (Belleza/Spa)
+  9  demo@finelinestudio.com            Sol Herrera               Fine Line Studio (Tatuajes)
+ 10  demo@vetcarecentro.com             Dr. Sebastián Molina      VetCare Centro Veterinario (Salud animal)
+
+ SEED: seed-businesses.ts
+ ─────────────────────────────────────────────────────────────────────────────────
+ 11  demo@nailsandco.com                Carolina Ruiz             Nails & Co (Uñas)
+ 12  demo@lashstudioba.com              Agustina Paz              Lash Studio BA (Pestañas)
+ 13  demo@zenspaba.com                  Andrea Villalba           Zen Spa Masajes (Masajes)
+ 14  demo@dramartinezdermo.com          Dra. Laura Martinez       Dra. Martinez Dermatología (Dermatología)
+ 15  demo@thebarberclub.com             Martin Rossi              The Barber Club (Barbería)
+ 16  demo@salonnoir.com                 Julieta Montes            Salon Noir (Peluquería)
+ 17  demo@inkmasterstudio.com           Facundo Ortiz             Ink Master Studio (Tatuajes)
+ 18  demo@sonrisasodonto.com            Dr. Pablo Suarez          Sonrisas Odonto (Odontología)
+ 19  demo@fitzonetraining.com           Rodrigo Acevedo           Fitzone Training (Deportes/Gym)
+ 20  demo@happypaws.com                 Marina Stella             Happy Paws (Veterinaria)
+
+ SEED: seed-casa-campo.ts
+ ─────────────────────────────────────────────────────────────────────────────────
+ 21  martin@quintalosalamos.com.ar      Martín Álvarez            Quinta Los Álamos (Alquiler temporario)
+
+
+================================================================================
+                         SUPER ADMIN (NO ES DEMO)
+================================================================================
+
+     admin@turnolink.app                Super Admin               Contraseña: ver variable SUPER_ADMIN_PASSWORD en .env
+
+
+================================================================================
+                              RESUMEN
+================================================================================
+
+  Total cuentas demo:        21
+  Contraseña unificada:      demo123456
+  Todas las cuentas usan:    demo123456
+  Rol de todas las demos:    OWNER (dueño del negocio)
+
+================================================================================
+                           URLs DE ACCESO
+================================================================================
+
+  Login:       https://turnolink.com.ar/login
+  Admin:       https://turnolink.com.ar/admin (solo super admin)
+
+  Storefronts públicos (ejemplo):
+    - https://turnolink.com.ar/bella-estetica
+    - https://turnolink.com.ar/padel-futbol-sur
+    - https://turnolink.com.ar/quinta-los-alamos
+    - https://turnolink.com.ar/workhub-coworking
+
+================================================================================

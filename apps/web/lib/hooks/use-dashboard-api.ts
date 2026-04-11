@@ -177,10 +177,15 @@ class DashboardApiClient {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
-      throw new Error(error.message || 'API request failed');
+      throw new Error(error.message || `API request failed (${response.status})`);
     }
 
-    return response.json();
+    const text = await response.text();
+    try {
+      return JSON.parse(text);
+    } catch {
+      throw new Error('Invalid response from server');
+    }
   }
 
   // Products
@@ -360,18 +365,45 @@ class DashboardApiClient {
     return response.data;
   }
 
-  async getMercadoPagoOAuthUrl(totpCode: string, isSandbox: boolean = false): Promise<string> {
+  async getMercadoPagoOAuthUrl(totpCode: string | null, isSandbox: boolean = false): Promise<string> {
+    const body: Record<string, any> = { isSandbox };
+    if (totpCode) body.totpCode = totpCode;
     const response = await this.fetch<{ success: boolean; data: { url: string } }>('/mercadopago/oauth/url', {
       method: 'POST',
-      body: JSON.stringify({ isSandbox, totpCode }),
+      body: JSON.stringify(body),
     });
     return response.data.url;
   }
 
-  async disconnectMercadoPago(totpCode: string): Promise<void> {
+  async disconnectMercadoPago(): Promise<void> {
     await this.fetch('/mercadopago/disconnect', {
       method: 'POST',
-      body: JSON.stringify({ totpCode }),
+      body: JSON.stringify({}),
+    });
+  }
+
+  // Video Integration (Zoom / Google Meet)
+  async getVideoStatus(): Promise<{
+    isConnected: boolean;
+    provider: string | null;
+    connectedAt: string | null;
+    accountEmail: string | null;
+  }> {
+    const response = await this.fetch<{ success: boolean; data: any }>('/video-integration/status');
+    return response.data;
+  }
+
+  async getVideoOAuthUrl(provider: string): Promise<string> {
+    const response = await this.fetch<{ success: boolean; data: { url: string } }>('/video-integration/oauth/url', {
+      method: 'POST',
+      body: JSON.stringify({ provider }),
+    });
+    return response.data.url;
+  }
+
+  async disconnectVideo(): Promise<void> {
+    await this.fetch('/video-integration/disconnect', {
+      method: 'POST',
     });
   }
 

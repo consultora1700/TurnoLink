@@ -6,22 +6,24 @@ import {
   Delete,
   Body,
   Param,
-  UseGuards,
+
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { TenantGuard } from '../../common/guards/tenant.guard';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
 import { BranchesService } from './branches.service';
 import { CreateBranchDto } from './dto/create-branch.dto';
 import { UpdateBranchDto } from './dto/update-branch.dto';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import { ForbiddenException } from '@nestjs/common';
 
 @ApiTags('branches')
 @ApiBearerAuth()
 @Controller('branches')
-@UseGuards(JwtAuthGuard, TenantGuard)
 export class BranchesController {
-  constructor(private readonly branchesService: BranchesService) {}
+  constructor(
+    private readonly branchesService: BranchesService,
+    private readonly subscriptionsService: SubscriptionsService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'Listar todas las sucursales' })
@@ -37,10 +39,14 @@ export class BranchesController {
 
   @Post()
   @ApiOperation({ summary: 'Crear una nueva sucursal' })
-  create(
+  async create(
     @CurrentTenant('id') tenantId: string,
     @Body() dto: CreateBranchDto,
   ) {
+    const { hasReachedLimit, current, limit } = await this.subscriptionsService.checkLimit(tenantId, 'branches');
+    if (hasReachedLimit) {
+      throw new ForbiddenException(`Límite de ${limit} sucursales alcanzado (tenés ${current}). Mejorá tu plan para agregar más.`);
+    }
     return this.branchesService.create(tenantId, dto);
   }
 

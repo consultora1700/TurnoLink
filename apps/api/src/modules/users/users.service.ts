@@ -17,14 +17,60 @@ export class UsersService {
   async findById(id: string) {
     return this.prisma.user.findUnique({
       where: { id },
-      include: { tenant: true },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        isActive: true,
+        tenantId: true,
+        emailVerified: true,
+        createdAt: true,
+        updatedAt: true,
+        lastLoginAt: true,
+        tenant: true,
+        password: true,
+      },
     });
   }
 
   async findByEmail(email: string) {
     return this.prisma.user.findUnique({
       where: { email },
-      include: { tenant: true },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        isActive: true,
+        tenantId: true,
+        emailVerified: true,
+        createdAt: true,
+        updatedAt: true,
+        lastLoginAt: true,
+        tenant: true,
+        password: true,
+      },
+    });
+  }
+
+  /** Returns user WITHOUT password hash — safe for API responses */
+  async findByIdSafe(id: string) {
+    return this.prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        isActive: true,
+        tenantId: true,
+        emailVerified: true,
+        createdAt: true,
+        updatedAt: true,
+        lastLoginAt: true,
+        tenant: true,
+      },
     });
   }
 
