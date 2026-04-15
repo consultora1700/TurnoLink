@@ -137,6 +137,7 @@ model Tenant {
   tableSessions      TableSession[]
   kitchenStations    KitchenStation[]
   kitchenComandas    KitchenComanda[]
+  printAgents        PrintAgent[]
 
   // Rental Management (Inmobiliarias)
   propertyOwners       PropertyOwner[]
@@ -2455,7 +2456,8 @@ model TableSession {
   totalAmount Decimal?           @db.Decimal(10, 2)
   tipAmount   Decimal?           @db.Decimal(10, 2)
   tipType     String?            // "percentage" | "fixed" | "none"
-  paymentId   String?            // MP payment reference
+  paymentId     String?            // MP payment reference
+  paymentMethod String?            // "cash" | "card" | "mercadopago"
   review        String?            // Customer review/feedback text
   comensalEmail String?            // Email captured at farewell screen
   comensalName  String?            // Name captured at farewell screen
@@ -2544,6 +2546,25 @@ model KitchenComanda {
   @@index([tableSessionId])
   @@index([status, createdAt])
   @@map("kitchen_comandas")
+}
+
+model PrintAgent {
+  id                String    @id @default(uuid())
+  tenantId          String
+  tenant            Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name              String    @default("Print Agent")
+  token             String    @unique // 48-char hex, used for initial pairing → JWT exchange
+  isActive          Boolean   @default(true)
+  lastSeenAt        DateTime?
+  lastIp            String?
+  version           String?
+  detectedPrinters  Json?     // Array of { id, name, type, address?, online } reported by agent
+  printersUpdatedAt DateTime? // When the agent last reported its printer list
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([tenantId, isActive])
+  @@map("print_agents")
 }
 
 // ===========================================

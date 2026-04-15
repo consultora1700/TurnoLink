@@ -55,7 +55,7 @@ import {
   Ticket,
   Wallet,
   UtensilsCrossed,
-  Truck,
+  Bike,
   QrCode,
   MessageCircle,
   KeyRound,
@@ -152,7 +152,7 @@ const businessNavigationSections: NavSection[] = [
     defaultExpanded: true,
     items: [
       { name: 'Mesas', href: '/salon', icon: UtensilsCrossed },
-      { name: 'Delivery / Llevar', href: '/pedidos-cocina', icon: Truck },
+      { name: 'Delivery / Llevar', href: '/pedidos-cocina', icon: Bike },
     ],
   },
   {
@@ -769,6 +769,7 @@ export function DashboardSidebar() {
     const salonAlerts = gastroAlerts.billsRequested + gastroAlerts.waitingPayment;
     if (salonAlerts > 0) badgeOverrides['/salon'] = salonAlerts;
     if (gastroAlerts.pendingOrders > 0) badgeOverrides['/pedidos-cocina'] = gastroAlerts.pendingOrders;
+    if (gastroAlerts.pendingBookings > 0) badgeOverrides['/turnos'] = gastroAlerts.pendingBookings;
   }
 
   // Close mobile menu and scroll to top when pathname changes
@@ -812,7 +813,7 @@ export function DashboardSidebar() {
     ? [
         { name: 'Inicio', href: '/dashboard', icon: Home },
         { name: 'Salón', href: '/salon', icon: UtensilsCrossed },
-        { name: 'Pedidos', href: '/pedidos-cocina', icon: Truck },
+        { name: 'Pedidos', href: '/pedidos-cocina', icon: Bike },
         { name: 'Carta', href: '/catalogo', icon: ShoppingBag },
         { name: 'Menu', href: '#menu', icon: Menu, isMenu: true },
       ]

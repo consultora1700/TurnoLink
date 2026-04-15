@@ -84,6 +84,7 @@ function CartItemRow({ item, formatPrice, onUpdateQuantity, onRemove }: {
 
 export function GastroCartFloating({ slug, formatPrice, onCheckout }: Props) {
   const [isOpen, setIsOpen] = useState(false);
+  const hydrated = useGastroCartStore((s) => s._hydrated);
   const items = useGastroCartStore((s) => s.items);
   const getTotal = useGastroCartStore((s) => s.getTotal);
   const getCount = useGastroCartStore((s) => s.getCount);
@@ -94,7 +95,8 @@ export function GastroCartFloating({ slug, formatPrice, onCheckout }: Props) {
   const count = getCount();
   const total = getTotal();
 
-  if (count === 0) return null;
+  // Wait for zustand rehydration to avoid SSR/client mismatch
+  if (!hydrated || count === 0) return null;
 
   return (
     <>

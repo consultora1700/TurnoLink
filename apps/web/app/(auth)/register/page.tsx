@@ -14,6 +14,7 @@ import {
   ChevronDown, Droplets, ShoppingBag, Eye, EyeOff,
   Shirt, Footprints, Smartphone, Laptop, Tv, Headphones, Car, UtensilsCrossed,
   Armchair, Gamepad2, Medal, BookOpen, Pipette, Gem, Wrench, Coffee, Package,
+  Flame, Pizza, Beef, IceCream, Fish, Beer, Soup, Cake, Truck, Store,
   type LucideIcon,
 } from 'lucide-react';
 import { authApi } from '@/lib/api';
@@ -97,6 +98,21 @@ const MERCADO_SUB_RUBROS: { key: string; label: string; icon: LucideIcon; subtit
   { key: 'mercado-ferreteria', label: 'Ferretería', icon: Wrench, subtitle: 'Herramientas y construcción' },
   { key: 'mercado-bazar', label: 'Bazar', icon: Coffee, subtitle: 'Bazar y menaje' },
   { key: 'mercado-general', label: 'Tienda General', icon: Package, subtitle: 'Productos variados' },
+];
+
+// ─── Sub-rubros de Gastronomía (picker para locales gastro) ──
+const GASTRO_SUB_RUBROS: { key: string; label: string; icon: LucideIcon; subtitle?: string }[] = [
+  { key: 'gastro-parrilla', label: 'Parrilla', icon: Flame, subtitle: 'Parrilla y restaurante' },
+  { key: 'gastro-pizzeria', label: 'Pizzería', icon: Pizza, subtitle: 'Pizzas y empanadas' },
+  { key: 'gastro-hamburgueseria', label: 'Hamburguesería', icon: Beef, subtitle: 'Burgers y smash' },
+  { key: 'gastro-cafe', label: 'Café', icon: Coffee, subtitle: 'Café de especialidad' },
+  { key: 'gastro-heladeria', label: 'Heladería', icon: IceCream, subtitle: 'Helados artesanales' },
+  { key: 'gastro-sushi', label: 'Sushi', icon: Fish, subtitle: 'Cocina japonesa y asiática' },
+  { key: 'gastro-cerveceria', label: 'Cervecería', icon: Beer, subtitle: 'Brewpub y picadas' },
+  { key: 'gastro-bodegon', label: 'Bodegón', icon: Soup, subtitle: 'Cocina casera y criolla' },
+  { key: 'gastro-pasteleria', label: 'Pastelería', icon: Cake, subtitle: 'Bakery y repostería' },
+  { key: 'gastro-food-truck', label: 'Food Truck', icon: Truck, subtitle: 'Street food y eventos' },
+  { key: 'gastro-otro', label: 'Otro Gastro', icon: Store, subtitle: 'Otro tipo de local' },
 ];
 
 function slugify(text: string): string {
@@ -306,8 +322,8 @@ function RegisterForm() {
     setOfferType(type);
     setError('');
     if (type === 'gastronomia') {
-      setSelectedRubro('gastronomia');
-      setStep('form');
+      setSelectedRubro(null);
+      setStep('sub-rubro');
     } else if (type === 'products') {
       setSelectedRubro(null);
       setStep('sub-rubro');
@@ -332,7 +348,7 @@ function RegisterForm() {
   const goBackFromForm = () => {
     setError('');
     if (industryParam) return; // came from landing with industry, nowhere to go back
-    if (offerType === 'products') {
+    if (offerType === 'products' || offerType === 'gastronomia') {
       setStep('sub-rubro');
     } else if (offerType === 'services') {
       setStep('rubro');
@@ -742,11 +758,13 @@ function RegisterForm() {
 
   // ─── Sub-Rubro Selection (for products/mercado) ──────────
   const renderSubRubroSelection = () => {
+    const isGastro = offerType === 'gastronomia';
+    const sourceList = isGastro ? GASTRO_SUB_RUBROS : MERCADO_SUB_RUBROS;
     const filteredSubRubros = subRubroSearch
-      ? MERCADO_SUB_RUBROS.filter(r =>
+      ? sourceList.filter(r =>
           r.label.toLowerCase().includes(subRubroSearch.toLowerCase()) ||
           (r.subtitle || '').toLowerCase().includes(subRubroSearch.toLowerCase()))
-      : MERCADO_SUB_RUBROS;
+      : sourceList;
 
     return (
       <div className="w-full max-w-xl px-4">
@@ -769,7 +787,7 @@ function RegisterForm() {
             <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold bg-[#3F8697] text-white ring-4 ring-[#3F8697]/20">
               2
             </div>
-            <span className="text-sm font-medium text-neutral-300 hidden sm:inline">Tienda</span>
+            <span className="text-sm font-medium text-neutral-300 hidden sm:inline">{isGastro ? 'Local' : 'Tienda'}</span>
           </div>
           <div className="h-0.5 w-8 rounded-full bg-neutral-700" />
           <div className="flex items-center gap-2">
@@ -782,10 +800,12 @@ function RegisterForm() {
 
         <div className="text-center mb-4">
           <h1 className="text-2xl sm:text-3xl font-bold text-white">
-            ¿Qué vendés?
+            {isGastro ? '¿Qué tipo de local gastronómico?' : '¿Qué vendés?'}
           </h1>
           <p className="text-neutral-400 mt-1.5 text-sm">
-            Te configuramos filtros y ficha técnica según tu tipo de tienda
+            {isGastro
+              ? 'Configuramos el menú, platos de ejemplo y ficha técnica según tu tipo de local'
+              : 'Te configuramos filtros y ficha técnica según tu tipo de tienda'}
           </p>
         </div>
 
@@ -793,7 +813,7 @@ function RegisterForm() {
         <div className="relative mb-4">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-500" />
           <Input
-            placeholder="Buscar tipo de tienda..."
+            placeholder={isGastro ? 'Buscar tipo de local...' : 'Buscar tipo de tienda...'}
             value={subRubroSearch}
             onChange={(e) => setSubRubroSearch(e.target.value)}
             className="h-10 pl-9 bg-neutral-800 border-neutral-700 text-white placeholder:text-neutral-500 focus:border-[#3F8697] focus:ring-[#3F8697]"
@@ -842,7 +862,9 @@ function RegisterForm() {
 
         {filteredSubRubros.length === 0 && (
           <p className="text-sm text-neutral-500 text-center mb-5">
-            No encontramos ese tipo de tienda. Elegí &quot;Tienda General&quot;.
+            {isGastro
+              ? 'No encontramos ese tipo de local. Elegí "Otro Gastro".'
+              : 'No encontramos ese tipo de tienda. Elegí "Tienda General".'}
           </p>
         )}
 

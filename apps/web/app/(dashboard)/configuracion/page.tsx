@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState, useCallback, Suspense } from 'react';
-import { useSession } from 'next-auth/react';
+import { useEffect, useState, useCallback, useRef, Suspense } from 'react';
+import { useSession, signOut } from 'next-auth/react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import {
   Save,
@@ -44,9 +44,11 @@ import {
   Sparkles,
   ShoppingCart,
   BookOpen,
-  Truck,
+  Bike,
   Navigation,
   RotateCcw,
+  Trash2,
+  AlertTriangle,
 } from 'lucide-react';
 import { getAmenitiesCatalog } from '@/lib/amenities-catalog';
 import { RestartTourButton } from '@/components/onboarding/onboarding-tour';
@@ -271,6 +273,139 @@ function SeoSection({ slug }: { slug?: string }) {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function DeleteAccountSection() {
+  const { data: session } = useSession();
+  const { toast } = useToast();
+  const router = useRouter();
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [confirmText, setConfirmText] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null);
+  const checkedRef = useRef(false);
+
+  useEffect(() => {
+    if (!session?.accessToken || checkedRef.current) return;
+    checkedRef.current = true;
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/subscriptions`, {
+      headers: { Authorization: `Bearer ${session.accessToken}` },
+    })
+      .then((r) => r.ok ? r.json() : null)
+      .then((sub) => {
+        if (sub?.status) setSubscriptionStatus(sub.status);
+      })
+      .catch(() => {});
+  }, [session?.accessToken]);
+
+  const hasActiveSub = subscriptionStatus && ['ACTIVE', 'TRIALING', 'active', 'trialing'].includes(subscriptionStatus);
+
+  const handleDelete = async () => {
+    if (!session?.accessToken) return;
+    setDeleting(true);
+    try {
+      const api = createApiClient(session.accessToken as string);
+      await api.deleteAccount();
+      toast({ title: 'Cuenta eliminada', description: 'Tu cuenta y todos tus datos fueron eliminados.' });
+      signOut({ callbackUrl: '/' });
+    } catch (err: any) {
+      const msg = err?.message || 'No se pudo eliminar la cuenta';
+      toast({ title: 'Error', description: msg, variant: 'destructive' });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <Card className="border-red-200 dark:border-red-800/50 shadow-soft overflow-hidden">
+      <div className="h-1 bg-gradient-to-r from-red-500 to-rose-500" />
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-red-700 dark:text-red-400">
+          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-red-500 to-rose-500 flex items-center justify-center">
+            <Trash2 className="h-4 w-4 text-white" />
+          </div>
+          Eliminar cuenta
+        </CardTitle>
+        <CardDescription>
+          Esta acción es irreversible. Se eliminarán todos tus datos, servicios, clientes, turnos y configuración.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {hasActiveSub ? (
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+            <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="font-medium text-amber-900 dark:text-amber-200">Tenés una suscripción activa</p>
+              <p className="text-sm text-amber-700 dark:text-amber-400 mt-1">
+                Debés cancelar tu suscripción antes de poder eliminar la cuenta. Podés hacerlo desde la sección Mi Suscripción o desde MercadoPago.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-300 shrink-0"
+              onClick={() => router.push('/mi-suscripcion')}
+            >
+              Ir a Mi Suscripción
+            </Button>
+          </div>
+        ) : !showConfirm ? (
+          <Button
+            variant="outline"
+            className="border-red-300 dark:border-red-700 text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30"
+            onClick={() => setShowConfirm(true)}
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            Eliminar mi cuenta
+          </Button>
+        ) : (
+          <div className="space-y-4 p-4 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold text-red-900 dark:text-red-200">¿Estás seguro?</p>
+                <p className="text-sm text-red-700 dark:text-red-400 mt-1">
+                  Se eliminará por completo tu perfil, todos tus datos (servicios, clientes, turnos, productos, finanzas) y no podrás recuperarlos.
+                </p>
+              </div>
+            </div>
+            <div>
+              <Label className="text-sm text-red-800 dark:text-red-300">
+                Escribí <span className="font-bold">ELIMINAR</span> para confirmar
+              </Label>
+              <Input
+                value={confirmText}
+                onChange={(e) => setConfirmText(e.target.value)}
+                placeholder="ELIMINAR"
+                className="mt-1.5 border-red-300 dark:border-red-700 focus:ring-red-500"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="destructive"
+                disabled={confirmText !== 'ELIMINAR' || deleting}
+                onClick={handleDelete}
+              >
+                {deleting ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="mr-2 h-4 w-4" />
+                )}
+                Eliminar cuenta definitivamente
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => { setShowConfirm(false); setConfirmText(''); }}
+                disabled={deleting}
+              >
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -1436,7 +1571,7 @@ function ConfiguracionContent() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
-                    <Truck className="h-4 w-4 text-white" />
+                    <Bike className="h-4 w-4 text-white" />
                   </div>
                   Opciones de entrega
                 </CardTitle>
@@ -1500,7 +1635,7 @@ function ConfiguracionContent() {
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
                       <div className={`h-9 w-9 rounded-xl flex items-center justify-center ${shippingSettings.delivery.enabled ? 'bg-blue-500 text-white' : 'bg-muted text-muted-foreground'}`}>
-                        <Truck className="h-4 w-4" />
+                        <Bike className="h-4 w-4" />
                       </div>
                       <div>
                         <p className="font-semibold text-sm">Envío</p>
@@ -2815,6 +2950,9 @@ function ConfiguracionContent() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Danger Zone — Delete Account */}
+      <DeleteAccountSection />
 
       {/* Spacer for mobile floating buttons */}
       <div className="h-16 sm:hidden" />

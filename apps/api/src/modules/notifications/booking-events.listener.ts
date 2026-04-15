@@ -110,6 +110,19 @@ export class BookingEventsListener {
       return;
     }
 
+    // Gastro tenants: reservation is a REQUEST — only notify the owner, not the customer.
+    // Customer gets notified when the business confirms (via BookingEvent.CONFIRMED).
+    const settings = await this.getTenantPushSettings(payload.tenantId);
+    if ((settings as any).rubro === 'gastronomia') {
+      this.logger.log('Gastro tenant — customer notification deferred until confirmation', {
+        bookingId: payload.booking.id,
+      });
+      await this.sendAllBookingNotifications(payload.booking, payload.tenantId, {
+        skipCustomerNotification: true,
+      });
+      return;
+    }
+
     // No deposit required — send all notifications now
     await this.sendAllBookingNotifications(payload.booking, payload.tenantId);
   }
@@ -145,12 +158,14 @@ export class BookingEventsListener {
   private async sendAllBookingNotifications(
     booking: BookingCreatedPayload['booking'],
     tenantId: string,
+    options?: { skipCustomerNotification?: boolean },
   ): Promise<void> {
     const isProductBooking = !!(booking as any).productId && !(booking as any).serviceId;
 
     // 1. Customer confirmation — enqueue (WhatsApp + email with retry)
     // Skip for product bookings (in-store sales don't need customer confirmation)
-    if (!isProductBooking) {
+    // Skip when gastro reservation request — customer notified on confirmation
+    if (!isProductBooking && !options?.skipCustomerNotification) {
       try {
         await this.emailQueue.add('booking-confirmation', {
           type: 'booking-confirmation',

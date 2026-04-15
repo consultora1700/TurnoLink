@@ -42,7 +42,7 @@ import { cn } from '@/lib/utils';
 import { handleApiError } from '@/lib/notifications';
 import { useToast } from '@/hooks/use-toast';
 import { useTenantConfig, useRubroTerms } from '@/contexts/tenant-config-context';
-import { isMercadoRubro } from '@/lib/rubro-attributes';
+import { isMercadoRubro, isGastronomiaRubro } from '@/lib/rubro-attributes';
 import { UpgradeWall } from '@/components/dashboard/upgrade-wall';
 
 // ============ CONSTANTS ============
@@ -61,13 +61,16 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 const INCOME_CATEGORY_ICONS: Record<string, string> = {
-  GASTRO_SALON: '🍽️', FREELANCE: '💼', CONSULTING: '🎯', RENTAL_INCOME: '🏠',
+  GASTRO_SALON: '🍽️', GASTRO_FOOD: '🍽️', GASTRO_TIPS: '💵', GASTRO_DELIVERY: '🛵', GASTRO_TAKEAWAY: '🥡',
+  FREELANCE: '💼', CONSULTING: '🎯', RENTAL_INCOME: '🏠',
   INVESTMENT: '📈', REFUND: '↩️', COMMISSION: '🤝',
   GRANT: '🎓', OTHER_INCOME: '💰',
 };
 
 const INCOME_CATEGORY_LABELS: Record<string, string> = {
-  GASTRO_SALON: 'Ventas de salón', FREELANCE: 'Trabajo independiente', CONSULTING: 'Consultoría',
+  GASTRO_SALON: 'Ventas de salón', GASTRO_FOOD: 'Consumo gastronómico', GASTRO_TIPS: 'Propinas',
+  GASTRO_DELIVERY: 'Delivery', GASTRO_TAKEAWAY: 'Retira en local',
+  FREELANCE: 'Trabajo independiente', CONSULTING: 'Consultoría',
   RENTAL_INCOME: 'Alquiler cobrado', INVESTMENT: 'Inversiones',
   REFUND: 'Reembolso', COMMISSION: 'Comisiones',
   GRANT: 'Subsidio / Beca', OTHER_INCOME: 'Otros ingresos',
@@ -111,6 +114,7 @@ export default function FinanzasPage() {
   const { rubro } = useTenantConfig();
   const terms = useRubroTerms();
   const isMercado = isMercadoRubro(rubro);
+  const isGastro = isGastronomiaRubro(rubro);
   const { toast } = useToast();
   const now = new Date();
   const formRef = useRef<HTMLDivElement>(null);
@@ -415,7 +419,9 @@ export default function FinanzasPage() {
 
   const profit = summary?.profit ?? 0;
   const isPositive = profit >= 0;
-  const totalTransactions = (summary?.income?.bookingCount ?? 0) + (summary?.income?.orderCount ?? 0);
+  const totalTransactions = isGastro
+    ? (summary?.income?.manualCount ?? 0)
+    : (summary?.income?.bookingCount ?? 0) + (summary?.income?.orderCount ?? 0);
   const avgTicket = totalTransactions > 0 ? Math.round(summary.income.total / totalTransactions) : 0;
 
   // Previous month comparison
@@ -574,9 +580,17 @@ export default function FinanzasPage() {
           <CardContent>
             <div className="text-3xl font-bold">{formatCurrency(summary?.income?.total ?? 0)}</div>
             <div className="text-xs text-white/70 mt-1 space-y-0.5">
-              {(summary?.income?.bookings ?? 0) > 0 && <p>Servicios: {formatCurrency(summary.income.bookings)}</p>}
-              {(summary?.income?.orders ?? 0) > 0 && <p>Productos: {formatCurrency(summary.income.orders)}</p>}
-              {(summary?.income?.manual ?? 0) > 0 && <p>Manual: {formatCurrency(summary.income.manual)}</p>}
+              {isGastro ? (
+                <>
+                  {(summary?.income?.manual ?? 0) > 0 && <p>Salón: {formatCurrency(summary.income.manual)}</p>}
+                </>
+              ) : (
+                <>
+                  {(summary?.income?.bookings ?? 0) > 0 && <p>Servicios: {formatCurrency(summary.income.bookings)}</p>}
+                  {(summary?.income?.orders ?? 0) > 0 && <p>Productos: {formatCurrency(summary.income.orders)}</p>}
+                  {(summary?.income?.manual ?? 0) > 0 && <p>Manual: {formatCurrency(summary.income.manual)}</p>}
+                </>
+              )}
               {incomeDelta !== null && (
                 <p className="font-medium text-white/90">{incomeDelta >= 0 ? '+' : ''}{incomeDelta}% vs mes anterior</p>
               )}
@@ -627,7 +641,7 @@ export default function FinanzasPage() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">{formatCurrency(avgTicket)}</div>
-            <p className="text-xs text-white/70 mt-1">{totalTransactions} transacciones</p>
+            <p className="text-xs text-white/70 mt-1">{totalTransactions} {isGastro ? 'mesas' : 'transacciones'}</p>
           </CardContent>
         </Card>
       </div>
@@ -679,10 +693,10 @@ export default function FinanzasPage() {
       {(() => {
         const hasServices = (summary?.income?.byService?.length ?? 0) > 0;
         const hasProducts = (summary?.income?.byProduct?.length ?? 0) > 0;
-        // Show service card if: has data OR rubro is NOT mercado (services-based business)
-        const showServiceCard = hasServices || !isMercado;
-        // Show product card if: has data OR rubro IS mercado (product-based business)
-        const showProductCard = hasProducts || isMercado;
+        // Show service card if: has data OR rubro is NOT mercado AND NOT gastro (services-based business)
+        const showServiceCard = !isGastro && (hasServices || !isMercado);
+        // Show product card if: has data OR rubro IS mercado (product-based business), hide for gastro
+        const showProductCard = !isGastro && (hasProducts || isMercado);
         const singleColumn = (showServiceCard && !showProductCard) || (!showServiceCard && showProductCard);
 
         return (
@@ -828,7 +842,7 @@ export default function FinanzasPage() {
               <div className="h-8 w-8 rounded-lg bg-emerald-500/10 dark:bg-emerald-500/20 flex items-center justify-center">
                 <Wallet className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
               </div>
-              <CardTitle className="text-base">Otros ingresos por categoría</CardTitle>
+              <CardTitle className="text-base">{isGastro ? 'Ingresos por categoría' : 'Otros ingresos por categoría'}</CardTitle>
             </div>
           </CardHeader>
           <CardContent className="pt-4">

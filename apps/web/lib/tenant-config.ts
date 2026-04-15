@@ -422,6 +422,25 @@ export const RUBRO_TERMS: Record<string, RubroTerms> = {
   'otro': { ...DEFAULT_TERMS },
 };
 
+// Gastro sub-rubros inherit gastronomia terms with customized specialtyExamples and employee labels
+const GASTRO_BASE_TERMS: RubroTerms = RUBRO_TERMS['gastronomia'];
+const GASTRO_SUB_RUBRO_OVERRIDES: Record<string, Partial<RubroTerms>> = {
+  'gastro-parrilla':       { specialtyExamples: 'Ej: Parrilla, Asado, Cocina criolla', employeeSingular: 'Mozo', employeePlural: 'Personal' },
+  'gastro-pizzeria':       { specialtyExamples: 'Ej: Pizza al molde, A la piedra, Napolitana', employeeSingular: 'Mozo', employeePlural: 'Personal' },
+  'gastro-hamburgueseria': { specialtyExamples: 'Ej: Smash burgers, Gourmet, Fast casual', employeeSingular: 'Mozo', employeePlural: 'Personal' },
+  'gastro-cafe':           { specialtyExamples: 'Ej: Café de especialidad, Brunch, Pastelería', employeeSingular: 'Barista', employeePlural: 'Equipo' },
+  'gastro-heladeria':      { specialtyExamples: 'Ej: Helado artesanal, Paletas, Postres fríos', employeeSingular: 'Heladero', employeePlural: 'Equipo' },
+  'gastro-sushi':          { specialtyExamples: 'Ej: Sushi, Rolls, Poke bowls, Ramen', employeeSingular: 'Itamae', employeePlural: 'Equipo' },
+  'gastro-cerveceria':     { specialtyExamples: 'Ej: Cerveza artesanal, Picadas, Brewpub', employeeSingular: 'Mozo', employeePlural: 'Personal' },
+  'gastro-bodegon':        { specialtyExamples: 'Ej: Cocina casera, Milanesas, Pastas, Guisos', employeeSingular: 'Mozo', employeePlural: 'Personal' },
+  'gastro-pasteleria':     { specialtyExamples: 'Ej: Tortas, Cookies, Macarons, Desayunos', employeeSingular: 'Pastelero', employeePlural: 'Equipo' },
+  'gastro-food-truck':     { specialtyExamples: 'Ej: Street food, Wraps, Choripanes, Eventos', employeeSingular: 'Cocinero', employeePlural: 'Equipo' },
+  'gastro-otro':           { specialtyExamples: 'Ej: Parrilla, Sushi, Pastas, Cafetería' },
+};
+for (const [key, overrides] of Object.entries(GASTRO_SUB_RUBRO_OVERRIDES)) {
+  RUBRO_TERMS[key] = { ...GASTRO_BASE_TERMS, ...overrides };
+}
+
 /** Get terms for a rubro key, with fallback to defaults */
 export function getTermsForRubro(rubro: string): RubroTerms {
   return RUBRO_TERMS[rubro] || DEFAULT_TERMS;
@@ -605,6 +624,16 @@ export const RUBRO_UI_CONFIG: Record<string, RubroUIConfig> = {
   },
   'otro': { ...DEFAULT_UI_CONFIG },
 };
+
+// Gastro sub-rubros inherit gastronomia UI config
+const GASTRO_UI_BASE = RUBRO_UI_CONFIG['gastronomia'];
+for (const key of [
+  'gastro-parrilla', 'gastro-pizzeria', 'gastro-hamburgueseria', 'gastro-cafe',
+  'gastro-heladeria', 'gastro-sushi', 'gastro-cerveceria', 'gastro-bodegon',
+  'gastro-pasteleria', 'gastro-food-truck', 'gastro-otro',
+]) {
+  RUBRO_UI_CONFIG[key] = { ...GASTRO_UI_BASE };
+}
 
 /** Get UI config for a rubro, with fallback to defaults */
 export function getRubroUIConfig(rubro: string): RubroUIConfig {

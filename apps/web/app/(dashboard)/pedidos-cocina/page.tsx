@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
-  Truck,
+  Bike,
   ShoppingBag,
   Clock,
   CheckCircle2,
@@ -39,6 +39,7 @@ import { createApiClient, Order, type DeliveryStaffMember } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
 import { useGastroSocket } from '@/lib/gastro-socket';
 import { DeliveryAssignBlock } from '@/components/orders/delivery-assign-block';
+import { Printer } from 'lucide-react';
 
 // ─── Status config ──────────────────────────────────
 const STATUS_CONFIG: Record<string, {
@@ -92,7 +93,7 @@ const STATUS_CONFIG: Record<string, {
     bg: 'bg-gradient-to-br from-indigo-50 to-indigo-100/50 dark:from-indigo-900/20 dark:to-indigo-900/10',
     border: 'border-indigo-200/80 dark:border-indigo-800/40',
     dot: 'bg-indigo-500',
-    icon: Truck,
+    icon: Bike,
     gradient: 'from-indigo-500 to-indigo-600',
   },
   ARRIVED: {
@@ -153,8 +154,10 @@ function getNextStatuses(status: string, orderType?: string, awaitingPayment?: b
         ],
     PROCESSING: isDelivery
       ? [{ status: 'READY', label: 'Listo para delivery', color: 'bg-teal-600 hover:bg-teal-700', icon: PackageCheck }]
+      : [{ status: 'READY', label: 'Listo para retirar', color: 'bg-teal-600 hover:bg-teal-700', icon: PackageCheck }],
+    READY: isDelivery
+      ? [] // Delivery person takes over from here
       : [{ status: 'DELIVERED', label: 'Entregado', color: 'bg-emerald-600 hover:bg-emerald-700', icon: CheckCircle2 }],
-    READY: [], // Delivery person takes over from here
     SHIPPED: [], // Controlled by delivery person
     ARRIVED: [], // Controlled by delivery person
     DELIVERED: [],
@@ -165,8 +168,8 @@ function getNextStatuses(status: string, orderType?: string, awaitingPayment?: b
 }
 
 const ORDER_TYPE_LABELS: Record<string, { label: string; icon: any; color: string }> = {
-  DELIVERY: { label: 'Delivery', icon: Truck, color: 'text-indigo-600 bg-indigo-50 border-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-400 dark:border-indigo-800/50' },
-  TAKE_AWAY: { label: 'Para llevar', icon: ShoppingBag, color: 'text-amber-600 bg-amber-50 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800/50' },
+  DELIVERY: { label: 'Delivery', icon: Bike, color: 'text-indigo-600 bg-indigo-50 border-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-400 dark:border-indigo-800/50' },
+  TAKE_AWAY: { label: 'Retira en local', icon: ShoppingBag, color: 'text-amber-600 bg-amber-50 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800/50' },
   DINE_IN: { label: 'Salón', icon: Package, color: 'text-blue-600 bg-blue-50 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800/50' },
 };
 
@@ -203,6 +206,8 @@ export default function PedidosCocinaPage() {
   const [activeTab, setActiveTab] = useState<TabFilter>('active');
   const [newOrderFlash, setNewOrderFlash] = useState(false);
   const [now, setNow] = useState(Date.now());
+  const [agentOffline, setAgentOffline] = useState<{ agents: any[]; pendingComandas: number } | null>(null);
+  const [printFailCount, setPrintFailCount] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const playAlertRef = useRef<(() => void) | null>(null);
 
@@ -322,6 +327,15 @@ export default function PedidosCocinaPage() {
   const { connected } = useGastroSocket({
     tenantId,
     onNewOrder: useCallback(() => handleNewOrderAlert(), [handleNewOrderAlert]),
+    onAgentOffline: useCallback((data: any) => {
+      setAgentOffline({ agents: data.agents || [], pendingComandas: data.pendingComandas || 0 });
+    }, []),
+    onAgentConnected: useCallback((data: any) => {
+      if (data?.connected) setAgentOffline(null);
+    }, []),
+    onPrintFailed: useCallback(() => {
+      setPrintFailCount((prev) => prev + 1);
+    }, []),
   });
 
   const handleStatusChange = async (orderId: string, newStatus: string) => {
@@ -425,6 +439,44 @@ export default function PedidosCocinaPage() {
         </div>
       </div>
 
+      {/* ─── Agent Offline Banner ─────────────────── */}
+      {agentOffline && (
+        <div className="flex items-center gap-3 p-4 rounded-xl border-2 border-red-300 dark:border-red-700/50 bg-red-50 dark:bg-red-900/20 animate-pulse">
+          <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-900/40 flex items-center justify-center flex-shrink-0">
+            <Printer className="w-5 h-5 text-red-600 dark:text-red-400" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-red-800 dark:text-red-300">
+              Impresora desconectada
+            </p>
+            <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">
+              El agente de impresión no responde.
+              {agentOffline.pendingComandas > 0 && (
+                <span className="font-bold"> {agentOffline.pendingComandas} comanda(s) pendiente(s) sin imprimir.</span>
+              )}
+              {' '}Verificá que la PC del local esté encendida y el programa abierto.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Print Failure Banner ──────────────────── */}
+      {printFailCount > 0 && (
+        <div className="flex items-center gap-3 p-3 rounded-xl border border-amber-300 dark:border-amber-700/50 bg-amber-50 dark:bg-amber-900/20">
+          <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+          <p className="text-xs text-amber-700 dark:text-amber-400">
+            <span className="font-semibold">{printFailCount}</span> comanda(s) fallaron al imprimir en esta sesión.
+            Revisá el agente de impresión.
+          </p>
+          <button
+            onClick={() => setPrintFailCount(0)}
+            className="ml-auto text-xs text-amber-500 hover:text-amber-700 dark:hover:text-amber-300"
+          >
+            Descartar
+          </button>
+        </div>
+      )}
+
       {/* ─── KPI Strip ──────────────────────────── */}
       <div className="grid grid-cols-5 gap-2 sm:gap-3 md:gap-4">
         {[
@@ -432,7 +484,7 @@ export default function PedidosCocinaPage() {
           { label: 'Confirmados', count: confirmedCount, icon: CheckCircle2, gradient: 'from-blue-500 to-blue-600', hasAlert: false },
           { label: 'Preparando', count: processingCount, icon: ChefHat, gradient: 'from-violet-500 to-violet-600', hasAlert: false },
           { label: 'Listos', count: readyCount, icon: PackageCheck, gradient: 'from-teal-500 to-teal-600', hasAlert: readyCount > 0 },
-          { label: 'En camino', count: enRouteCount, icon: Truck, gradient: 'from-indigo-500 to-indigo-600', hasAlert: false },
+          { label: 'En camino', count: enRouteCount, icon: Bike, gradient: 'from-indigo-500 to-indigo-600', hasAlert: false },
         ].map((kpi) => {
           const KpiIcon = kpi.icon;
           const isActive = kpi.count > 0;

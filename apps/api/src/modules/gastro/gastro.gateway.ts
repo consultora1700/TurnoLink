@@ -11,6 +11,15 @@ import {
 import { Logger } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 import { OnEvent } from '@nestjs/event-emitter';
+import { JwtService } from '@nestjs/jwt';
+import { PrismaService } from '../../prisma/prisma.service';
+
+interface PrintAgentJwtPayload {
+  sub: string;
+  tenantId: string;
+  type: 'printer-agent';
+  exp?: number;
+}
 
 @WebSocketGateway({
   namespace: '/gastro',
@@ -28,9 +37,47 @@ export class GastroGateway
 
   private readonly logger = new Logger(GastroGateway.name);
 
+  constructor(
+    private readonly jwtService: JwtService,
+    private readonly prisma: PrismaService,
+  ) {}
+
   afterInit() {
     // Redis adapter is configured globally in main.ts via RedisIoAdapter
     this.logger.log('Gastro WebSocket Gateway initialized');
+  }
+
+  /**
+   * Extracts and verifies a printer-agent JWT from the Socket.IO handshake
+   * (`auth.token` or `query.token`). Returns the decoded payload on success
+   * or null on failure.
+   */
+  private async verifyPrinterJwt(client: Socket): Promise<PrintAgentJwtPayload | null> {
+    const auth = (client.handshake as any)?.auth || {};
+    const query = client.handshake?.query || {};
+    const raw =
+      (typeof auth.token === 'string' && auth.token) ||
+      (typeof auth.jwt === 'string' && auth.jwt) ||
+      (typeof query.token === 'string' && query.token) ||
+      null;
+    if (!raw) return null;
+    try {
+      const payload = await this.jwtService.verifyAsync<PrintAgentJwtPayload>(raw);
+      if (payload?.type !== 'printer-agent' || !payload.sub || !payload.tenantId) {
+        return null;
+      }
+      // Cheap DB check so revoked agents can't linger on an old JWT.
+      const agent = await this.prisma.printAgent.findUnique({
+        where: { id: payload.sub },
+        select: { isActive: true, tenantId: true },
+      });
+      if (!agent || !agent.isActive || agent.tenantId !== payload.tenantId) {
+        return null;
+      }
+      return payload;
+    } catch {
+      return null;
+    }
   }
 
   handleConnection(client: Socket) {
@@ -39,6 +86,15 @@ export class GastroGateway
 
   handleDisconnect(client: Socket) {
     this.logger.log(`Client disconnected: ${client.id}`);
+    const agent = (client.data as any)?.printAgent;
+    if (agent?.tenantId) {
+      this.server
+        ?.to(`dashboard:${agent.tenantId}`)
+        .emit('kitchen:agent-connected', {
+          connected: false,
+          agentId: agent.id,
+        });
+    }
   }
 
   // ===== Client → Server events =====
@@ -68,61 +124,90 @@ export class GastroGateway
   }
 
   @SubscribeMessage('printer:join')
-  handlePrinterJoin(
+  async handlePrinterJoin(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { tenantId: string },
+    @MessageBody() data: { tenantId?: string },
   ) {
-    if (data?.tenantId) {
-      client.join(`printer:${data.tenantId}`);
-      this.logger.log(`Print agent ${client.id} joined printer:${data.tenantId}`);
-      // Notify dashboard that print agent is connected
-      this.server
-        ?.to(`dashboard:${data.tenantId}`)
-        .emit('kitchen:agent-connected', { connected: true });
+    // Require a valid printer-agent JWT on the handshake. The claimed
+    // tenantId in the message body is ignored in favor of the JWT claim.
+    const payload = await this.verifyPrinterJwt(client);
+    if (!payload) {
+      this.logger.warn(
+        `Print agent ${client.id} rejected printer:join (invalid/missing JWT)`,
+      );
+      client.emit('printer:auth-error', { error: 'invalid-token' });
+      client.disconnect(true);
+      return;
     }
+
+    const tenantId = payload.tenantId;
+    client.join(`printer:${tenantId}`);
+    (client.data as any).printAgent = { id: payload.sub, tenantId };
+    this.logger.log(
+      `Print agent ${client.id} (agent=${payload.sub}) joined printer:${tenantId}`,
+    );
+
+    // Heartbeat on connect
+    this.prisma.printAgent
+      .update({
+        where: { id: payload.sub },
+        data: { lastSeenAt: new Date() },
+      })
+      .catch(() => {});
+
+    // Notify dashboard that print agent is connected
+    this.server
+      ?.to(`dashboard:${tenantId}`)
+      .emit('kitchen:agent-connected', { connected: true, agentId: payload.sub });
+  }
+
+  private getAuthenticatedAgentTenant(client: Socket): string | null {
+    const agent = (client.data as any)?.printAgent;
+    return agent?.tenantId || null;
   }
 
   @SubscribeMessage('comanda:printed')
   handleComandaPrinted(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { comandaId: string; tenantId: string },
+    @MessageBody() data: { comandaId: string },
   ) {
-    if (data?.comandaId) {
-      this.logger.log(`Comanda ${data.comandaId} printed successfully`);
-      // Forward to dashboard
-      if (data.tenantId) {
-        this.server
-          ?.to(`dashboard:${data.tenantId}`)
-          .emit('kitchen:comanda-printed', { comandaId: data.comandaId });
-      }
-    }
+    const tenantId = this.getAuthenticatedAgentTenant(client);
+    if (!tenantId || !data?.comandaId) return;
+
+    this.logger.log(`Comanda ${data.comandaId} printed successfully`);
+    this.server
+      ?.to(`dashboard:${tenantId}`)
+      .emit('kitchen:comanda-printed', { comandaId: data.comandaId });
   }
 
   @SubscribeMessage('comanda:print-failed')
   handleComandaPrintFailed(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { comandaId: string; tenantId: string; error: string },
+    @MessageBody() data: { comandaId: string; error: string },
   ) {
-    if (data?.comandaId) {
-      this.logger.warn(`Comanda ${data.comandaId} print failed: ${data.error}`);
-      if (data.tenantId) {
-        this.server
-          ?.to(`dashboard:${data.tenantId}`)
-          .emit('kitchen:print-failed', { comandaId: data.comandaId, error: data.error });
-      }
-    }
+    const tenantId = this.getAuthenticatedAgentTenant(client);
+    if (!tenantId || !data?.comandaId) return;
+
+    this.logger.warn(`Comanda ${data.comandaId} print failed: ${data.error}`);
+    this.server
+      ?.to(`dashboard:${tenantId}`)
+      .emit('kitchen:print-failed', {
+        comandaId: data.comandaId,
+        error: data.error,
+      });
   }
 
   @SubscribeMessage('printer:status')
   handlePrinterStatus(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { tenantId: string; printers: any[] },
+    @MessageBody() data: { printers: any[] },
   ) {
-    if (data?.tenantId) {
-      this.server
-        ?.to(`dashboard:${data.tenantId}`)
-        .emit('kitchen:printer-status', { printers: data.printers });
-    }
+    const tenantId = this.getAuthenticatedAgentTenant(client);
+    if (!tenantId || !Array.isArray(data?.printers)) return;
+
+    this.server
+      ?.to(`dashboard:${tenantId}`)
+      .emit('kitchen:printer-status', { printers: data.printers });
   }
 
   // ===== Server → Client events (triggered by EventEmitter from GastroService) =====
@@ -340,6 +425,40 @@ export class GastroGateway
       .emit('kitchen:printer-status', { printers: payload.printers });
   }
 
+  @OnEvent('gastro.kitchen.creationFailed')
+  handleKitchenCreationFailed(payload: {
+    tenantId: string;
+    sessionId: string;
+    tableNumber: number;
+    orderId: string;
+    orderNumber: number;
+    error: string;
+  }) {
+    this.logger.error(
+      `[EVENT] kitchen.creationFailed → mesa=${payload.tableNumber} order=#${payload.orderNumber} error="${payload.error}"`,
+    );
+    this.server
+      ?.to(`dashboard:${payload.tenantId}`)
+      .emit('kitchen:creation-failed', payload);
+  }
+
+  @OnEvent('gastro.agent.offline')
+  handleAgentOffline(payload: {
+    tenantId: string;
+    agents: { id: string; name: string; lastSeenAt: string | null }[];
+    pendingComandas: number;
+  }) {
+    this.logger.warn(
+      `[WATCHDOG] Agent(s) offline for tenant ${payload.tenantId}: ${payload.agents.map((a) => a.name).join(', ')} — ${payload.pendingComandas} pending comanda(s)`,
+    );
+    this.server
+      ?.to(`dashboard:${payload.tenantId}`)
+      .emit('kitchen:agent-offline', {
+        agents: payload.agents,
+        pendingComandas: payload.pendingComandas,
+      });
+  }
+
   @OnEvent('gastro.session.statusChanged')
   handleStatusChanged(payload: {
     tenantId: string;
@@ -353,5 +472,30 @@ export class GastroGateway
     this.server
       ?.to(`table:${payload.sessionId}`)
       .emit('table:status-changed', payload);
+  }
+
+  // ===== Booking Events (reservation requests for gastro) =====
+
+  @OnEvent('booking.created')
+  handleBookingCreated(payload: { booking: any; tenantId: string }) {
+    const room = `dashboard:${payload.tenantId}`;
+    this.logger.log(`[EVENT] booking.created → room ${room} customer=${payload.booking?.customer?.name}`);
+    this.server?.to(room).emit('booking:new-request', {
+      tenantId: payload.tenantId,
+      bookingId: payload.booking?.id,
+      customerName: payload.booking?.customer?.name,
+      serviceName: payload.booking?.service?.name,
+      status: payload.booking?.status,
+    });
+  }
+
+  @OnEvent('booking.confirmed')
+  handleBookingConfirmed(payload: { booking: any; tenantId: string }) {
+    const room = `dashboard:${payload.tenantId}`;
+    this.logger.log(`[EVENT] booking.confirmed → room ${room} bookingId=${payload.booking?.id}`);
+    this.server?.to(room).emit('booking:confirmed', {
+      tenantId: payload.tenantId,
+      bookingId: payload.booking?.id,
+    });
   }
 }

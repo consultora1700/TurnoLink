@@ -163,8 +163,17 @@ async function bootstrap() {
   await redisIoAdapter.connectToRedis();
   app.useWebSocketAdapter(redisIoAdapter);
 
+  // Graceful shutdown — required for PM2 zero-downtime reload
+  // When PM2 sends SIGINT, NestJS closes DB connections, WebSockets, etc. before exiting
+  app.enableShutdownHooks();
+
   const port = process.env.PORT || 3001;
   await app.listen(port, '0.0.0.0');
+
+  // Signal PM2 that this instance is ready to receive traffic
+  if (process.send) {
+    process.send('ready');
+  }
 
   logger.log(`API running on http://localhost:${port}`, 'Bootstrap');
   logger.log(`Swagger docs: http://localhost:${port}/api/docs`, 'Bootstrap');

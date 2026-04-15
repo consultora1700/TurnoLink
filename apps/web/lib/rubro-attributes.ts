@@ -213,12 +213,114 @@ const GASTRONOMIA_ATTRIBUTES: AttributeDefinition[] = [
   { key: 'alergenos', label: 'Alérgenos', type: 'multiselect', options: ['Gluten', 'Lácteos', 'Huevo', 'Frutos secos', 'Mariscos', 'Soja', 'Maní'], group: 'Alimentación' },
 ];
 
+// ─── Gastro sub-rubro variants ────────────────────────────────
+// Each sub-rubro overrides seccion options and placeholder texts
+
+function gastroVariant(seccionOptions: string[], ingredientesPlaceholder: string, elaboracionPlaceholder: string, maridajePlaceholder: string): AttributeDefinition[] {
+  return [
+    { key: 'seccion', label: 'Sección', type: 'select', options: seccionOptions, showOnCard: true, cardOrder: 0 },
+    { key: 'apto_celiaco', label: 'Apto celíaco', type: 'boolean', showOnCard: true, cardOrder: 1 },
+    { key: 'apto_vegano', label: 'Vegano/Vegetariano', type: 'select', options: ['No', 'Vegetariano', 'Vegano'], showOnCard: true, cardOrder: 2 },
+    { key: 'porciones', label: 'Porciones', type: 'select', options: ['Individual', 'Para 2', 'Para compartir', 'Familiar'], group: 'Detalle' },
+    { key: 'picante', label: 'Picante', type: 'select', options: ['No', 'Suave', 'Medio', 'Fuerte'], group: 'Detalle' },
+    { key: 'tiempo_prep', label: 'Tiempo aprox.', type: 'select', options: ['10 min', '20 min', '30 min', '45 min', '+60 min'], group: 'Detalle' },
+    { key: 'calorias', label: 'Calorías aprox.', type: 'text', placeholder: 'Ej: 450 kcal', group: 'Detalle' },
+    { key: 'ingredientes', label: 'Ingredientes principales', type: 'textarea', placeholder: ingredientesPlaceholder, group: 'Ficha del plato' },
+    { key: 'elaboracion', label: 'Elaboración', type: 'textarea', placeholder: elaboracionPlaceholder, group: 'Ficha del plato' },
+    { key: 'origen', label: 'Origen / Historia', type: 'textarea', placeholder: 'Ej: Receta tradicional de la casa', group: 'Ficha del plato' },
+    { key: 'maridaje', label: 'Maridaje sugerido', type: 'text', placeholder: maridajePlaceholder, group: 'Ficha del plato' },
+    { key: 'alergenos', label: 'Alérgenos', type: 'multiselect', options: ['Gluten', 'Lácteos', 'Huevo', 'Frutos secos', 'Mariscos', 'Soja', 'Maní'], group: 'Alimentación' },
+  ];
+}
+
+const GASTRO_PARRILLA_ATTRIBUTES = gastroVariant(
+  ['Entrada', 'Parrilla', 'Acompañamiento', 'Pasta', 'Ensalada', 'Postre', 'Bebida', 'Vino', 'Menú del día'],
+  'Ej: Bife de chorizo, papas rústicas, chimichurri casero, ensalada de rúcula y parmesano',
+  'Ej: Cocción a la parrilla con leña de quebracho, punto a elección del comensal',
+  'Ej: Malbec reserva, Cabernet Sauvignon',
+);
+
+const GASTRO_PIZZERIA_ATTRIBUTES = gastroVariant(
+  ['Pizza', 'Empanada', 'Fainá', 'Calzone', 'Entrada', 'Postre', 'Bebida', 'Promo'],
+  'Ej: Muzzarella, salsa de tomate casera, aceitunas verdes, orégano',
+  'Ej: Masa madre con fermentación de 48hs, horno a leña a 400°C',
+  'Ej: Cerveza artesanal, Lambrusco',
+);
+
+const GASTRO_HAMBURGUESERIA_ATTRIBUTES = gastroVariant(
+  ['Burger', 'Papas', 'Acompañamiento', 'Combo', 'Bebida', 'Cerveza', 'Postre', 'Promo'],
+  'Ej: Doble medallón smash 90g, cheddar, cebolla caramelizada, pepinillos, salsa de la casa',
+  'Ej: Smash a la plancha, pan brioche artesanal tostado con manteca',
+  'Ej: IPA, Red Ale, Stout',
+);
+
+const GASTRO_CAFE_ATTRIBUTES = gastroVariant(
+  ['Café', 'Método', 'Café frío', 'Té', 'Infusión', 'Pastelería', 'Desayuno', 'Brunch', 'Sándwich', 'Ensalada', 'Postre', 'Para llevar'],
+  'Ej: Café de especialidad origen Colombia, leche vaporizada, arte latte',
+  'Ej: Extracción en V60 con agua a 93°C, molienda media, ratio 1:16',
+  'Ej: Croissant de almendras, medialunas de manteca',
+);
+
+const GASTRO_HELADERIA_ATTRIBUTES = gastroVariant(
+  ['Helado', 'Copa', 'Postre', 'Paleta', 'Milkshake', 'Bebida', 'Para llevar'],
+  'Ej: Leche entera, crema de leche, dulce de leche artesanal, vainilla de Madagascar',
+  'Ej: Elaboración artesanal con ingredientes naturales, sin colorantes artificiales',
+  'Ej: Café espresso para affogato',
+);
+
+const GASTRO_SUSHI_ATTRIBUTES = gastroVariant(
+  ['Roll', 'Nigiri', 'Sashimi', 'Entrada', 'Poke Bowl', 'Combo', 'Postre', 'Bebida', 'Promo'],
+  'Ej: Salmón fresco, palta, queso crema Philadelphia, alga nori, arroz de sushi',
+  'Ej: Roll rebozado en panko y frito, terminado con salsa teriyaki y spicy mayo',
+  'Ej: Sake, cerveza japonesa Asahi, té verde',
+);
+
+const GASTRO_CERVECERIA_ATTRIBUTES = gastroVariant(
+  ['Cerveza', 'Picada', 'Entrada', 'Principal', 'Burger', 'Postre', 'Bebida sin alcohol', 'Promo'],
+  'Ej: Lúpulo Cascade, malta pale, levadura ale americana',
+  'Ej: Fermentación en tanque 14 días, dry hopping con Citra y Mosaic',
+  'Ej: Tabla de quesos y fiambres, nachos',
+);
+
+const GASTRO_BODEGON_ATTRIBUTES = gastroVariant(
+  ['Entrada', 'Principal', 'Pasta', 'Milanesa', 'Guiso', 'Postre', 'Bebida', 'Menú del día', 'Vino'],
+  'Ej: Ternera, pan rallado, huevo, papas fritas caseras, ensalada mixta',
+  'Ej: Milanesa de ternera a la napolitana, gratinada al horno con muzzarella y jamón',
+  'Ej: Vino de la casa tinto o blanco, soda',
+);
+
+const GASTRO_PASTELERIA_ATTRIBUTES = gastroVariant(
+  ['Torta', 'Pastelería', 'Cookie', 'Macaron', 'Desayuno', 'Merienda', 'Bebida', 'Para llevar', 'Promo'],
+  'Ej: Harina 0000, manteca, chocolate belga 70%, crema de leche, huevos de campo',
+  'Ej: Bizcochuelo de vainilla con ganache de chocolate y crema diplomática entre capas',
+  'Ej: Café con leche, té Earl Grey',
+);
+
+const GASTRO_FOOD_TRUCK_ATTRIBUTES = gastroVariant(
+  ['Principal', 'Acompañamiento', 'Bebida', 'Postre', 'Combo', 'Promo'],
+  'Ej: Pollo grillado, guacamole, tortilla de trigo, salsa chipotle, lechuga',
+  'Ej: Pollo marinado 12hs, grillado al momento en plancha',
+  'Ej: Limonada casera, cerveza artesanal',
+);
+
 // ─── Registry ─────────────────────────────────────────────────
 
 export const RUBRO_ATTRIBUTES: Record<string, AttributeDefinition[]> = {
   // Rubros principales
   inmobiliarias: INMOBILIARIAS_ATTRIBUTES,
   gastronomia: GASTRONOMIA_ATTRIBUTES,
+
+  // Gastro sub-rubros
+  'gastro-parrilla': GASTRO_PARRILLA_ATTRIBUTES,
+  'gastro-pizzeria': GASTRO_PIZZERIA_ATTRIBUTES,
+  'gastro-hamburgueseria': GASTRO_HAMBURGUESERIA_ATTRIBUTES,
+  'gastro-cafe': GASTRO_CAFE_ATTRIBUTES,
+  'gastro-heladeria': GASTRO_HELADERIA_ATTRIBUTES,
+  'gastro-sushi': GASTRO_SUSHI_ATTRIBUTES,
+  'gastro-cerveceria': GASTRO_CERVECERIA_ATTRIBUTES,
+  'gastro-bodegon': GASTRO_BODEGON_ATTRIBUTES,
+  'gastro-pasteleria': GASTRO_PASTELERIA_ATTRIBUTES,
+  'gastro-food-truck': GASTRO_FOOD_TRUCK_ATTRIBUTES,
 
   // Mercado sub-rubros
   'mercado-celulares': MERCADO_CELULARES_ATTRIBUTES,

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { io, Socket } from 'socket.io-client';
+import type { Socket } from 'socket.io-client';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -53,7 +53,11 @@ interface UseGastroSocketOptions {
   onComandaPrinted?: EventHandler;
   onPrintFailed?: EventHandler;
   onAgentConnected?: EventHandler;
+  onAgentOffline?: EventHandler;
   onPrinterStatus?: EventHandler;
+  // Booking events (reservation requests)
+  onBookingNewRequest?: EventHandler;
+  onBookingConfirmed?: EventHandler;
 }
 
 export function useGastroSocket({
@@ -73,7 +77,10 @@ export function useGastroSocket({
   onComandaPrinted,
   onPrintFailed,
   onAgentConnected,
+  onAgentOffline,
   onPrinterStatus,
+  onBookingNewRequest,
+  onBookingConfirmed,
 }: UseGastroSocketOptions) {
   const socketRef = useRef<Socket | null>(null);
   const [connected, setConnected] = useState(false);
@@ -81,53 +88,67 @@ export function useGastroSocket({
   useEffect(() => {
     if (!tenantId) return;
 
-    const socket = io(`${API_URL}/gastro`, SOCKET_CONFIG);
-    socketRef.current = socket;
+    let socket: Socket | null = null;
+    let cancelled = false;
 
-    socket.on('connect', () => {
-      console.log('[GastroSocket] Connected:', socket.id, '→ joining dashboard:', tenantId);
-      setConnected(true);
-      socket.emit('join-dashboard', { tenantId });
+    import('socket.io-client').then(({ io }) => {
+      if (cancelled) return;
+
+      socket = io(`${API_URL}/gastro`, SOCKET_CONFIG);
+      socketRef.current = socket;
+
+      socket.on('connect', () => {
+        console.log('[GastroSocket] Connected:', socket!.id, '→ joining dashboard:', tenantId);
+        setConnected(true);
+        socket!.emit('join-dashboard', { tenantId });
+      });
+
+      socket.on('connect_error', (err) => {
+        console.error('[GastroSocket] Connection error:', err.message);
+        setConnected(false);
+      });
+
+      socket.on('disconnect', (reason) => {
+        console.log('[GastroSocket] Disconnected:', reason);
+        setConnected(false);
+      });
+
+      // Register all event listeners
+      const events: [string, EventHandler | undefined][] = [
+        ['table:session-opened', onSessionOpened],
+        ['table:order-placed', onOrderPlaced],
+        ['table:order-delivered', onOrderDelivered],
+        ['table:bill-requested', onBillRequested],
+        ['table:payment-enabled', onPaymentEnabled],
+        ['table:payment-requested', onPaymentRequested],
+        ['table:paid', onPaid],
+        ['table:closed', onClosed],
+        ['table:status-changed', onStatusChanged],
+        ['order:new', onNewOrder],
+        // Kitchen events
+        ['kitchen:comanda-created', onComandaCreated],
+        ['kitchen:comanda-ready', onComandaReady],
+        ['kitchen:comanda-printed', onComandaPrinted],
+        ['kitchen:print-failed', onPrintFailed],
+        ['kitchen:agent-connected', onAgentConnected],
+        ['kitchen:agent-offline', onAgentOffline],
+        ['kitchen:printer-status', onPrinterStatus],
+        // Booking events
+        ['booking:new-request', onBookingNewRequest],
+        ['booking:confirmed', onBookingConfirmed],
+      ];
+
+      for (const [event, handler] of events) {
+        if (handler) socket!.on(event, handler);
+      }
     });
-
-    socket.on('connect_error', (err) => {
-      console.error('[GastroSocket] Connection error:', err.message);
-      setConnected(false);
-    });
-
-    socket.on('disconnect', (reason) => {
-      console.log('[GastroSocket] Disconnected:', reason);
-      setConnected(false);
-    });
-
-    // Register all event listeners
-    const events: [string, EventHandler | undefined][] = [
-      ['table:session-opened', onSessionOpened],
-      ['table:order-placed', onOrderPlaced],
-      ['table:order-delivered', onOrderDelivered],
-      ['table:bill-requested', onBillRequested],
-      ['table:payment-enabled', onPaymentEnabled],
-      ['table:payment-requested', onPaymentRequested],
-      ['table:paid', onPaid],
-      ['table:closed', onClosed],
-      ['table:status-changed', onStatusChanged],
-      ['order:new', onNewOrder],
-      // Kitchen events
-      ['kitchen:comanda-created', onComandaCreated],
-      ['kitchen:comanda-ready', onComandaReady],
-      ['kitchen:comanda-printed', onComandaPrinted],
-      ['kitchen:print-failed', onPrintFailed],
-      ['kitchen:agent-connected', onAgentConnected],
-      ['kitchen:printer-status', onPrinterStatus],
-    ];
-
-    for (const [event, handler] of events) {
-      if (handler) socket.on(event, handler);
-    }
 
     return () => {
-      socket.removeAllListeners();
-      socket.disconnect();
+      cancelled = true;
+      if (socket) {
+        socket.removeAllListeners();
+        socket.disconnect();
+      }
       socketRef.current = null;
       setConnected(false);
     };
@@ -160,41 +181,51 @@ export function useTableSocket({
   useEffect(() => {
     if (!sessionId) return;
 
-    const socket = io(`${API_URL}/gastro`, SOCKET_CONFIG);
-    socketRef.current = socket;
+    let socket: Socket | null = null;
+    let cancelled = false;
 
-    socket.on('connect', () => {
-      console.log('[TableSocket] Connected:', socket.id, '→ joining table:', sessionId);
-      setConnected(true);
-      socket.emit('join-table', { sessionId });
+    import('socket.io-client').then(({ io }) => {
+      if (cancelled) return;
+
+      socket = io(`${API_URL}/gastro`, SOCKET_CONFIG);
+      socketRef.current = socket;
+
+      socket.on('connect', () => {
+        console.log('[TableSocket] Connected:', socket!.id, '→ joining table:', sessionId);
+        setConnected(true);
+        socket!.emit('join-table', { sessionId });
+      });
+
+      socket.on('connect_error', (err) => {
+        console.error('[TableSocket] Connection error:', err.message);
+        setConnected(false);
+      });
+
+      socket.on('disconnect', (reason) => {
+        console.log('[TableSocket] Disconnected:', reason);
+        setConnected(false);
+      });
+
+      const events: [string, EventHandler | undefined][] = [
+        ['table:order-placed', onOrderPlaced],
+        ['table:order-delivered', onOrderDelivered],
+        ['table:payment-enabled', onPaymentEnabled],
+        ['table:paid', onPaid],
+        ['table:closed', onClosed],
+        ['table:status-changed', onStatusChanged],
+      ];
+
+      for (const [event, handler] of events) {
+        if (handler) socket!.on(event, handler);
+      }
     });
-
-    socket.on('connect_error', (err) => {
-      console.error('[TableSocket] Connection error:', err.message);
-      setConnected(false);
-    });
-
-    socket.on('disconnect', (reason) => {
-      console.log('[TableSocket] Disconnected:', reason);
-      setConnected(false);
-    });
-
-    const events: [string, EventHandler | undefined][] = [
-      ['table:order-placed', onOrderPlaced],
-      ['table:order-delivered', onOrderDelivered],
-      ['table:payment-enabled', onPaymentEnabled],
-      ['table:paid', onPaid],
-      ['table:closed', onClosed],
-      ['table:status-changed', onStatusChanged],
-    ];
-
-    for (const [event, handler] of events) {
-      if (handler) socket.on(event, handler);
-    }
 
     return () => {
-      socket.removeAllListeners();
-      socket.disconnect();
+      cancelled = true;
+      if (socket) {
+        socket.removeAllListeners();
+        socket.disconnect();
+      }
       socketRef.current = null;
       setConnected(false);
     };

@@ -17,6 +17,7 @@ import {
   WifiOff,
   GripVertical,
   Download,
+  TestTube2,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -54,6 +55,8 @@ export function KitchenSettings() {
   const [tokenCopied, setTokenCopied] = useState(false);
   const [generatingToken, setGeneratingToken] = useState(false);
   const [tab, setTab] = useState<'stations' | 'products' | 'agent'>('stations');
+  const [availablePrinters, setAvailablePrinters] = useState<any[]>([]);
+  const [testingStation, setTestingStation] = useState<string | null>(null);
 
   const getApi = useCallback(() => {
     if (!session?.accessToken) return null;
@@ -64,13 +67,23 @@ export function KitchenSettings() {
     const api = getApi();
     if (!api) return;
     try {
-      const [stationsData, productsData, tenantData] = await Promise.all([
+      const [stationsData, productsData, tenantData, printersData, agentsData] = await Promise.all([
         api.getKitchenStations(),
         api.getKitchenProductMap(),
         api.getTenant(),
+        api.getAvailablePrinters().catch(() => []),
+        api.getKitchenAgents().catch(() => []),
       ]);
       setStations(stationsData);
       setProducts(productsData);
+      setAvailablePrinters(printersData);
+
+      // Check if any agent was seen in the last 90 seconds
+      const now = Date.now();
+      const anyOnline = agentsData.some((a: any) =>
+        a.isActive && a.lastSeenAt && (now - new Date(a.lastSeenAt).getTime()) < 90_000,
+      );
+      setAgentConnected(anyOnline);
 
       const settings = typeof tenantData.settings === 'string'
         ? JSON.parse(tenantData.settings)
@@ -143,6 +156,36 @@ export function KitchenSettings() {
       );
     } catch (err) {
       console.error('Error assigning product:', err);
+    }
+  };
+
+  const handleAssignPrinter = async (stationId: string, printerId: string | null, printerName: string | null) => {
+    const api = getApi();
+    if (!api) return;
+    try {
+      await api.updateKitchenStation(stationId, {
+        printerId: printerId || null,
+        printerName: printerName || null,
+      });
+      setStations((prev) =>
+        prev.map((s) => (s.id === stationId ? { ...s, printerId, printerName } : s)),
+      );
+    } catch (err) {
+      console.error('Error assigning printer:', err);
+    }
+  };
+
+  const handleTestPrint = async (stationId: string) => {
+    const api = getApi();
+    if (!api) return;
+    setTestingStation(stationId);
+    try {
+      await api.testStationPrint(stationId);
+    } catch (err) {
+      console.error('Error sending test print:', err);
+      alert('Error al enviar ticket de prueba. Verificá que el agente esté conectado.');
+    } finally {
+      setTimeout(() => setTestingStation(null), 2000);
     }
   };
 
@@ -290,60 +333,110 @@ export function KitchenSettings() {
                   </p>
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {stations.map((station) => (
                     <div
                       key={station.id}
-                      className={`flex items-center gap-4 p-4 rounded-xl border-2 transition-all ${
+                      className={`p-4 rounded-xl border-2 transition-all ${
                         station.isActive
                           ? 'border-slate-200 dark:border-neutral-700 bg-white dark:bg-neutral-800'
                           : 'border-slate-100 dark:border-neutral-800 bg-slate-50 dark:bg-neutral-900 opacity-60'
                       }`}
                     >
-                      <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
-                        <ChefHat className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                      {/* Row 1: Station info + controls */}
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
+                          <ChefHat className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">
+                            {station.name}
+                          </p>
+                          <p className="text-xs text-slate-500 dark:text-neutral-400 mt-0.5">
+                            Ticket: {station.displayName}
+                            {station._count?.products ? ` · ${station._count.products} productos` : ''}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleToggleStation(station.id, station.isActive)}
+                            className={`relative w-10 h-5 rounded-full flex-shrink-0 transition-colors duration-200 ${
+                              station.isActive ? 'bg-amber-500' : 'bg-slate-300 dark:bg-neutral-600'
+                            }`}
+                          >
+                            <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-200 ${
+                              station.isActive ? 'translate-x-[22px]' : 'translate-x-0.5'
+                            }`} />
+                          </button>
+
+                          <button
+                            onClick={() => handleDeleteStation(station.id)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
 
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">
-                          {station.name}
+                      {/* Row 2: Printer selector + test button */}
+                      {station.isActive && (
+                        <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-100 dark:border-neutral-700">
+                          <Printer className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                          <select
+                            value={station.printerId || ''}
+                            onChange={(e) => {
+                              const pid = e.target.value || null;
+                              const pname = pid
+                                ? availablePrinters.find((p) => p.id === pid)?.name || pid
+                                : null;
+                              handleAssignPrinter(station.id, pid, pname);
+                            }}
+                            className="flex-1 text-xs bg-white dark:bg-neutral-800 border border-slate-200 dark:border-neutral-600 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
+                          >
+                            <option value="">Sin impresora asignada</option>
+                            {availablePrinters.map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.name}{p.type !== 'unknown' ? ` (${p.type})` : ''}
+                              </option>
+                            ))}
+                          </select>
+
+                          {station.printerId ? (
+                            <>
+                              <span className="flex items-center text-xs text-emerald-600 dark:text-emerald-400">
+                                <Wifi className="w-3.5 h-3.5" />
+                              </span>
+                              <button
+                                onClick={() => handleTestPrint(station.id)}
+                                disabled={testingStation === station.id}
+                                className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-slate-100 dark:bg-neutral-700 text-slate-700 dark:text-neutral-300 hover:bg-slate-200 dark:hover:bg-neutral-600 transition-colors disabled:opacity-50"
+                                title="Enviar ticket de prueba"
+                              >
+                                {testingStation === station.id ? (
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                ) : (
+                                  <TestTube2 className="w-3.5 h-3.5" />
+                                )}
+                                Probar
+                              </button>
+                            </>
+                          ) : (
+                            <span className="flex items-center text-xs text-slate-400 dark:text-neutral-500">
+                              <WifiOff className="w-3.5 h-3.5" />
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Warning: no printers detected */}
+                      {station.isActive && availablePrinters.length === 0 && (
+                        <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 flex items-center gap-1.5">
+                          <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                          El agente no reportó impresoras. Verificá que esté conectado y tenga impresoras instaladas.
                         </p>
-                        <p className="text-xs text-slate-500 dark:text-neutral-400 mt-0.5">
-                          Ticket: {station.displayName}
-                          {station._count?.products ? ` · ${station._count.products} productos` : ''}
-                          {station.printerName ? ` · ${station.printerName}` : ''}
-                        </p>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        {station.printerId ? (
-                          <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
-                            <Wifi className="w-3.5 h-3.5" />
-                          </span>
-                        ) : (
-                          <span className="flex items-center gap-1 text-xs text-slate-400 dark:text-neutral-500">
-                            <WifiOff className="w-3.5 h-3.5" />
-                          </span>
-                        )}
-
-                        <button
-                          onClick={() => handleToggleStation(station.id, station.isActive)}
-                          className={`relative w-10 h-5 rounded-full flex-shrink-0 transition-colors duration-200 ${
-                            station.isActive ? 'bg-amber-500' : 'bg-slate-300 dark:bg-neutral-600'
-                          }`}
-                        >
-                          <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-200 ${
-                            station.isActive ? 'translate-x-[22px]' : 'translate-x-0.5'
-                          }`} />
-                        </button>
-
-                        <button
-                          onClick={() => handleDeleteStation(station.id)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+                      )}
                     </div>
                   ))}
                 </div>

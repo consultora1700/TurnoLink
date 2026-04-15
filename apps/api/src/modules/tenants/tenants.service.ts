@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 import { CreateTenantDto } from './dto/create-tenant.dto';
@@ -380,6 +380,39 @@ export class TenantsService {
         this.logger.warn(`Redis invalidation failed for tenant-slug:${newSlug}: ${err.message}`);
       });
     }
+  }
+
+  /**
+   * Delete a tenant account and all associated data.
+   * Blocks if there is an active or trialing subscription.
+   */
+  async deleteAccount(tenantId: string) {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      include: { subscription: true },
+    });
+
+    if (!tenant) {
+      throw new NotFoundException('Negocio no encontrado');
+    }
+
+    // Block if subscription is active or trialing
+    const activeStatuses = ['ACTIVE', 'TRIALING', 'active', 'trialing'];
+    if (tenant.subscription && activeStatuses.includes(tenant.subscription.status)) {
+      throw new BadRequestException(
+        'Tenés una suscripción activa. Cancelá tu suscripción antes de eliminar la cuenta.',
+      );
+    }
+
+    // Delete tenant — cascades to all related records via Prisma schema
+    await this.prisma.tenant.delete({ where: { id: tenantId } });
+
+    // Invalidate cache
+    this.invalidateTenantCache(tenant.slug);
+
+    this.logger.log(`Tenant ${tenantId} (${tenant.name}) deleted by owner`);
+
+    return { success: true, message: 'Cuenta eliminada correctamente' };
   }
 
   // Admin methods

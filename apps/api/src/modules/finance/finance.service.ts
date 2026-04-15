@@ -59,6 +59,10 @@ const INCOME_CATEGORY_LABELS: Record<string, string> = {
   COMMISSION: 'Comisiones',
   GRANT: 'Subsidio / Beca',
   GASTRO_SALON: 'Ventas de salón',
+  GASTRO_FOOD: 'Consumo gastronómico',
+  GASTRO_TIPS: 'Propinas',
+  GASTRO_DELIVERY: 'Delivery',
+  GASTRO_TAKEAWAY: 'Para llevar',
   OTHER_INCOME: 'Otros ingresos',
 };
 

@@ -194,7 +194,9 @@ export class GastroService {
       subtotal,
     });
 
-    // Create kitchen comandas (non-blocking — if kitchen stations are configured)
+    // Create kitchen comandas (non-blocking — if kitchen stations are configured).
+    // On failure we emit `gastro.kitchen.creationFailed` so the dashboard can
+    // surface an alert instead of the kitchen silently missing the order.
     this.kitchenService
       .createComandasForOrder(
         session.tenantId,
@@ -207,6 +209,14 @@ export class GastroService {
       )
       .catch((err) => {
         this.logger.error(`Failed to create kitchen comandas: ${err.message}`);
+        this.eventEmitter.emit('gastro.kitchen.creationFailed', {
+          tenantId: session.tenantId,
+          sessionId,
+          tableNumber: session.tableNumber,
+          orderId: order.id,
+          orderNumber: nextOrderNumber,
+          error: err?.message || 'unknown',
+        });
       });
 
     return order;
@@ -416,6 +426,7 @@ export class GastroService {
           totalAmount: new Prisma.Decimal(totalAmount),
           tipAmount: new Prisma.Decimal(tipAmount),
           tipType: dto.tipType,
+          paymentMethod: dto.paymentMethod,
         },
         include: { orders: { orderBy: { orderNumber: 'asc' } } },
       });
@@ -442,13 +453,14 @@ export class GastroService {
 
     // Mercado Pago: create a real checkout preference so the comensal can pay from their phone
     if (dto.paymentMethod === 'mercadopago') {
-      // Save tip info
+      // Save tip info + payment method
       await this.prisma.tableSession.update({
         where: { id: sessionId },
         data: {
           totalAmount: new Prisma.Decimal(totalAmount),
           tipAmount: new Prisma.Decimal(tipAmount),
           tipType: dto.tipType,
+          paymentMethod: 'mercadopago',
         },
       });
 
@@ -1112,20 +1124,234 @@ export class GastroService {
 
   private async registerGastroIncome(tenantId: string, tableNumber: number, totalAmount: number, tipAmount: number) {
     try {
-      if (totalAmount <= 0) return;
+      if (totalAmount <= 0 && tipAmount <= 0) return;
 
-      const description = `Salón — Mesa ${tableNumber}${tipAmount > 0 ? ` (propina $${tipAmount.toFixed(0)})` : ''}`;
+      // Register food revenue as separate entry
+      if (totalAmount > 0) {
+        await this.financeService.createIncome(tenantId, {
+          category: 'GASTRO_FOOD',
+          description: `Consumo — Mesa ${tableNumber}`,
+          amount: totalAmount,
+        });
+      }
 
-      await this.financeService.createIncome(tenantId, {
-        category: 'GASTRO_SALON',
-        description,
-        amount: totalAmount + tipAmount,
-      });
+      // Register tips as separate entry
+      if (tipAmount > 0) {
+        await this.financeService.createIncome(tenantId, {
+          category: 'GASTRO_TIPS',
+          description: `Propina — Mesa ${tableNumber}`,
+          amount: tipAmount,
+        });
+      }
 
-      this.logger.log(`Income registered for tenant ${tenantId}: $${(totalAmount + tipAmount).toFixed(2)} (Mesa ${tableNumber})`);
+      this.logger.log(`Income registered for tenant ${tenantId}: food=$${totalAmount.toFixed(2)} tips=$${tipAmount.toFixed(2)} (Mesa ${tableNumber})`);
     } catch (err: any) {
       // Don't fail the payment flow if income registration fails
       this.logger.error(`Failed to register gastro income: ${err.message}`);
     }
+  }
+
+  // ========== GASTRO SALON REPORT ==========
+
+  async getGastroSalonReport(tenantId: string, period: string = '30d') {
+    const now = new Date();
+    let dateFrom: Date;
+
+    if (period === '7d') {
+      dateFrom = new Date(now);
+      dateFrom.setDate(dateFrom.getDate() - 6);
+      dateFrom.setHours(0, 0, 0, 0);
+    } else if (period === '90d') {
+      dateFrom = new Date(now);
+      dateFrom.setDate(dateFrom.getDate() - 89);
+      dateFrom.setHours(0, 0, 0, 0);
+    } else if (period === 'month') {
+      dateFrom = new Date(now.getFullYear(), now.getMonth(), 1);
+    } else {
+      // Default 30d
+      dateFrom = new Date(now);
+      dateFrom.setDate(dateFrom.getDate() - 29);
+      dateFrom.setHours(0, 0, 0, 0);
+    }
+
+    const dateTo = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
+    // Fetch all paid/closed sessions in the period with orders + waiter + comandas
+    const sessions = await this.prisma.tableSession.findMany({
+      where: {
+        tenantId,
+        status: { in: ['PAID', 'CLOSED'] },
+        updatedAt: { gte: dateFrom, lte: dateTo },
+      },
+      include: {
+        orders: { select: { items: true, subtotal: true, createdAt: true } },
+        waiter: { select: { id: true, name: true } },
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    // --- KPIs ---
+    let totalRevenue = 0;
+    let totalTips = 0;
+    let totalSessions = sessions.length;
+
+    for (const s of sessions) {
+      totalRevenue += Number(s.totalAmount || 0);
+      totalTips += Number(s.tipAmount || 0);
+    }
+
+    const avgTicket = totalSessions > 0 ? totalRevenue / totalSessions : 0;
+    const avgTip = totalSessions > 0 ? totalTips / totalSessions : 0;
+
+    // --- Top products (from order items JSON) ---
+    const productMap = new Map<string, { name: string; quantity: number; revenue: number }>();
+    for (const s of sessions) {
+      for (const order of s.orders) {
+        const items = order.items as any[];
+        if (!Array.isArray(items)) continue;
+        for (const item of items) {
+          const key = item.productId || item.name;
+          const existing = productMap.get(key) || { name: item.name, quantity: 0, revenue: 0 };
+          existing.quantity += item.quantity || 1;
+          existing.revenue += (item.price || 0) * (item.quantity || 1);
+          productMap.set(key, existing);
+        }
+      }
+    }
+    const topProducts = Array.from(productMap.values())
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 15);
+
+    // --- Per-waiter performance ---
+    const waiterMap = new Map<string, { name: string; sessions: number; revenue: number; tips: number }>();
+    for (const s of sessions) {
+      const wId = s.waiterId || '__unassigned__';
+      const wName = s.waiter?.name || 'Sin asignar';
+      const existing = waiterMap.get(wId) || { name: wName, sessions: 0, revenue: 0, tips: 0 };
+      existing.sessions += 1;
+      existing.revenue += Number(s.totalAmount || 0);
+      existing.tips += Number(s.tipAmount || 0);
+      waiterMap.set(wId, existing);
+    }
+    const byWaiter = Array.from(waiterMap.entries())
+      .map(([id, data]) => ({ waiterId: id === '__unassigned__' ? null : id, ...data }))
+      .sort((a, b) => b.revenue - a.revenue);
+
+    // --- Per-table revenue ---
+    const tableMap = new Map<number, { sessions: number; revenue: number; tips: number }>();
+    for (const s of sessions) {
+      const existing = tableMap.get(s.tableNumber) || { sessions: 0, revenue: 0, tips: 0 };
+      existing.sessions += 1;
+      existing.revenue += Number(s.totalAmount || 0);
+      existing.tips += Number(s.tipAmount || 0);
+      tableMap.set(s.tableNumber, existing);
+    }
+    const byTable = Array.from(tableMap.entries())
+      .map(([tableNumber, data]) => ({ tableNumber, ...data }))
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 20);
+
+    // --- Payment method breakdown ---
+    const paymentMap = new Map<string, { count: number; revenue: number }>();
+    for (const s of sessions) {
+      const method = s.paymentMethod || 'sin_registrar';
+      const existing = paymentMap.get(method) || { count: 0, revenue: 0 };
+      existing.count += 1;
+      existing.revenue += Number(s.totalAmount || 0) + Number(s.tipAmount || 0);
+      paymentMap.set(method, existing);
+    }
+    const byPaymentMethod = Array.from(paymentMap.entries())
+      .map(([method, data]) => ({ method, ...data }))
+      .sort((a, b) => b.revenue - a.revenue);
+
+    // --- Daily revenue trend ---
+    const dailyMap = new Map<string, { date: string; revenue: number; tips: number; sessions: number }>();
+    for (const s of sessions) {
+      const day = s.updatedAt.toISOString().slice(0, 10);
+      const existing = dailyMap.get(day) || { date: day, revenue: 0, tips: 0, sessions: 0 };
+      existing.revenue += Number(s.totalAmount || 0);
+      existing.tips += Number(s.tipAmount || 0);
+      existing.sessions += 1;
+      dailyMap.set(day, existing);
+    }
+    const dailyRevenue = Array.from(dailyMap.values()).sort((a, b) => a.date.localeCompare(b.date));
+
+    // --- Peak hours (hour distribution) ---
+    const hourCounts = new Array(24).fill(0);
+    for (const s of sessions) {
+      for (const order of s.orders) {
+        const hour = new Date(order.createdAt).getHours();
+        hourCounts[hour]++;
+      }
+    }
+    const peakHours = hourCounts.map((count, hour) => ({ hour, orders: count }));
+
+    // --- Kitchen performance (comanda times) ---
+    const comandas = await this.prisma.kitchenComanda.findMany({
+      where: {
+        tenantId,
+        createdAt: { gte: dateFrom, lte: dateTo },
+        status: { in: ['READY', 'PRINTED', 'ACCEPTED', 'PREPARING'] },
+      },
+      select: {
+        id: true,
+        status: true,
+        createdAt: true,
+        printedAt: true,
+        acceptedAt: true,
+        readyAt: true,
+        station: { select: { name: true } },
+      },
+    });
+
+    let totalKitchenMinutes = 0;
+    let kitchenTimedCount = 0;
+    const stationTimesMap = new Map<string, { totalMinutes: number; count: number }>();
+
+    for (const c of comandas) {
+      const endTime = c.readyAt || c.acceptedAt;
+      if (endTime) {
+        const minutes = (endTime.getTime() - c.createdAt.getTime()) / 60000;
+        if (minutes > 0 && minutes < 300) { // Ignore outliers >5h
+          totalKitchenMinutes += minutes;
+          kitchenTimedCount++;
+
+          const stationName = c.station?.name || 'Sin estación';
+          const existing = stationTimesMap.get(stationName) || { totalMinutes: 0, count: 0 };
+          existing.totalMinutes += minutes;
+          existing.count++;
+          stationTimesMap.set(stationName, existing);
+        }
+      }
+    }
+
+    const avgKitchenMinutes = kitchenTimedCount > 0 ? Math.round(totalKitchenMinutes / kitchenTimedCount) : null;
+    const kitchenByStation = Array.from(stationTimesMap.entries()).map(([station, data]) => ({
+      station,
+      avgMinutes: Math.round(data.totalMinutes / data.count),
+      comandaCount: data.count,
+    })).sort((a, b) => a.avgMinutes - b.avgMinutes);
+
+    return {
+      period,
+      dateFrom: dateFrom.toISOString(),
+      dateTo: dateTo.toISOString(),
+      kpis: {
+        totalRevenue: Math.round(totalRevenue * 100) / 100,
+        totalTips: Math.round(totalTips * 100) / 100,
+        totalSessions,
+        avgTicket: Math.round(avgTicket * 100) / 100,
+        avgTip: Math.round(avgTip * 100) / 100,
+        avgKitchenMinutes,
+        totalComandasProcessed: comandas.length,
+      },
+      topProducts,
+      byWaiter,
+      byTable,
+      byPaymentMethod,
+      dailyRevenue,
+      peakHours,
+      kitchenByStation,
+    };
   }
 }

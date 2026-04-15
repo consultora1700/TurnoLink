@@ -17,7 +17,7 @@ import {
   CreditCard,
   Banknote,
   Building2,
-  Truck,
+  Bike,
   Store,
   ShoppingBag,
   MessageCircle,
@@ -49,7 +49,8 @@ const STATUS_LOTTIE: Record<string, Record<string, string>> = {
     PENDING: '/lottie/order-confirmed.json',
     CONFIRMED: '/lottie/order-received.json',
     PROCESSING: '/lottie/cooking.json',
-    DELIVERED: '/lottie/delivered-takeaway.json',  // Bolsita de comida
+    READY: '/lottie/delivered-takeaway.json',      // Listo para retirar
+    DELIVERED: '/lottie/delivered-takeaway.json',   // Retirado
     CANCELLED: '/lottie/cancelled.json',
   },
 };
@@ -60,7 +61,7 @@ const DELIVERY_STEPS = [
   { key: 'CONFIRMED', label: 'Confirmado', icon: CheckCircle, color: '#3B82F6' },
   { key: 'PROCESSING', label: 'Preparando', icon: ChefHat, color: '#8B5CF6' },
   { key: 'READY', label: 'Listo', icon: Store, color: '#14B8A6' },
-  { key: 'SHIPPED', label: 'En camino', icon: Truck, color: '#6366F1' },
+  { key: 'SHIPPED', label: 'En camino', icon: Bike, color: '#6366F1' },
   { key: 'ARRIVED', label: 'Llegó', icon: CircleDot, color: '#EC4899' },
   { key: 'DELIVERED', label: 'Entregado', icon: CheckCircle, color: '#10B981' },
 ];
@@ -69,7 +70,8 @@ const TAKEAWAY_STEPS = [
   { key: 'PENDING', label: 'Enviado', icon: Package, color: '#F59E0B' },
   { key: 'CONFIRMED', label: 'Confirmado', icon: CheckCircle, color: '#3B82F6' },
   { key: 'PROCESSING', label: 'Preparando', icon: ChefHat, color: '#8B5CF6' },
-  { key: 'DELIVERED', label: 'Listo', icon: Store, color: '#10B981' },
+  { key: 'READY', label: 'Listo para retirar', icon: Store, color: '#14B8A6' },
+  { key: 'DELIVERED', label: 'Retirado', icon: CheckCircle, color: '#10B981' },
 ];
 
 const STATUS_META: Record<string, { title: string; subtitle: string }> = {
@@ -378,7 +380,9 @@ export default function OrderTrackingPage() {
   // Dynamic timeline steps based on order type
   const timelineSteps = isDelivery ? DELIVERY_STEPS : TAKEAWAY_STEPS;
   const currentIdx = timelineSteps.findIndex(s => s.key === order.status);
-  const statusMeta = STATUS_META[order.status] || STATUS_META.PENDING;
+  const statusMeta = (isTakeaway && order.status === 'READY')
+    ? { title: '¡Tu pedido está listo!', subtitle: 'Ya podés pasar a retirarlo por el local' }
+    : STATUS_META[order.status] || STATUS_META.PENDING;
 
   // For takeaway: SHIPPED maps to DELIVERED (skip "en camino")
   const effectiveStatus = isTakeaway && order.status === 'SHIPPED' ? 'DELIVERED' : order.status;
@@ -600,7 +604,7 @@ export default function OrderTrackingPage() {
             <div className="p-4 flex items-center gap-3.5">
               <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${primaryColor}10` }}>
                 {isDelivery ? (
-                  <Truck className="h-5 w-5" style={{ color: primaryColor }} />
+                  <Bike className="h-5 w-5" style={{ color: primaryColor }} />
                 ) : (
                   <Store className="h-5 w-5" style={{ color: primaryColor }} />
                 )}
@@ -727,7 +731,7 @@ export default function OrderTrackingPage() {
           <div className="rounded-2xl overflow-hidden fade-up-3 shadow-sm" style={{ background: `linear-gradient(135deg, ${primaryColor}, ${primaryColor}dd)` }}>
             <div className="p-5 text-white text-center">
               <div className="flex items-center justify-center gap-2 mb-3 opacity-90">
-                <Truck className="h-4 w-4" />
+                <Bike className="h-4 w-4" />
                 <p className="text-[11px] font-semibold uppercase tracking-wider">Palabra clave de entrega</p>
               </div>
               <p className="text-4xl font-black tracking-[0.15em] leading-none">{order.pickupWord}</p>

@@ -1,6 +1,6 @@
 'use client';
 
-import { ShoppingBag, Truck, CalendarDays, Check } from 'lucide-react';
+import { ShoppingBag, Bike, CalendarDays, Check } from 'lucide-react';
 import type { OrderType } from '@/lib/gastro-cart-store';
 
 interface Props {
@@ -26,15 +26,15 @@ export function OrderModeSelector({ orderType, onSelectType, onReserveTable, sho
           isActive={orderType === 'TAKE_AWAY'}
           onClick={() => onSelectType('TAKE_AWAY')}
           icon={ShoppingBag}
-          label="Para llevar"
-          desc="Retirá en el local"
+          label="Retira en local"
+          desc="Lo preparamos y retirás"
         />
 
         {/* Delivery */}
         <ModeButton
           isActive={orderType === 'DELIVERY'}
           onClick={() => onSelectType('DELIVERY')}
-          icon={Truck}
+          icon={Bike}
           label="Delivery"
           desc="Te lo llevamos"
         />

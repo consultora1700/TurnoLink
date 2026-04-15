@@ -272,6 +272,16 @@ export function MesaExperience({ tenant, slug, tableNumber, products, categories
 
   const categoryScrollRef = useRef<HTMLDivElement>(null);
   const sectionRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const belowFoldRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to email/regalo section 2.5s after payment
+  useEffect(() => {
+    if (store.status !== 'PAID' && store.status !== 'CLOSED') return;
+    const timer = setTimeout(() => {
+      belowFoldRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, [store.status]);
 
   const settings = tenant.settings as any;
   const currency = settings?.currency || 'ARS';
@@ -1108,7 +1118,7 @@ export function MesaExperience({ tenant, slug, tableNumber, products, categories
         </div>
 
         {/* ===== BELOW THE FOLD — discoverable by scrolling ===== */}
-        <div className="max-w-sm mx-auto px-6 pb-12 space-y-5">
+        <div ref={belowFoldRef} className="max-w-sm mx-auto px-6 pb-12 space-y-5">
 
           {/* Email capture — regalo */}
           {showEmailCapture && (

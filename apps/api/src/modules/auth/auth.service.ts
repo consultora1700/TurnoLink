@@ -90,6 +90,13 @@ export class AuthService {
       'mercado-bazar', 'mercado-general',
     ];
 
+    // All gastro-* sub-rubros share the same layout/sections/defaults as 'gastronomia'
+    const GASTRO_SUB_RUBROS = [
+      'gastro-parrilla', 'gastro-pizzeria', 'gastro-hamburgueseria', 'gastro-cafe',
+      'gastro-heladeria', 'gastro-sushi', 'gastro-cerveceria', 'gastro-bodegon',
+      'gastro-pasteleria', 'gastro-food-truck', 'gastro-otro',
+    ];
+
     const RUBRO_LAYOUT: Record<string, string> = {
       'estetica-belleza': 'service_first',
       'barberia':         'service_first',
@@ -113,6 +120,8 @@ export class AuthService {
       'otro':             'service_first',
       // Mercado sub-rubros inherit product_grid
       ...Object.fromEntries(MERCADO_SUB_RUBROS.map(k => [k, 'product_grid'])),
+      // Gastro sub-rubros inherit gastronomia layout
+      ...Object.fromEntries(GASTRO_SUB_RUBROS.map(k => [k, 'service_first'])),
     };
 
     // Items ocultos por defecto (siempre reactivables en Configuración → Secciones del Menú)
@@ -144,6 +153,8 @@ export class AuthService {
       'otro':             [...TALENTO, ...ADVANCED, ...CATALOGO],
       // Mercado sub-rubros inherit mercado hidden sections
       ...Object.fromEntries(MERCADO_SUB_RUBROS.map(k => [k, ['/autogestion', '/turnos', '/servicios', '/empleados', '/especialidades', '/formularios', '/horarios', '/videollamadas', '/sucursales', '/clientes', ...TALENTO, ...ADVANCED]])),
+      // Gastro sub-rubros inherit gastronomia hidden sections
+      ...Object.fromEntries(GASTRO_SUB_RUBROS.map(k => [k, ['/especialidades', '/formularios', '/sucursales', '/videollamadas', ...TALENTO, ...ADVANCED]])),
     };
 
     // Map industry slug to rubro key and plan slug
@@ -176,6 +187,8 @@ export class AuthService {
       'mercado':              { rubro: 'mercado',           plan: 'mercado-vitrina' },
       // Mercado sub-rubros (from sub-rubro picker in registration)
       ...Object.fromEntries(MERCADO_SUB_RUBROS.map(k => [k, { rubro: k, plan: 'mercado-vitrina' }])),
+      // Gastro sub-rubros (from sub-rubro picker in registration)
+      ...Object.fromEntries(GASTRO_SUB_RUBROS.map(k => [k, { rubro: k, plan: 'gastronomia-gratis' }])),
       // Backward compat
       'celulares':            { rubro: 'mercado-celulares', plan: 'mercado-vitrina' },
       'otro':                 { rubro: 'otro',              plan: 'profesional' },
@@ -207,6 +220,8 @@ export class AuthService {
       'mercado':          { clientLabelSingular: 'Cliente', clientLabelPlural: 'Clientes', enabledFichas: ['datosPersonales', 'notasSeguimiento'] },
       // Mercado sub-rubros inherit mercado defaults
       ...Object.fromEntries(MERCADO_SUB_RUBROS.map(k => [k, { clientLabelSingular: 'Cliente', clientLabelPlural: 'Clientes', enabledFichas: ['datosPersonales', 'notasSeguimiento'] }])),
+      // Gastro sub-rubros inherit gastronomia defaults
+      ...Object.fromEntries(GASTRO_SUB_RUBROS.map(k => [k, { clientLabelSingular: 'Comensal', clientLabelPlural: 'Comensales', enabledFichas: ['datosPersonales', 'notasSeguimiento'] }])),
       'otro':             { clientLabelSingular: 'Cliente', clientLabelPlural: 'Clientes', enabledFichas: ['datosPersonales', 'notasSeguimiento'] },
     };
 

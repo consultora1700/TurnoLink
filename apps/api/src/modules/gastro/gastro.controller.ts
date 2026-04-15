@@ -7,13 +7,17 @@ import {
   Body,
   Query,
   Request,
+  Req,
   BadRequestException,
   NotFoundException,
+  UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { Public } from '../../common/decorators/public.decorator';
 import { GastroService } from './gastro.service';
 import { KitchenService } from './kitchen.service';
+import { PrintAgentGuard } from './guards/print-agent.guard';
 import { CreateTableSessionDto } from './dto/create-table-session.dto';
 import { CreateSessionOrderDto } from './dto/create-session-order.dto';
 import { UpdateSessionStatusDto } from './dto/update-session-status.dto';
@@ -204,6 +208,15 @@ export class GastroController {
     return this.gastroService.getTipsReport(req.user.tenantId, period);
   }
 
+  @Get('dashboard/salon-report')
+  @ApiOperation({ summary: 'Reporte completo de salón gastronómico' })
+  async getSalonReport(
+    @Request() req: any,
+    @Query('period') period: string = '30d',
+  ) {
+    return this.gastroService.getGastroSalonReport(req.user.tenantId, period);
+  }
+
   @Get('dashboard/qr-codes')
   @ApiOperation({ summary: 'Obtener datos para generar QRs' })
   async getQrData(@Request() req: any) {
@@ -291,6 +304,21 @@ export class GastroController {
     return this.kitchenService.getKitchenStats(req.user.tenantId);
   }
 
+  @Get('kitchen/available-printers')
+  @ApiOperation({ summary: 'Impresoras detectadas por los agentes del tenant' })
+  async getAvailablePrinters(@Request() req: any) {
+    return this.kitchenService.getAvailablePrinters(req.user.tenantId);
+  }
+
+  @Post('kitchen/stations/:id/test-print')
+  @ApiOperation({ summary: 'Enviar ticket de prueba a la impresora de la estación' })
+  async testPrint(
+    @Request() req: any,
+    @Param('id') id: string,
+  ) {
+    return this.kitchenService.sendTestPrint(req.user.tenantId, id);
+  }
+
   // ========== PRODUCT-STATION MAPPING ==========
 
   @Get('kitchen/product-map')
@@ -311,44 +339,208 @@ export class GastroController {
   // ========== PRINT AGENT ==========
 
   @Post('kitchen/generate-token')
-  @ApiOperation({ summary: 'Generar token para agente de impresión' })
-  async generateAgentToken(@Request() req: any) {
-    const token = await this.kitchenService.generateAgentToken(req.user.tenantId);
-    return { token };
+  @ApiOperation({ summary: 'Generar token de vinculación para agente de impresión' })
+  async generateAgentToken(@Request() req: any, @Body() body: { name?: string } = {}) {
+    const result = await this.kitchenService.generateAgentToken(
+      req.user.tenantId,
+      body?.name,
+    );
+    // Backward compat: legacy clients read `.token`. New clients can also
+    // read `.agentId` to reference the PrintAgent row.
+    return { token: result.token, agentId: result.agentId };
   }
 
+  @Get('kitchen/agents')
+  @ApiOperation({ summary: 'Listar agentes de impresión vinculados' })
+  async listAgents(@Request() req: any) {
+    return this.kitchenService.listAgents(req.user.tenantId);
+  }
+
+  @Post('kitchen/agents/:id/revoke')
+  @ApiOperation({ summary: 'Revocar un agente de impresión' })
+  async revokeAgent(@Request() req: any, @Param('id') id: string) {
+    return this.kitchenService.revokeAgent(req.user.tenantId, id);
+  }
+
+  /**
+   * Pairing endpoint for print agents. The agent sends its one-time pairing
+   * token (agentToken) and receives a long-lived JWT to use from now on.
+   *
+   * Rate-limited (5 attempts / minute) to block brute-forcing of 48-char
+   * tokens. @Public() bypasses the global JwtAuthGuard — no user session.
+   */
   @Public()
+  @Throttle({ short: { limit: 5, ttl: 60_000 } })
   @Post('printer-agent/auth')
-  @ApiOperation({ summary: 'Autenticar agente de impresión' })
-  async authPrintAgent(@Body('agentToken') agentToken: string) {
-    const result = await this.kitchenService.validateAgentToken(agentToken);
+  @ApiOperation({ summary: 'Autenticar agente de impresión y obtener JWT' })
+  async authPrintAgent(
+    @Body() body: { agentToken?: string; version?: string },
+    @Req() req: any,
+  ) {
+    const agentToken = body?.agentToken;
+    if (!agentToken) {
+      throw new BadRequestException('agentToken requerido');
+    }
+    const xff = req.headers?.['x-forwarded-for'];
+    const ip =
+      (typeof xff === 'string' && xff.split(',')[0].trim()) ||
+      req.ip ||
+      req.socket?.remoteAddress ||
+      null;
+
+    const result = await this.kitchenService.validateAgentToken(agentToken, {
+      ip,
+      version: body?.version || null,
+    });
     if (!result) {
       throw new NotFoundException('Token inválido');
     }
-    return result;
+    return result; // { agentId, tenantId, tenantName, slug, jwt }
   }
 
+  /**
+   * Pending comandas for a print agent. Auth via PrintAgentGuard (Bearer
+   * JWT). tenantId is read from the JWT, never trusted from the client.
+   *
+   * Response shape matches the Tauri agent's `ComandaPayload` contract
+   * (flat, camelCase). Mirrors exactly what the WebSocket gateway emits on
+   * `comanda:new` so the agent uses ONE type regardless of transport.
+   */
   @Public()
+  @UseGuards(PrintAgentGuard)
   @Get('printer-agent/pending')
-  @ApiOperation({ summary: 'Comandas pendientes de impresión (fallback HTTP)' })
-  async getPendingForAgent(@Query('tenantId') tenantId: string) {
+  @ApiOperation({ summary: 'Comandas pendientes de impresión (HTTP poll)' })
+  async getPendingForAgent(@Req() req: any) {
+    const tenantId = req.printAgent?.tenantId;
     if (!tenantId) throw new BadRequestException('tenantId requerido');
-    return this.kitchenService.getPendingComandas(tenantId);
+    const raw = await this.kitchenService.getPendingComandas(tenantId);
+
+    // Increment printAttempts for each comanda being dispatched to the agent.
+    // Non-blocking — don't slow down the poll response.
+    if (raw.length > 0) {
+      this.kitchenService.incrementPrintAttempts(raw.map((c: any) => c.id)).catch(() => {});
+    }
+
+    // Build fullOrderItems for each comanda by collecting sibling comandas
+    // (same tableSessionOrderId = same order, different stations)
+    const orderIdSet = new Set(raw.map((c: any) => c.tableSessionOrderId));
+    const allSiblings = orderIdSet.size > 0
+      ? await this.kitchenService.getComandasByOrderIds(tenantId, [...orderIdSet])
+      : [];
+    const siblingsByOrder = new Map<string, any[]>();
+    for (const s of allSiblings) {
+      const key = s.tableSessionOrderId;
+      if (!siblingsByOrder.has(key)) siblingsByOrder.set(key, []);
+      siblingsByOrder.get(key)!.push(s);
+    }
+
+    const dbComandas = raw.map((c: any) => {
+      // Build full order items from all sibling comandas
+      const siblings = siblingsByOrder.get(c.tableSessionOrderId) || [];
+      const fullOrderItems = siblings.flatMap((sib: any) => {
+        const sitems = Array.isArray(sib.items) ? sib.items : [];
+        const stName = sib.station?.displayName || sib.station?.name || '';
+        return sitems.map((item: any) => ({
+          ...item,
+          stationName: stName,
+        }));
+      });
+
+      return {
+        comandaId: c.id,
+        stationId: c.stationId,
+        stationName: c.station?.displayName || c.station?.name || '',
+        printerId: c.station?.printerId ?? null,
+        tableNumber: c.tableNumber,
+        orderNumber: c.orderNumber,
+        items: Array.isArray(c.items) ? c.items : [],
+        fullOrderItems,
+        waiterName: null,
+        timestamp: (c.createdAt instanceof Date
+          ? c.createdAt
+          : new Date(c.createdAt)
+        ).toISOString(),
+      };
+    });
+
+    // Append any queued test prints (ephemeral, not in DB)
+    const testPrints = this.kitchenService.drainTestPrints(tenantId);
+
+    return [...dbComandas, ...testPrints];
   }
 
+  /**
+   * Agent reports the printers it has discovered locally. Best-effort — we
+   * persist the list on the PrintAgent row as metadata so the dashboard can
+   * surface it, but failures are swallowed so the agent's polling loop
+   * stays healthy.
+   */
   @Public()
-  @Post('printer-agent/confirm')
-  @ApiOperation({ summary: 'Confirmar impresión de comandas (fallback HTTP)' })
-  async confirmPrintedComandas(
-    @Body('tenantId') tenantId: string,
-    @Body('comandaIds') comandaIds: string[],
+  @UseGuards(PrintAgentGuard)
+  @Post('printer-agent/printers')
+  @ApiOperation({ summary: 'Registrar impresoras detectadas por el agente' })
+  async registerAgentPrinters(
+    @Req() req: any,
+    @Body() body: { printers?: any[] },
   ) {
-    if (!tenantId || !comandaIds?.length) {
-      throw new BadRequestException('tenantId y comandaIds requeridos');
+    const agentId = req.printAgent?.id;
+    const printers = Array.isArray(body?.printers) ? body.printers : [];
+    await this.kitchenService
+      .updateAgentPrinters(agentId, printers)
+      .catch(() => {});
+    return { received: printers.length };
+  }
+
+  /**
+   * Agent confirms successful prints. Accepts either `comandaId` (single)
+   * or `comandaIds` (batch) for client flexibility.
+   */
+  @Public()
+  @UseGuards(PrintAgentGuard)
+  @Post('printer-agent/confirm')
+  @ApiOperation({ summary: 'Confirmar impresión de comandas' })
+  async confirmPrintedComandas(
+    @Req() req: any,
+    @Body() body: { comandaId?: string; comandaIds?: string[] },
+  ) {
+    const tenantId = req.printAgent?.tenantId;
+    if (!tenantId) throw new BadRequestException('tenantId requerido');
+
+    const ids = body?.comandaIds?.length
+      ? body.comandaIds
+      : body?.comandaId
+        ? [body.comandaId]
+        : [];
+    if (!ids.length) {
+      throw new BadRequestException('comandaId o comandaIds requerido');
     }
-    for (const id of comandaIds) {
-      await this.kitchenService.updateComandaStatus(tenantId, id, 'PRINTED').catch(() => {});
+
+    for (const id of ids) {
+      await this.kitchenService
+        .updateComandaStatus(tenantId, id, 'PRINTED')
+        .catch(() => {});
     }
-    return { confirmed: comandaIds.length };
+    return { confirmed: ids.length };
+  }
+
+  /**
+   * Agent reports a failed print attempt (paper out, offline, etc).
+   */
+  @Public()
+  @UseGuards(PrintAgentGuard)
+  @Post('printer-agent/fail')
+  @ApiOperation({ summary: 'Reportar fallo de impresión' })
+  async reportPrintFailure(
+    @Req() req: any,
+    @Body() body: { comandaId?: string; error?: string },
+  ) {
+    const tenantId = req.printAgent?.tenantId;
+    if (!tenantId || !body?.comandaId) {
+      throw new BadRequestException('comandaId requerido');
+    }
+    await this.kitchenService
+      .updateComandaStatus(tenantId, body.comandaId, 'PRINT_FAILED')
+      .catch(() => {});
+    return { reported: true };
   }
 }

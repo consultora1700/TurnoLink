@@ -1,4 +1,5 @@
-import { IsString, IsOptional, IsBoolean, IsInt, Min } from 'class-validator';
+import { IsString, IsOptional, IsBoolean, IsInt, Min, IsArray, ValidateNested, ArrayMinSize } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateKitchenStationDto {
@@ -83,6 +84,10 @@ export class AssignProductStationDto {
 }
 
 export class BulkAssignStationDto {
-  @ApiProperty()
-  assignments: { productId: string; kitchenStationId: string | null }[];
+  @ApiProperty({ type: [AssignProductStationDto] })
+  @IsArray()
+  @ArrayMinSize(1)
+  @ValidateNested({ each: true })
+  @Type(() => AssignProductStationDto)
+  assignments: AssignProductStationDto[];
 }

@@ -1154,6 +1154,29 @@ export interface RevenueReport {
   summary: { total: number; average: number; days: number };
 }
 
+// Gastro salon report
+export interface GastroSalonReport {
+  period: string;
+  dateFrom: string;
+  dateTo: string;
+  kpis: {
+    totalRevenue: number;
+    totalTips: number;
+    totalSessions: number;
+    avgTicket: number;
+    avgTip: number;
+    avgKitchenMinutes: number | null;
+    totalComandasProcessed: number;
+  };
+  topProducts: { name: string; quantity: number; revenue: number }[];
+  byWaiter: { waiterId: string | null; name: string; sessions: number; revenue: number; tips: number }[];
+  byTable: { tableNumber: number; sessions: number; revenue: number; tips: number }[];
+  byPaymentMethod: { method: string; count: number; revenue: number }[];
+  dailyRevenue: { date: string; revenue: number; tips: number; sessions: number }[];
+  peakHours: { hour: number; orders: number }[];
+  kitchenByStation: { station: string; avgMinutes: number; comandaCount: number }[];
+}
+
 export interface BookingTrend {
   date: string;
   total: number;
@@ -1839,6 +1862,11 @@ export function createApiClient(token: string) {
       }),
 
     getStats: () => authRequest<DashboardStats>('/tenants/current/stats'),
+
+    deleteAccount: () =>
+      authRequest<{ success: boolean; message: string }>('/tenants/current', {
+        method: 'DELETE',
+      }),
 
     // Services
     getServices: () => authRequest<Service[]>('/services'),
@@ -3153,8 +3181,20 @@ export function createApiClient(token: string) {
     getKitchenStats: (): Promise<any> =>
       authRequest('/gastro/kitchen/stats'),
 
+    getGastroSalonReport: (period: string = '30d'): Promise<GastroSalonReport> =>
+      authRequest(`/gastro/dashboard/salon-report?period=${period}`),
+
     generateKitchenAgentToken: (): Promise<{ token: string }> =>
       authRequest('/gastro/kitchen/generate-token', { method: 'POST' }),
+
+    getAvailablePrinters: (): Promise<any[]> =>
+      authRequest('/gastro/kitchen/available-printers'),
+
+    getKitchenAgents: (): Promise<any[]> =>
+      authRequest('/gastro/kitchen/agents'),
+
+    testStationPrint: (stationId: string): Promise<{ sent: boolean; stationName: string; printerId: string }> =>
+      authRequest(`/gastro/kitchen/stations/${stationId}/test-print`, { method: 'POST' }),
 
     // =====================================================================
     // Rentals (Alquileres)

@@ -91,7 +91,7 @@ export class OrderEventsListener {
       // WhatsApp notification to business owner (gastro orders)
       if (tenant.phone && order.orderType) {
         const orderTypeLabel = order.orderType === 'DINE_IN' ? 'En el local' :
-          order.orderType === 'TAKE_AWAY' ? 'Para llevar' : 'Delivery';
+          order.orderType === 'TAKE_AWAY' ? 'Retira en local' : 'Delivery';
         const tableInfo = order.tableNumber ? ` - Mesa ${order.tableNumber}` : '';
         const itemsList = items.map((i: any) =>
           `• ${i.quantity}x ${i.name}${i.itemNotes ? ` (${i.itemNotes})` : ''}`

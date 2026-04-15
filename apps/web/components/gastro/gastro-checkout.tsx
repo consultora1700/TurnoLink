@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { X, ShoppingBag, User, CheckCircle2, Loader2, AlertCircle, MapPin, ArrowRight, Truck, Wallet, CreditCard, Pencil, WifiOff } from 'lucide-react';
+import { X, ShoppingBag, User, CheckCircle2, Loader2, AlertCircle, MapPin, ArrowRight, Bike, Wallet, CreditCard, Pencil, WifiOff } from 'lucide-react';
 import { useGastroCartStore, type OrderType } from '@/lib/gastro-cart-store';
 import { OrderModeSelector } from './order-mode-selector';
 import { publicApi } from '@/lib/api';
@@ -95,7 +95,7 @@ export function GastroCheckout({ slug, tenantName, whatsappNumber, hasMercadoPag
 
   const total = getTotal();
   const orderTypeLabel = orderType === 'DINE_IN' ? 'En el local' :
-    orderType === 'TAKE_AWAY' ? 'Para llevar' : 'Delivery';
+    orderType === 'TAKE_AWAY' ? 'Retira en local' : 'Delivery';
 
   const isCustomerValid = name.length >= 2 && phone.length >= 6;
   const isDeliveryValid = orderType !== 'DELIVERY' || selectedAddress !== null || address.length >= 5;
@@ -232,7 +232,7 @@ export function GastroCheckout({ slug, tenantName, whatsappNumber, hasMercadoPag
                   title="Cambiar modo"
                   className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[hsl(var(--tenant-primary-500)_/_0.06)] dark:bg-[hsl(var(--tenant-primary-500)_/_0.12)] border border-[hsl(var(--tenant-primary-500)_/_0.15)] hover:bg-[hsl(var(--tenant-primary-500)_/_0.12)] transition-colors cursor-pointer"
                 >
-                  {orderType === 'DELIVERY' ? <Truck className="w-4 h-4 text-[hsl(var(--tenant-primary-500))]" /> : <ShoppingBag className="w-4 h-4 text-[hsl(var(--tenant-primary-500))]" />}
+                  {orderType === 'DELIVERY' ? <Bike className="w-4 h-4 text-[hsl(var(--tenant-primary-500))]" /> : <ShoppingBag className="w-4 h-4 text-[hsl(var(--tenant-primary-500))]" />}
                   <span className="text-sm font-semibold text-[hsl(var(--tenant-primary-700))] dark:text-[hsl(var(--tenant-primary-300))]">
                     {orderTypeLabel}
                   </span>

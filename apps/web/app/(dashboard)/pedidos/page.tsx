@@ -6,7 +6,7 @@ import {
   Search,
   ShoppingBag,
   Clock,
-  Truck,
+  Bike,
   CheckCircle2,
   DollarSign,
   ChevronLeft,
@@ -288,7 +288,7 @@ export default function PedidosPage() {
               </div>
               <div className="flex flex-col items-center justify-center p-2 sm:p-3 rounded-lg bg-white/10 backdrop-blur-sm">
                 <div className="flex items-center gap-1 sm:gap-2">
-                  <Truck className="h-4 w-4 sm:h-5 sm:w-5 text-white/70 hidden sm:block" />
+                  <Bike className="h-4 w-4 sm:h-5 sm:w-5 text-white/70 hidden sm:block" />
                   <p className="text-xl sm:text-2xl md:text-3xl font-bold">{stats.shippedOrders}</p>
                 </div>
                 <p className="text-white/70 text-[10px] sm:text-xs md:text-sm">Enviados</p>
@@ -401,7 +401,7 @@ export default function PedidosPage() {
 
             const orderType = (order as any).orderType as string | undefined;
             const orderTypeLabel = orderType === 'DELIVERY' ? 'Delivery'
-              : orderType === 'TAKE_AWAY' ? 'Para llevar'
+              : orderType === 'TAKE_AWAY' ? 'Retira en local'
               : orderType === 'DINE_IN' ? 'En mesa'
               : null;
             const items = (order.items || []) as any[];

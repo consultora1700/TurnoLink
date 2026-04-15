@@ -17,8 +17,10 @@ export function GastroAlertListener() {
     setPendingOrders,
     setBillsRequested,
     setWaitingPayment,
+    setPendingBookings,
     incrementPendingOrders,
     incrementBillsRequested,
+    incrementPendingBookings,
   } = useGastroAlerts();
 
   // Load initial counts
@@ -36,10 +38,14 @@ export function GastroAlertListener() {
       const waiting = gastro.tables.filter((t: any) => t.status === 'WAITING_PAYMENT').length;
       setBillsRequested(bills);
       setWaitingPayment(waiting);
+
+      // Load pending reservation requests
+      const pendingBookings = await api.getBookings({ status: 'PENDING', limit: 1 });
+      setPendingBookings(pendingBookings.meta?.total || 0);
     } catch {
       // Non-critical
     }
-  }, [session?.accessToken, setPendingOrders, setBillsRequested, setWaitingPayment]);
+  }, [session?.accessToken, setPendingOrders, setBillsRequested, setWaitingPayment, setPendingBookings]);
 
   useEffect(() => {
     loadCounts();
@@ -59,6 +65,11 @@ export function GastroAlertListener() {
     onClosed: useCallback(() => loadCounts(), [loadCounts]),
     onPaymentEnabled: useCallback(() => loadCounts(), [loadCounts]),
     onStatusChanged: useCallback(() => loadCounts(), [loadCounts]),
+    // Booking reservation events
+    onBookingNewRequest: useCallback(() => {
+      incrementPendingBookings();
+    }, [incrementPendingBookings]),
+    onBookingConfirmed: useCallback(() => loadCounts(), [loadCounts]),
   });
 
   // Refresh every 60s as fallback

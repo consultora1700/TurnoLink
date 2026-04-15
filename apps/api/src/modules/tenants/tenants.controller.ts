@@ -2,12 +2,14 @@ import {
   Controller,
   Get,
   Put,
+  Delete,
   Body,
   UseGuards,
   Query,
   Param,
   Patch,
   Logger,
+  BadRequestException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
 import { TenantsService } from './tenants.service';
@@ -81,6 +83,16 @@ export class TenantsController {
       message: 'Configuración de depósitos actualizada correctamente',
       data: result,
     };
+  }
+
+  @Delete('current')
+  @ApiOperation({ summary: 'Delete current tenant and all associated data' })
+  @ApiResponse({ status: 200, description: 'Tenant deleted successfully' })
+  async deleteCurrent(@CurrentUser() user: User) {
+    if (!user.tenantId) {
+      throw new BadRequestException('No tenés un negocio asociado');
+    }
+    return this.tenantsService.deleteAccount(user.tenantId);
   }
 
   // Admin endpoints

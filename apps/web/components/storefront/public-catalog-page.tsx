@@ -22,6 +22,9 @@ import { ProductAddModal } from '@/components/gastro/product-add-modal';
 import { GastroCartFloating } from '@/components/gastro/cart-drawer';
 import { GastroCheckout } from '@/components/gastro/gastro-checkout';
 import { TableReservation } from '@/components/gastro/table-reservation';
+import dynamic from 'next/dynamic';
+
+const PublicRealEstatePage = dynamic(() => import('./real-estate/public-real-estate-page').then(m => m.PublicRealEstatePage), { ssr: true });
 
 interface ShippingConfig {
   pickup?: { enabled: boolean; address?: string; hours?: string };
@@ -265,7 +268,6 @@ export function PublicCatalogPage({ tenant, slug, products, categories, branding
   // ── Guard: inmobiliarias gets its own premium page ──
   const _rubro = (tenant.settings as any)?.rubro || '';
   if (_rubro === 'inmobiliarias') {
-    const { PublicRealEstatePage } = require('./real-estate/public-real-estate-page');
     return <PublicRealEstatePage tenant={tenant} slug={slug} products={products} categories={categories} branding={branding} developments={developments} />;
   }
 
@@ -327,14 +329,19 @@ export function PublicCatalogPage({ tenant, slug, products, categories, branding
   const [gastroProduct, setGastroProduct] = useState<Product | null>(null);
   const [showGastroCheckout, setShowGastroCheckout] = useState(false);
   const [showTableReservation, setShowTableReservation] = useState(false);
+  const gastroHydrated = useGastroCartStore((s) => s._hydrated);
   const gastroOrderType = useGastroCartStore((s) => s.orderType);
   const gastroTableNumber = useGastroCartStore((s) => s.tableNumber);
   const setGastroOrderType = useGastroCartStore((s) => s.setOrderType);
   const setGastroTableNumber = useGastroCartStore((s) => s.setTableNumber);
   const addGastroItem = useGastroCartStore((s) => s.addItem);
-  const activeOrderNumber = useGastroCartStore((s) => s.activeOrderNumber);
-  const activeOrderSlug = useGastroCartStore((s) => s.activeOrderSlug);
-  const gastroCartCount = useGastroCartStore((s) => s.items.reduce((sum, i) => sum + i.quantity, 0));
+  const _activeOrderNumber = useGastroCartStore((s) => s.activeOrderNumber);
+  const _activeOrderSlug = useGastroCartStore((s) => s.activeOrderSlug);
+  const _gastroCartCount = useGastroCartStore((s) => s.items.reduce((sum, i) => sum + i.quantity, 0));
+  // Only use persisted values after zustand rehydration to avoid SSR/client hydration mismatch
+  const activeOrderNumber = gastroHydrated ? _activeOrderNumber : null;
+  const activeOrderSlug = gastroHydrated ? _activeOrderSlug : null;
+  const gastroCartCount = gastroHydrated ? _gastroCartCount : 0;
 
   /** Format price using tenant's default currency */
   const formatPrice = (price: number, currency?: string) => _formatPrice(price, currency || tenantCurrency);

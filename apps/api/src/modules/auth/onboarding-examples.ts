@@ -175,6 +175,70 @@ const PRODUCT_RUBROS: Record<string, ProductExample[]> = {
   ],
 };
 
+// ─── Gastro sub-rubros ─────────────────────────────────────────
+const GASTRO_PRODUCT_RUBROS: Record<string, ProductExample[]> = {
+  'gastro-parrilla': [
+    { name: 'Bife de chorizo', shortDescription: 'Corte premium a la parrilla con leña de quebracho', description: 'Bife de chorizo de 400g, cocción a punto elegido. Acompañado de papas rústicas y ensalada mixta.', price: 18500, stock: 99 },
+    { name: 'Tabla de achuras', shortDescription: 'Selección de achuras a la parrilla para compartir', description: 'Chinchulín, molleja, riñón y morcilla. Para 2 personas. Con chimichurri y criolla casera.', price: 15000, stock: 99 },
+    { name: 'Empanadas (x3)', shortDescription: 'Empanadas criollas horneadas al horno de barro', description: 'Tres empanadas a elección: carne cortada a cuchillo, jamón y queso, o verdura.', price: 6500, stock: 99 },
+    { name: 'Flan casero con DDL', shortDescription: 'Postre clásico argentino con dulce de leche y crema', description: 'Flan de huevo casero con dulce de leche artesanal y crema. Receta de la casa.', price: 5500, stock: 99 },
+  ],
+  'gastro-pizzeria': [
+    { name: 'Muzzarella', shortDescription: 'Pizza clásica con muzzarella y aceitunas', description: 'Masa madre, salsa de tomate casera, muzzarella gratinada y aceitunas verdes. La clásica porteña.', price: 9500, stock: 99 },
+    { name: 'Napolitana', shortDescription: 'Muzzarella con tomate fresco, ajo y albahaca', description: 'Base de muzzarella con rodajas de tomate, ajo fileteado y albahaca fresca. Un clásico que nunca falla.', price: 10500, stock: 99 },
+    { name: 'Fugazzeta rellena', shortDescription: 'Doble masa rellena de muzzarella con cebolla', description: 'Doble disco de masa relleno de muzzarella, cubierto con cebolla caramelizada. Especialidad de la casa.', price: 12500, stock: 99 },
+    { name: 'Fainá', shortDescription: 'Torta de harina de garbanzos al horno', description: 'Fainá crocante, ideal para acompañar tu pizza. Porción individual.', price: 3500, stock: 99 },
+  ],
+  'gastro-hamburgueseria': [
+    { name: 'Smash Burger Clásica', shortDescription: 'Doble smash patty con cheddar, cebolla y pepinillos', description: 'Doble medallón smash de 90g, queso cheddar derretido, cebolla caramelizada, pepinillos y salsa de la casa. Pan brioche.', price: 9800, stock: 99 },
+    { name: 'Burger BBQ Bacon', shortDescription: 'Burger con panceta crocante y salsa BBQ ahumada', description: 'Medallón de 180g, panceta crocante, cheddar, aros de cebolla, salsa BBQ ahumada. Pan con semillas.', price: 11500, stock: 99 },
+    { name: 'Papas con Cheddar y Bacon', shortDescription: 'Papas fritas con cheddar fundido y panceta', description: 'Papas fritas crocantes bañadas en salsa cheddar, panceta crocante y cebolla de verdeo.', price: 6500, stock: 99 },
+    { name: 'Pinta de Cerveza Artesanal', shortDescription: 'Cerveza artesanal tirada de canilla', description: 'Pinta de 473ml. Estilos rotativos: IPA, Red Ale, Stout, Blonde. Consultar variedades del día.', price: 5500, stock: 99 },
+  ],
+  'gastro-cafe': [
+    { name: 'Flat White', shortDescription: 'Espresso doble con leche micro-texturizada', description: 'Café de especialidad con leche vaporizada. Cuerpo sedoso y arte latte. Grano de origen seleccionado.', price: 4200, stock: 99 },
+    { name: 'Avocado Toast', shortDescription: 'Pan de masa madre con palta, huevo poché y semillas', description: 'Tostada de masa madre con palta pisada, huevo poché, tomate cherry, semillas y aceite de oliva.', price: 8500, stock: 99 },
+    { name: 'Croissant de Almendras', shortDescription: 'Croissant relleno de crema de almendras tostadas', description: 'Croissant artesanal relleno de crema frangipane con láminas de almendra tostada y azúcar impalpable.', price: 4800, stock: 99 },
+    { name: 'Cheesecake de Frutos Rojos', shortDescription: 'Cheesecake estilo New York con coulis de berries', description: 'Cheesecake horneado con base de galleta, queso crema y coulis de frutos rojos de estación.', price: 7500, stock: 99 },
+  ],
+  'gastro-heladeria': [
+    { name: '1/4 kg (2 gustos)', shortDescription: 'Cuarto kilo de helado artesanal, elegí 2 gustos', description: 'Helado artesanal elaborado con ingredientes naturales. Elegí 2 gustos de nuestra vitrina.', price: 5500, stock: 99 },
+    { name: '1 kg (4 gustos)', shortDescription: 'Kilo de helado artesanal, elegí 4 gustos', description: 'Kilo de helado artesanal. Elegí 4 gustos. Ideal para compartir en casa. Incluye cucuruchos.', price: 16000, stock: 99 },
+    { name: 'Sundae de Chocolate', shortDescription: 'Helado con salsa de chocolate, crema y brownie', description: 'Copa con 3 bochas de helado a elección, salsa de chocolate caliente, crema batida, brownie y cerezas.', price: 8500, stock: 99 },
+    { name: 'Paleta Artesanal', shortDescription: 'Paleta helada con cobertura de chocolate', description: 'Paleta de helado artesanal con cobertura de chocolate belga. Sabores: dulce de leche, frutilla, limón.', price: 4500, stock: 99 },
+  ],
+  'gastro-sushi': [
+    { name: 'Combo 30 Piezas', shortDescription: 'Mix de rolls: salmón, langostino y veggie', description: '10 piezas de Philadelphia roll, 10 de Ebi tempura roll y 10 de California roll. Para 2 personas.', price: 18500, stock: 99 },
+    { name: 'Salmón Roll (10 pzas)', shortDescription: 'Roll de salmón fresco con palta y queso crema', description: '10 piezas de salmón fresco, palta, queso crema. Rebozado en panko. Salsa teriyaki y spicy mayo.', price: 9500, stock: 99 },
+    { name: 'Poke Bowl de Salmón', shortDescription: 'Bowl con salmón fresco, palta, mango y edamame', description: 'Arroz de sushi, salmón fresco, palta, mango, edamame, pepino, alga nori y salsa ponzu.', price: 12500, stock: 99 },
+    { name: 'Gyozas de Cerdo (6 u)', shortDescription: 'Empanaditas japonesas al vapor con salsa de soja', description: '6 gyozas rellenas de cerdo y verduras, cocidas al vapor y selladas a la plancha. Salsa de soja y jengibre.', price: 7200, stock: 99 },
+  ],
+  'gastro-cerveceria': [
+    { name: 'Pinta IPA', shortDescription: 'India Pale Ale artesanal, lupulada y cítrica', description: 'Pinta de 473ml de nuestra IPA de la casa. Notas cítricas y tropicales, amargor equilibrado. IBU 45.', price: 5500, stock: 99 },
+    { name: 'Tabla de Picada Completa', shortDescription: 'Fiambres, quesos, aceitunas y grisines para compartir', description: 'Selección de salamín, bondiola, jamón crudo, quesos duros y blandos, aceitunas, grisines y pan casero. Para 2-3 personas.', price: 14500, stock: 99 },
+    { name: 'Nachos con Guacamole', shortDescription: 'Nachos crocantes con guacamole, cheddar y jalapeños', description: 'Nachos de maíz con guacamole casero, salsa cheddar, crema agria, jalapeños y pico de gallo.', price: 8500, stock: 99 },
+    { name: 'Hamburguesa del Brewmaster', shortDescription: 'Burger especial con queso azul y cebolla al porter', description: 'Medallón 200g, queso azul, cebolla caramelizada en cerveza porter, rúcula y mostaza Dijon. Pan artesanal.', price: 12500, stock: 99 },
+  ],
+  'gastro-bodegon': [
+    { name: 'Milanesa napolitana', shortDescription: 'Milanesa de ternera con jamón, muzzarella y salsa', description: 'Milanesa de ternera a la napolitana con jamón, muzzarella gratinada y salsa pomodoro. Con papas fritas.', price: 13500, stock: 99 },
+    { name: 'Ravioles de ricota', shortDescription: 'Ravioles caseros con salsa bolognesa o estofado', description: 'Ravioles de ricota y nuez moscada hechos en casa. Con salsa bolognesa, filetto o estofado. Porción abundante.', price: 10500, stock: 99 },
+    { name: 'Tortilla de papas', shortDescription: 'Tortilla española jugosa con ensalada mixta', description: 'Tortilla de papas y cebolla al estilo casero, jugosa por dentro. Con ensalada de lechuga, tomate y cebolla.', price: 7500, stock: 99 },
+    { name: 'Arroz con leche', shortDescription: 'Postre casero con canela y dulce de leche opcional', description: 'Arroz con leche cremoso, canela espolvoreada. Opción con dulce de leche. Receta de la abuela.', price: 4500, stock: 99 },
+  ],
+  'gastro-pasteleria': [
+    { name: 'Torta de Chocolate', shortDescription: 'Torta de chocolate húmeda con ganache', description: 'Torta de chocolate belga con ganache, entre 3 capas húmedas. Decorada con virutas de chocolate. Porción generosa.', price: 7500, stock: 99 },
+    { name: 'Box de Macarons (6 u)', shortDescription: 'Caja de 6 macarons franceses surtidos', description: 'Caja de 6 macarons artesanales: pistacho, frambuesa, chocolate, vainilla, dulce de leche y limón.', price: 9500, stock: 99 },
+    { name: 'Desayuno Dulce', shortDescription: 'Café + croissant + jugo de naranja exprimido', description: 'Combo desayuno: café americano o latte, croissant de manteca y jugo de naranja recién exprimido.', price: 7200, stock: 99 },
+    { name: 'Cookies (x4)', shortDescription: 'Cookies XXL artesanales con chips de chocolate', description: '4 cookies artesanales con chips de chocolate, textura chewy por dentro y crocante por fuera. Sal marina.', price: 5800, stock: 99 },
+  ],
+  'gastro-food-truck': [
+    { name: 'Wrap de Pollo', shortDescription: 'Tortilla con pollo grillé, guacamole y jalapeños', description: 'Tortilla de trigo con pollo grillado, guacamole, tomate, lechuga, jalapeños y salsa chipotle.', price: 7500, stock: 99 },
+    { name: 'Papas Loaded', shortDescription: 'Papas fritas con cheddar, bacon y salsa ranch', description: 'Porción grande de papas fritas con cheddar fundido, bacon crocante, cebolla de verdeo y ranch.', price: 6500, stock: 99 },
+    { name: 'Choripán Gourmet', shortDescription: 'Chorizo artesanal en pan con chimichurri y criolla', description: 'Chorizo artesanal parrillero en pan casero con chimichurri picante y salsa criolla. Street food argentino.', price: 6000, stock: 99 },
+    { name: 'Limonada Casera', shortDescription: 'Limonada fresca con menta y jengibre', description: 'Limonada exprimida al momento con menta fresca y jengibre rallado. Vaso de 500ml.', price: 4000, stock: 99 },
+  ],
+};
+
 // Default for unknown rubros
 const DEFAULT_SERVICES: ServiceExample[] = [
   { name: 'Servicio de ejemplo 1', description: 'Este es un servicio de ejemplo. Editalo con tu información real: nombre, precio y duración.', price: 8000, duration: 60 },
@@ -195,6 +259,15 @@ export function getOnboardingExamples(rubro: string): OnboardingExamples {
       type: 'products',
       placeholderImage,
       products: PRODUCT_RUBROS[rubro] || PRODUCT_RUBROS['mercado'],
+    };
+  }
+
+  // Gastro sub-rubros and generic gastronomia → products (platos)
+  if (rubro === 'gastronomia' || rubro.startsWith('gastro-')) {
+    return {
+      type: 'products',
+      placeholderImage,
+      products: GASTRO_PRODUCT_RUBROS[rubro] || GASTRO_PRODUCT_RUBROS['gastro-parrilla'],
     };
   }
 

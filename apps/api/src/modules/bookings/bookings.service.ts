@@ -401,7 +401,7 @@ export class BookingsService {
       throw new BadRequestException('Cannot change status of cancelled booking');
     }
 
-    return this.prisma.booking.update({
+    const updatedBooking = await this.prisma.booking.update({
       where: { id },
       data: { status },
       include: {
@@ -411,6 +411,16 @@ export class BookingsService {
         employee: true,
       },
     });
+
+    // Emit CONFIRMED event so notifications are sent to the customer
+    if (status === BookingStatus.CONFIRMED) {
+      this.eventEmitter.emit(BookingEvent.CONFIRMED, {
+        booking: updatedBooking,
+        tenantId,
+      });
+    }
+
+    return updatedBooking;
   }
 
   async cancel(tenantId: string, id: string) {

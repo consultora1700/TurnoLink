@@ -12,6 +12,7 @@ const HYDRATION_PATTERNS = [
   'server-rendered',
   'Text content does not match',
   'did not match',
+  "reading 'call'",
 ];
 
 // ChunkLoadError happens when a user navigates with a stale HTML (referencing
