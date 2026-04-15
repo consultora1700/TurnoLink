@@ -1,6 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
+  env: {
+    NEXT_PUBLIC_PLATFORM: process.env.NEXT_PUBLIC_PLATFORM || 'turnolink',
+  },
   transpilePackages: ['socket.io-client', 'engine.io-client', 'socket.io-parser'],
   experimental: {
     scrollRestoration: true,
@@ -12,6 +15,10 @@ const nextConfig = {
       {
         protocol: 'https',
         hostname: 'api.turnolink.com.ar',
+      },
+      {
+        protocol: 'https',
+        hostname: 'api.colmen.com.ar',
       },
       {
         protocol: 'https',

@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { authApi } from '@/lib/api';
 import { RUBROS } from '@/lib/tenant-config';
+import { getPlatform, isRubroAllowed, isOfferTypeAllowed } from '@/lib/platform';
 import { cn } from '@/lib/utils';
 
 type AccountIntent = 'business' | 'professional' | null;
@@ -140,9 +141,13 @@ function RegisterForm() {
     return 'business';
   };
 
+  const platform = getPlatform();
+
   const getInitialOfferType = (): OfferType => {
     if (resolvedIndustry === 'mercado') return 'products';
     if (resolvedIndustry) return 'services';
+    // If platform only has one offer type, auto-select it
+    if (platform.allowedOfferTypes.length === 1) return platform.allowedOfferTypes[0];
     return null;
   };
 
@@ -152,6 +157,12 @@ function RegisterForm() {
     if (resolvedIndustry === 'mercado') return 'sub-rubro';
     // With other industry param, skip directly to form
     if (resolvedIndustry) return 'form';
+    // If platform only has one offer type, skip offer-type selection
+    if (platform.allowedOfferTypes.length === 1) {
+      const only = platform.allowedOfferTypes[0];
+      if (only === 'services') return 'rubro';
+      return 'sub-rubro';
+    }
     // Default: go straight to offer-type selection (skip intent)
     return 'offer-type';
   };
@@ -523,6 +534,7 @@ function RegisterForm() {
 
       <div className="space-y-3 mb-5 overflow-hidden">
         {/* Servicios — entra desde la derecha */}
+        {isOfferTypeAllowed('services') && (
         <button
           onClick={() => selectOfferType('services')}
           className="w-full rounded-xl border border-white/[0.06] bg-neutral-900/80 hover:bg-neutral-800/80 hover:border-[#3F8697]/40 transition-all duration-200 group animate-[slideFromRight_0.6s_cubic-bezier(0.16,1,0.3,1)_0.15s_both]"
@@ -542,8 +554,10 @@ function RegisterForm() {
             <ArrowRight className="h-4 w-4 text-neutral-600 group-hover:text-[#4DA4B8] group-hover:translate-x-0.5 transition-all shrink-0" />
           </div>
         </button>
+        )}
 
         {/* Gastronomía — entra desde abajo */}
+        {isOfferTypeAllowed('gastronomia') && (
         <button
           onClick={() => selectOfferType('gastronomia')}
           className="w-full rounded-xl border border-white/[0.06] bg-neutral-900/80 hover:bg-neutral-800/80 hover:border-orange-500/40 transition-all duration-200 group animate-[slideFromLeft_0.6s_cubic-bezier(0.16,1,0.3,1)_0.25s_both]"
@@ -563,8 +577,10 @@ function RegisterForm() {
             <ArrowRight className="h-4 w-4 text-neutral-600 group-hover:text-orange-400 group-hover:translate-x-0.5 transition-all shrink-0" />
           </div>
         </button>
+        )}
 
         {/* Productos — entra desde la izquierda */}
+        {isOfferTypeAllowed('products') && (
         <button
           onClick={() => selectOfferType('products')}
           className="w-full rounded-xl border border-white/[0.06] bg-neutral-900/80 hover:bg-neutral-800/80 hover:border-amber-500/40 transition-all duration-200 group animate-[slideFromLeft_0.6s_cubic-bezier(0.16,1,0.3,1)_0.35s_both]"
@@ -584,6 +600,7 @@ function RegisterForm() {
             <ArrowRight className="h-4 w-4 text-neutral-600 group-hover:text-amber-400 group-hover:translate-x-0.5 transition-all shrink-0" />
           </div>
         </button>
+        )}
       </div>
 
       {/* Trust */}
@@ -606,7 +623,7 @@ function RegisterForm() {
 
   // ─── Rubro Selection (full-screen dark immersive) ──────────
   const renderRubroSelection = () => {
-    const mainRubros = RUBROS.filter(r => r.key !== 'otro' && r.key !== 'mercado' && r.key !== 'gastronomia');
+    const mainRubros = RUBROS.filter(r => r.key !== 'otro' && r.key !== 'mercado' && r.key !== 'gastronomia' && isRubroAllowed(r.key));
     const featuredRubros = mainRubros.filter(r => FEATURED_RUBRO_KEYS.has(r.key));
     const extraRubros = mainRubros.filter(r => !FEATURED_RUBRO_KEYS.has(r.key));
     const displayRubros = showAllRubros ? mainRubros : featuredRubros;
