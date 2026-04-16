@@ -71,6 +71,21 @@ export function isOfferTypeAllowed(offerType: 'services' | 'products' | 'gastron
   return getPlatform().allowedOfferTypes.includes(offerType);
 }
 
+/** Given a rubro, return which platform it belongs to */
+export function getPlatformForRubro(rubro: string): PlatformId {
+  for (const [id, config] of Object.entries(PLATFORMS) as [PlatformId, PlatformConfig][]) {
+    if (config.allowedRubros.includes(rubro)) return id;
+    if (config.allowedSubRubroPrefixes.some(prefix => rubro.startsWith(prefix))) return id;
+  }
+  return 'turnolink'; // default
+}
+
+/** Domain for each platform */
+export const PLATFORM_DOMAINS: Record<PlatformId, string> = {
+  turnolink: 'https://turnolink.com.ar',
+  colmen: 'https://colmen.com.ar',
+};
+
 /** Platform branding */
 export function getPlatformBrand() {
   const platform = getPlatform();

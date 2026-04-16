@@ -2,8 +2,107 @@ import { getToken } from 'next-auth/jwt';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
+// ─── Cross-platform redirect (turnolink ↔ colmen) ──────────────────────────
+// Tenant slugs on the wrong platform get 301-redirected to the correct domain.
+// Uses in-memory LRU cache (5min TTL, max 1000 entries) to avoid API calls.
+
+const CURRENT_PLATFORM = process.env.NEXT_PUBLIC_PLATFORM || 'turnolink';
+
+const PLATFORM_DOMAINS: Record<string, string> = {
+  turnolink: 'https://turnolink.com.ar',
+  colmen: 'https://colmen.com.ar',
+};
+
+const COLMEN_RUBROS = new Set([
+  'gastronomia', 'mercado', 'inmobiliarias',
+]);
+const COLMEN_PREFIXES = ['gastro-', 'mercado-'];
+
+function getPlatformForRubro(rubro: string): string {
+  if (COLMEN_RUBROS.has(rubro)) return 'colmen';
+  if (COLMEN_PREFIXES.some(p => rubro.startsWith(p))) return 'colmen';
+  return 'turnolink';
+}
+
+// In-memory cache for slug → platform lookups
+interface CacheEntry { platform: string; ts: number; }
+const slugPlatformCache = new Map<string, CacheEntry>();
+const CACHE_TTL = 5 * 60 * 1000;
+const CACHE_MAX = 1000;
+
+function getCachedPlatform(slug: string): string | null {
+  const entry = slugPlatformCache.get(slug);
+  if (!entry) return null;
+  if (Date.now() - entry.ts > CACHE_TTL) { slugPlatformCache.delete(slug); return null; }
+  return entry.platform;
+}
+
+function setCachedPlatform(slug: string, platform: string) {
+  if (slugPlatformCache.size >= CACHE_MAX) {
+    const first = slugPlatformCache.keys().next().value;
+    if (first) slugPlatformCache.delete(first);
+  }
+  slugPlatformCache.set(slug, { platform, ts: Date.now() });
+}
+
+// Routes that are never tenant slugs
+const NON_SLUG_ROUTES = new Set([
+  'login', 'registro', 'register', 'dashboard', 'admin', 'verificar-email',
+  'verificar-cuenta', 'privacidad', 'terminos', 'ayuda', 'precios',
+  'suscripcion', 'belleza', 'salud', 'deportes', 'gastronomia', 'mercado',
+  'hospedaje-por-horas', 'alquiler-temporario', 'espacios-flexibles',
+  'turnos-profesionales', 'turnos-online', 'integrar', 'para', 'embed',
+  'perfil-profesional', 'videollamadas', 'catalogo', 'portal-empleado',
+  'mi-perfil', 'talento', 'configuracion', 'clientes', 'empleados',
+  'servicios', 'agenda', 'pedidos', 'pedidos-cocina', 'finanzas',
+  'reportes', 'salon', 'cocina', 'reservas',
+]);
+
+async function fetchTenantRubro(slug: string): Promise<string | null> {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+  try {
+    const res = await fetch(`${apiUrl}/api/public/tenants/${slug}`, {
+      headers: { 'Accept': 'application/json' },
+      signal: AbortSignal.timeout(2000),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data?.settings?.rubro || null;
+  } catch {
+    return null;
+  }
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // ─── Cross-platform redirect for tenant slug routes ───
+  const segments = pathname.split('/').filter(Boolean);
+  const firstSegment = segments[0] || '';
+  if (
+    segments.length >= 1 &&
+    !firstSegment.startsWith('_') &&
+    !firstSegment.includes('.') &&
+    !NON_SLUG_ROUTES.has(firstSegment)
+  ) {
+    const slug = firstSegment;
+    let targetPlatform = getCachedPlatform(slug);
+
+    if (!targetPlatform) {
+      const rubro = await fetchTenantRubro(slug);
+      if (rubro) {
+        targetPlatform = getPlatformForRubro(rubro);
+        setCachedPlatform(slug, targetPlatform);
+      }
+    }
+
+    if (targetPlatform && targetPlatform !== CURRENT_PLATFORM) {
+      const targetDomain = PLATFORM_DOMAINS[targetPlatform];
+      if (targetDomain) {
+        return NextResponse.redirect(`${targetDomain}${pathname}`, 301);
+      }
+    }
+  }
   const isEmbedRoute = pathname.startsWith('/embed');
 
   // ─── Auth pages: redirect logged-in users to their dashboard ───
@@ -77,7 +176,7 @@ export async function middleware(request: NextRequest) {
     "media-src 'self' https: data: blob:",
     "object-src 'none'",
     "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://maps.google.com https://www.google.com https://www.mercadopago.com https://www.mercadopago.com.ar https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com https://fundingchoicesmessages.google.com",
-    isEmbedRoute ? "frame-ancestors 'self' https://turnolink.com.ar https://*.turnolink.com.ar" : "frame-ancestors 'self'",
+    isEmbedRoute ? "frame-ancestors 'self' https://turnolink.com.ar https://*.turnolink.com.ar https://colmen.com.ar https://*.colmen.com.ar" : "frame-ancestors 'self'",
   ];
 
   // Only add upgrade-insecure-requests in production
