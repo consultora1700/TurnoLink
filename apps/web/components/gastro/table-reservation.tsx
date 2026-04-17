@@ -346,10 +346,11 @@ export function TableReservation({ slug, services, primaryColor, whatsappNumber,
 
         {step === 'done' && (
           <div className="p-8 flex flex-col items-center justify-center text-center">
-            <div className="w-20 h-20 rounded-full bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center mb-5 ring-8 ring-emerald-50/50 dark:ring-emerald-900/10">
-              <CheckCircle2 className="w-10 h-10 text-emerald-500" />
+            <div className="w-20 h-20 rounded-full bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center mb-5 ring-8 ring-amber-50/50 dark:ring-amber-900/10">
+              <Clock className="w-10 h-10 text-amber-500" />
             </div>
-            <h4 className="text-xl font-bold text-slate-900 dark:text-white">Reserva confirmada</h4>
+            <h4 className="text-xl font-bold text-slate-900 dark:text-white">Solicitud recibida</h4>
+            <p className="text-sm text-slate-500 dark:text-neutral-400 mt-1">El local confirmará tu reserva a la brevedad</p>
 
             <div className="mt-4 p-4 rounded-xl bg-slate-50 dark:bg-neutral-800/50 border border-slate-100 dark:border-neutral-800 w-full max-w-[280px]">
               <div className="text-sm font-semibold text-slate-900 dark:text-white">{partySize} {partySize === 1 ? 'persona' : 'personas'}</div>
@@ -358,7 +359,7 @@ export function TableReservation({ slug, services, primaryColor, whatsappNumber,
             </div>
 
             <p className="text-xs text-slate-400 dark:text-neutral-500 mt-4 max-w-[260px]">
-              Te esperamos. Si tenés algún cambio, contactanos por WhatsApp.
+              Te enviaremos una confirmación cuando el local apruebe tu reserva. Si tenés algún cambio, contactanos por WhatsApp.
             </p>
 
             <button

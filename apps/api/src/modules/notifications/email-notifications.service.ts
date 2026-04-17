@@ -1020,6 +1020,127 @@ export class EmailNotificationsService {
     });
   }
 
+  /**
+   * Email sent to customer when a gastro reservation REQUEST is created (before confirmation).
+   * Amber/warning theme — "Tu solicitud fue recibida, el local la confirmará a la brevedad."
+   */
+  async sendBookingPendingEmail(
+    to: string,
+    customerName: string,
+    businessName: string,
+    date: string,
+    time: string,
+    serviceName: string,
+    tenantSlug: string,
+    extra?: { address?: string; city?: string; phone?: string },
+    terms: RubroTerms = DEFAULT_TERMS,
+  ): Promise<void> {
+    const t = terms;
+    const g = bookingGender(t);
+    let detailRows = `
+      <tr>
+        <td style="padding: 8px 0;">
+          <span style="color: #6b7280; font-family: -apple-system, sans-serif; font-size: 14px;">📅 Fecha</span>
+        </td>
+        <td align="right" style="padding: 8px 0;">
+          <span style="color: #111827; font-family: -apple-system, sans-serif; font-size: 14px; font-weight: 600;">${date}</span>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding: 8px 0;">
+          <span style="color: #6b7280; font-family: -apple-system, sans-serif; font-size: 14px;">🕐 Hora</span>
+        </td>
+        <td align="right" style="padding: 8px 0;">
+          <span style="color: #111827; font-family: -apple-system, sans-serif; font-size: 14px; font-weight: 600;">${time}</span>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding: 8px 0;">
+          <span style="color: #6b7280; font-family: -apple-system, sans-serif; font-size: 14px;">${t.emoji} ${t.serviceSingular}</span>
+        </td>
+        <td align="right" style="padding: 8px 0;">
+          <span style="color: #111827; font-family: -apple-system, sans-serif; font-size: 14px; font-weight: 600;">${serviceName}</span>
+        </td>
+      </tr>`;
+
+    if (extra?.address) {
+      const location = extra.city ? `${extra.address}, ${extra.city}` : extra.address;
+      detailRows += `
+      <tr>
+        <td style="padding: 8px 0;">
+          <span style="color: #6b7280; font-family: -apple-system, sans-serif; font-size: 14px;">📍 Dirección</span>
+        </td>
+        <td align="right" style="padding: 8px 0;">
+          <span style="color: #111827; font-family: -apple-system, sans-serif; font-size: 14px; font-weight: 600;">${location}</span>
+        </td>
+      </tr>`;
+    }
+
+    if (extra?.phone) {
+      detailRows += `
+      <tr>
+        <td style="padding: 8px 0;">
+          <span style="color: #6b7280; font-family: -apple-system, sans-serif; font-size: 14px;">📞 Teléfono</span>
+        </td>
+        <td align="right" style="padding: 8px 0;">
+          <span style="color: #111827; font-family: -apple-system, sans-serif; font-size: 14px; font-weight: 600;">${extra.phone}</span>
+        </td>
+      </tr>`;
+    }
+
+    const html = this.buildEmailTemplate({
+      previewText: `Tu solicitud de reserva en ${businessName} fue recibida`,
+      headerColor: 'warning',
+      headerIcon: '🕐',
+      headerTitle: 'Solicitud recibida',
+      greeting: customerName,
+      bodyContent: `
+        <p style="margin: 0 0 24px 0; color: #4b5563; font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: 15px; line-height: 1.6;">
+          Tu solicitud de reserva en <strong style="color: #111827;">${businessName}</strong> fue recibida correctamente. El local la revisará y te confirmaremos a la brevedad.
+        </p>
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-bottom: 24px;">
+          <tr>
+            <td style="background-color: #fffbeb; border: 1px solid #fde68a; border-radius: 12px; padding: 20px;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                  <td style="padding-bottom: 12px; border-bottom: 1px solid #fde68a;">
+                    <p style="margin: 0; color: #92400e; font-family: -apple-system, sans-serif; font-size: 13px; font-weight: 500;">DETALLE DE TU SOLICITUD</p>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding-top: 16px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                      ${detailRows}
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+          <tr>
+            <td style="background-color: #f3f4f6; border-radius: 8px; padding: 12px 16px; text-align: center;">
+              <p style="margin: 0; color: #6b7280; font-family: -apple-system, sans-serif; font-size: 13px;">
+                Recibirás un email de confirmación cuando el local apruebe tu reserva.
+              </p>
+            </td>
+          </tr>
+        </table>
+      `,
+      ctaText: `Ver ${businessName}`,
+      ctaUrl: `${this.webUrl}/${tenantSlug}`,
+      ctaColor: 'warning',
+      footerNote: 'Si necesitas hacer cambios, contacta directamente al establecimiento.',
+    });
+
+    await this.sendEmail({
+      to,
+      subject: `🕐 Solicitud de reserva recibida — ${businessName}`,
+      html,
+    });
+  }
+
   async sendVideoLinkEmail(
     to: string,
     recipientName: string,

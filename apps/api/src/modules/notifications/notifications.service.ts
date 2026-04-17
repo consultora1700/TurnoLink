@@ -117,6 +117,67 @@ export class NotificationsService {
   }
 
   /**
+   * Send "solicitud recibida" email to customer for gastro reservations (pending approval).
+   */
+  async sendBookingPending(booking: BookingWithDetails) {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: booking.tenantId },
+      select: { name: true, slug: true, address: true, city: true, phone: true, settings: true },
+    });
+
+    if (!tenant) return;
+
+    const recipientEmail = (booking as any).customerEmail || booking.customer.email;
+    if (!recipientEmail) return;
+
+    const date = new Date(booking.date).toLocaleDateString('es-AR', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+    });
+
+    try {
+      await this.emailNotificationsService.sendBookingPendingEmail(
+        recipientEmail,
+        booking.customer.name,
+        tenant.name,
+        date,
+        booking.startTime,
+        booking.service?.name ?? booking.product?.name ?? 'Sin detalle',
+        tenant.slug || '',
+        {
+          address: tenant.address || undefined,
+          city: tenant.city || undefined,
+          phone: tenant.phone || undefined,
+        },
+      );
+      await this.prisma.notification.create({
+        data: {
+          tenantId: booking.tenantId,
+          bookingId: booking.id,
+          type: 'BOOKING_PENDING',
+          channel: NotificationChannel.EMAIL,
+          recipient: recipientEmail,
+          content: 'Booking pending HTML email',
+          status: NotificationStatus.SENT,
+          sentAt: new Date(),
+        },
+      });
+    } catch (error) {
+      await this.prisma.notification.create({
+        data: {
+          tenantId: booking.tenantId,
+          bookingId: booking.id,
+          type: 'BOOKING_PENDING',
+          channel: NotificationChannel.EMAIL,
+          recipient: recipientEmail,
+          content: 'Booking pending HTML email',
+          status: NotificationStatus.FAILED,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        },
+      });
+    }
+  }
+
+  /**
    * Send email notification to business owner when a new booking is created.
    */
   async sendNewBookingToOwner(booking: BookingWithDetails) {

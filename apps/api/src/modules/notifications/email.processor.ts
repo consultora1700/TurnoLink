@@ -9,6 +9,7 @@ import { getTermsForTenant, bookingGender } from '@common/utils/rubro-terms';
 
 export type EmailJobName =
   | 'booking-confirmation'
+  | 'booking-pending'
   | 'booking-owner-notification'
   | 'booking-cancellation'
   | 'booking-reminder'
@@ -58,6 +59,9 @@ export class EmailProcessor extends WorkerHost {
     switch (type) {
       case 'booking-confirmation':
         await this.notificationsService.sendBookingConfirmation(booking);
+        break;
+      case 'booking-pending':
+        await this.notificationsService.sendBookingPending(booking);
         break;
       case 'booking-owner-notification':
         await this.notificationsService.sendNewBookingToOwner(booking);

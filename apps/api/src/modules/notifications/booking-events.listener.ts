@@ -110,13 +110,29 @@ export class BookingEventsListener {
       return;
     }
 
-    // Gastro tenants: reservation is a REQUEST — only notify the owner, not the customer.
-    // Customer gets notified when the business confirms (via BookingEvent.CONFIRMED).
+    // Gastro tenants: reservation is a REQUEST (pending approval).
+    // Send "solicitud recibida" email to customer, owner gets notified normally.
+    // Full confirmation email sent when business confirms (via BookingEvent.CONFIRMED).
     const settings = await this.getTenantPushSettings(payload.tenantId);
     if ((settings as any).rubro === 'gastronomia') {
-      this.logger.log('Gastro tenant — customer notification deferred until confirmation', {
+      this.logger.log('Gastro tenant — sending pending email to customer, full confirmation deferred', {
         bookingId: payload.booking.id,
       });
+
+      // Enqueue "booking-pending" email to customer
+      try {
+        await this.emailQueue.add('booking-pending', {
+          type: 'booking-pending',
+          booking: JSON.parse(JSON.stringify(payload.booking)),
+        } as EmailJobData, this.emailJobOptions);
+      } catch (error) {
+        this.logger.error('Failed to enqueue booking-pending email',
+          error instanceof Error ? error.stack : String(error), {
+          bookingId: payload.booking.id, tenantId: payload.tenantId,
+        });
+      }
+
+      // Still send owner notification + push, but skip customer confirmation
       await this.sendAllBookingNotifications(payload.booking, payload.tenantId, {
         skipCustomerNotification: true,
       });
