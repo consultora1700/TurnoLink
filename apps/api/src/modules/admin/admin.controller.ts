@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { Request } from 'express';
 import { AdminService } from './admin.service';
+import { AuthService } from '../auth/auth.service';
 import { AdminKeyGuard } from './guards/admin-key.guard';
 import { AuditLogInterceptor } from './interceptors/audit-log.interceptor';
 import {
@@ -36,7 +37,10 @@ import { Public } from '../../common/decorators/public.decorator';
 export class AdminController {
   private readonly logger = new Logger(AdminController.name);
 
-  constructor(private readonly adminService: AdminService) {}
+  constructor(
+    private readonly adminService: AdminService,
+    private readonly authService: AuthService,
+  ) {}
 
   private getClientIp(request: Request): string {
     const xForwardedFor = request.headers['x-forwarded-for'];
@@ -229,5 +233,53 @@ export class AdminController {
   @Get('map/entities')
   async getMapEntities(@Query('type') type?: string) {
     return this.adminService.getMapEntities(type);
+  }
+
+  // ==================== PASSWORD RESET ====================
+
+  /**
+   * Send password reset emails to one or more users.
+   * Useful for migrated accounts that need to set their own password.
+   * POST /admin/send-password-reset
+   * Body: { emails: string[] }  OR  { tenantId: string } (all owners of that tenant)
+   */
+  @Post('send-password-reset')
+  async sendPasswordReset(
+    @Body() body: { emails?: string[]; tenantId?: string },
+  ) {
+    const emails: string[] = [];
+
+    if (body.emails?.length) {
+      emails.push(...body.emails);
+    }
+
+    if (body.tenantId) {
+      const owners = await this.adminService.getTenantOwnerEmails(body.tenantId);
+      emails.push(...owners);
+    }
+
+    if (!emails.length) {
+      return { sent: 0, message: 'No emails provided' };
+    }
+
+    const unique = [...new Set(emails)];
+    const results: { email: string; status: string }[] = [];
+
+    for (const email of unique) {
+      try {
+        await this.authService.forgotPassword(email);
+        results.push({ email, status: 'sent' });
+      } catch {
+        results.push({ email, status: 'error' });
+      }
+    }
+
+    this.logger.log(`Password reset emails sent to ${results.filter(r => r.status === 'sent').length}/${unique.length} users`);
+
+    return {
+      sent: results.filter(r => r.status === 'sent').length,
+      total: unique.length,
+      results,
+    };
   }
 }

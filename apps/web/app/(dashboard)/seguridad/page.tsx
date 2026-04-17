@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,6 +23,9 @@ import {
   QrCode,
   CheckCircle2,
   XCircle,
+  Eye,
+  EyeOff,
+  KeyRound,
 } from 'lucide-react';
 import {
   Dialog,
@@ -42,9 +46,21 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useDashboardApi } from '@/lib/hooks/use-dashboard-api';
+import { authApi } from '@/lib/api';
 
 export default function SeguridadPage() {
   const api = useDashboardApi();
+  const { data: session } = useSession();
+
+  // Password change
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
   const [is2FAEnabled, setIs2FAEnabled] = useState(false);
   const [showSetupDialog, setShowSetupDialog] = useState(false);
   const [showDisableDialog, setShowDisableDialog] = useState(false);
@@ -174,6 +190,36 @@ export default function SeguridadPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handlePasswordChange = async () => {
+    setPasswordError('');
+    if (newPassword !== confirmPassword) {
+      setPasswordError('Las contraseñas no coinciden');
+      return;
+    }
+    if (newPassword.length < 8) {
+      setPasswordError('La contraseña debe tener al menos 8 caracteres');
+      return;
+    }
+    if (!session?.accessToken) {
+      setPasswordError('Sesión expirada. Recargá la página.');
+      return;
+    }
+    setPasswordSaving(true);
+    try {
+      await authApi.changePassword(session.accessToken, currentPassword, newPassword);
+      setPasswordSuccess(true);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setShowPasswordForm(false);
+      setTimeout(() => setPasswordSuccess(false), 3000);
+    } catch (error: any) {
+      setPasswordError(error?.message || 'Error al cambiar la contraseña');
+    } finally {
+      setPasswordSaving(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-16 gap-4">
@@ -243,6 +289,122 @@ export default function SeguridadPage() {
           </div>
         </div>
       </div>
+
+      {/* Change Password Card */}
+      <Card className="border-0 shadow-soft overflow-hidden">
+        <div className="h-1 bg-gradient-to-r from-blue-500 to-indigo-500" />
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center">
+                <KeyRound className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <CardTitle className="text-xl">Contraseña</CardTitle>
+                <CardDescription>
+                  Cambiá tu contraseña de acceso
+                </CardDescription>
+              </div>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {passwordSuccess && (
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-sm">
+              <CheckCircle2 className="h-4 w-4" />
+              Contraseña actualizada correctamente
+            </div>
+          )}
+
+          {!showPasswordForm ? (
+            <Button variant="outline" onClick={() => setShowPasswordForm(true)} className="w-full sm:w-auto">
+              <KeyRound className="mr-2 h-4 w-4" />
+              Cambiar contraseña
+            </Button>
+          ) : (
+            <div className="space-y-4 max-w-md">
+              <div className="space-y-2">
+                <Label className="text-sm">Contraseña actual</Label>
+                <div className="relative">
+                  <Input
+                    type={showPassword ? 'text' : 'password'}
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    placeholder="Tu contraseña actual"
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    tabIndex={-1}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm">Nueva contraseña</Label>
+                <Input
+                  type={showPassword ? 'text' : 'password'}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Mínimo 8 caracteres"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm">Confirmar contraseña</Label>
+                <Input
+                  type={showPassword ? 'text' : 'password'}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Repetir nueva contraseña"
+                />
+              </div>
+              {/* Validation indicators */}
+              <div className="space-y-1.5">
+                <div className={`flex items-center gap-2 text-xs ${newPassword.length >= 8 ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`}>
+                  {newPassword.length >= 8 ? <CheckCircle2 className="h-3.5 w-3.5" /> : <div className="h-3.5 w-3.5 rounded-full border border-muted-foreground/40" />}
+                  Mínimo 8 caracteres
+                </div>
+                <div className={`flex items-center gap-2 text-xs ${newPassword && confirmPassword && newPassword === confirmPassword ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`}>
+                  {newPassword && confirmPassword && newPassword === confirmPassword ? <CheckCircle2 className="h-3.5 w-3.5" /> : <div className="h-3.5 w-3.5 rounded-full border border-muted-foreground/40" />}
+                  Las contraseñas coinciden
+                </div>
+              </div>
+              {passwordError && (
+                <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-sm">
+                  <AlertCircle className="h-4 w-4" />
+                  {passwordError}
+                </div>
+              )}
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  onClick={handlePasswordChange}
+                  disabled={passwordSaving || !currentPassword || !newPassword || newPassword.length < 8 || newPassword !== confirmPassword}
+                >
+                  {passwordSaving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
+                  Guardar
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setShowPasswordForm(false);
+                    setPasswordError('');
+                    setCurrentPassword('');
+                    setNewPassword('');
+                    setConfirmPassword('');
+                  }}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* 2FA Card */}
       <Card className="border-0 shadow-soft overflow-hidden">

@@ -1349,4 +1349,15 @@ export class AdminService {
       },
     };
   }
+
+  /**
+   * Get owner emails for a given tenant.
+   */
+  async getTenantOwnerEmails(tenantId: string): Promise<string[]> {
+    const owners = await this.prisma.user.findMany({
+      where: { tenantId, role: 'OWNER', isActive: true },
+      select: { email: true },
+    });
+    return owners.map(o => o.email).filter(Boolean);
+  }
 }
