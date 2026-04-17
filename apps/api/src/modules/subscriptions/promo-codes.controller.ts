@@ -11,6 +11,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { AdminKeyGuard } from '../admin/guards/admin-key.guard';
+import { CrossPlatformService } from '../admin/cross-platform.service';
 import { PromoCodesService } from './promo-codes.service';
 import { Public } from '../../common/decorators/public.decorator';
 
@@ -20,11 +21,23 @@ import { Public } from '../../common/decorators/public.decorator';
 @Public()
 @UseGuards(AdminKeyGuard)
 export class AdminPromoCodesController {
-  constructor(private readonly promoCodesService: PromoCodesService) {}
+  constructor(
+    private readonly promoCodesService: PromoCodesService,
+    private readonly crossPlatform: CrossPlatformService,
+  ) {}
 
   @Get()
   async getAll() {
-    return this.promoCodesService.getAllPromoCodes();
+    const local = await this.promoCodesService.getAllPromoCodes();
+    if (!this.crossPlatform.isEnabled) return local;
+
+    const remote = await this.crossPlatform.forwardRead<any[]>('/admin/promo-codes');
+    if (!remote.success || !Array.isArray(remote.data)) return this.crossPlatform.tagPlatform(local, 'turnolink');
+
+    return [
+      ...this.crossPlatform.tagPlatform(local, 'turnolink'),
+      ...this.crossPlatform.tagPlatform(remote.data, this.crossPlatform.platformName),
+    ];
   }
 
   @Post()
@@ -39,7 +52,14 @@ export class AdminPromoCodesController {
       expiresAt?: string;
     },
   ) {
-    return this.promoCodesService.createPromoCode(body);
+    const local = await this.promoCodesService.createPromoCode(body);
+
+    // Mirror to remote platform
+    if (this.crossPlatform.isEnabled) {
+      await this.crossPlatform.forwardWrite('POST', '/admin/promo-codes', body);
+    }
+
+    return local;
   }
 
   @Patch(':id')

@@ -10,13 +10,17 @@ import {
 } from '@nestjs/common';
 import { SubscriptionsService } from './subscriptions.service';
 import { AdminKeyGuard } from '../admin/guards/admin-key.guard';
+import { CrossPlatformService } from '../admin/cross-platform.service';
 import { Public } from '../../common/decorators/public.decorator';
 
 @Controller('admin/industry-groups')
 @Public()
 @UseGuards(AdminKeyGuard)
 export class AdminIndustryGroupsController {
-  constructor(private readonly subscriptionsService: SubscriptionsService) {}
+  constructor(
+    private readonly subscriptionsService: SubscriptionsService,
+    private readonly crossPlatform: CrossPlatformService,
+  ) {}
 
   @Get()
   async getAll() {
@@ -34,7 +38,11 @@ export class AdminIndustryGroupsController {
       order?: number;
     },
   ) {
-    return this.subscriptionsService.createIndustryGroup(body);
+    const local = await this.subscriptionsService.createIndustryGroup(body);
+    if (this.crossPlatform.isEnabled) {
+      await this.crossPlatform.forwardWrite('POST', '/admin/industry-groups', body);
+    }
+    return local;
   }
 
   @Patch(':id')
@@ -57,7 +65,10 @@ export class AdminIndustryGroupsController {
 @Public()
 @UseGuards(AdminKeyGuard)
 export class AdminPlansController {
-  constructor(private readonly subscriptionsService: SubscriptionsService) {}
+  constructor(
+    private readonly subscriptionsService: SubscriptionsService,
+    private readonly crossPlatform: CrossPlatformService,
+  ) {}
 
   @Get()
   async getAll() {
@@ -85,7 +96,11 @@ export class AdminPlansController {
       industryGroupId?: string;
     },
   ) {
-    return this.subscriptionsService.createPlan(body);
+    const local = await this.subscriptionsService.createPlan(body);
+    if (this.crossPlatform.isEnabled) {
+      await this.crossPlatform.forwardWrite('POST', '/admin/plans', body);
+    }
+    return local;
   }
 
   @Patch(':id')
@@ -120,7 +135,10 @@ export class AdminPlansController {
 
   @Post('seed')
   async seed() {
-    await this.subscriptionsService.seedIndustryPlans();
+    const result = await this.subscriptionsService.seedIndustryPlans();
+    if (this.crossPlatform.isEnabled) {
+      await this.crossPlatform.forwardWrite('POST', '/admin/plans/seed', {});
+    }
     return { message: 'Industry plans seeded successfully' };
   }
 }

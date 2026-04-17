@@ -14,6 +14,7 @@ import {
 import { Request } from 'express';
 import { AdminService } from './admin.service';
 import { AuthService } from '../auth/auth.service';
+import { CrossPlatformService } from './cross-platform.service';
 import { AdminKeyGuard } from './guards/admin-key.guard';
 import { AuditLogInterceptor } from './interceptors/audit-log.interceptor';
 import {
@@ -40,6 +41,7 @@ export class AdminController {
   constructor(
     private readonly adminService: AdminService,
     private readonly authService: AuthService,
+    private readonly crossPlatform: CrossPlatformService,
   ) {}
 
   private getClientIp(request: Request): string {
@@ -55,7 +57,13 @@ export class AdminController {
 
   @Get('stats/overview')
   async getOverviewStats() {
-    return this.adminService.getOverviewStats();
+    const local = await this.adminService.getOverviewStats();
+    if (!this.crossPlatform.isEnabled) return local;
+
+    const remote = await this.crossPlatform.forwardRead('/admin/stats/overview');
+    if (!remote.success) return { ...local, _platforms: { turnolink: local } };
+
+    return this.crossPlatform.mergeStats(local, remote.data);
   }
 
   @Get('stats/revenue')
@@ -80,7 +88,18 @@ export class AdminController {
 
   @Get('dashboard/recent-tenants')
   async getRecentTenants(@Query('limit') limit?: string) {
-    return this.adminService.getRecentTenants(limit ? parseInt(limit) : 5);
+    const l = limit ? parseInt(limit) : 5;
+    const local = await this.adminService.getRecentTenants(l);
+    if (!this.crossPlatform.isEnabled) return local;
+
+    const remote = await this.crossPlatform.forwardRead<any[]>('/admin/dashboard/recent-tenants', { limit: String(l) });
+    if (!remote.success || !Array.isArray(remote.data)) return this.crossPlatform.tagPlatform(local, 'turnolink');
+
+    const merged = [
+      ...this.crossPlatform.tagPlatform(local, 'turnolink'),
+      ...this.crossPlatform.tagPlatform(remote.data, this.crossPlatform.platformName),
+    ].sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, l);
+    return merged;
   }
 
   @Get('dashboard/recent-alerts')
@@ -92,7 +111,19 @@ export class AdminController {
 
   @Get('tenants')
   async getTenants(@Query() filter: TenantFilterDto) {
-    return this.adminService.getTenants(filter);
+    const local = await this.adminService.getTenants(filter);
+    if (!this.crossPlatform.isEnabled) return local;
+
+    const queryParams: Record<string, string> = {};
+    if (filter.page) queryParams.page = String(filter.page);
+    if (filter.limit) queryParams.limit = String(filter.limit);
+    if ((filter as any).search) queryParams.search = (filter as any).search;
+    if ((filter as any).status) queryParams.status = (filter as any).status;
+
+    const remote = await this.crossPlatform.forwardRead<any>('/admin/tenants', queryParams);
+    if (!remote.success || !remote.data?.data) return { ...local, data: this.crossPlatform.tagPlatform(local.data, 'turnolink') };
+
+    return this.crossPlatform.mergePaginated(local, remote.data);
   }
 
   @Get('tenants/:id')
@@ -183,7 +214,18 @@ export class AdminController {
 
   @Get('users')
   async getUsers(@Query() filter: UserFilterDto) {
-    return this.adminService.getUsers(filter);
+    const local = await this.adminService.getUsers(filter);
+    if (!this.crossPlatform.isEnabled) return local;
+
+    const queryParams: Record<string, string> = {};
+    if (filter.page) queryParams.page = String(filter.page);
+    if (filter.limit) queryParams.limit = String(filter.limit);
+    if ((filter as any).search) queryParams.search = (filter as any).search;
+
+    const remote = await this.crossPlatform.forwardRead<any>('/admin/users', queryParams);
+    if (!remote.success || !remote.data?.data) return { ...local, data: this.crossPlatform.tagPlatform(local.data, 'turnolink') };
+
+    return this.crossPlatform.mergePaginated(local, remote.data);
   }
 
   @Get('users/:id')
@@ -263,23 +305,31 @@ export class AdminController {
     }
 
     const unique = [...new Set(emails)];
-    const results: { email: string; status: string }[] = [];
+    const results: { email: string; status: string; platform: string }[] = [];
 
+    // Send locally
     for (const email of unique) {
       try {
         await this.authService.forgotPassword(email);
-        results.push({ email, status: 'sent' });
+        results.push({ email, status: 'sent', platform: 'turnolink' });
       } catch {
-        results.push({ email, status: 'error' });
+        results.push({ email, status: 'not_found_local', platform: 'turnolink' });
       }
     }
 
-    this.logger.log(`Password reset emails sent to ${results.filter(r => r.status === 'sent').length}/${unique.length} users`);
+    // Forward to remote platform too (user might exist on colmen)
+    if (this.crossPlatform.isEnabled) {
+      const remote = await this.crossPlatform.forwardWrite('POST', '/admin/send-password-reset', body);
+      if (remote.success && remote.data?.results) {
+        for (const r of remote.data.results as any[]) {
+          results.push({ email: r.email, status: r.status, platform: this.crossPlatform.platformName });
+        }
+      }
+    }
 
-    return {
-      sent: results.filter(r => r.status === 'sent').length,
-      total: unique.length,
-      results,
-    };
+    const sent = results.filter(r => r.status === 'sent').length;
+    this.logger.log(`Password reset: ${sent} sent across platforms`);
+
+    return { sent, total: unique.length, results };
   }
 }
