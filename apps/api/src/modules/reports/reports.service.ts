@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import * as ExcelJS from 'exceljs';
 
 @Injectable()
 export class ReportsService {
@@ -515,6 +516,329 @@ export class ReportsService {
     });
 
     return header + rows.join('\n');
+  }
+
+  async exportBookingsExcel(
+    tenantId: string,
+    period?: string,
+    startDate?: string,
+    endDate?: string,
+  ): Promise<Buffer> {
+    const { start, end } = this.getDateRange(period, startDate, endDate);
+
+    const [tenant, bookings, overview] = await Promise.all([
+      this.prisma.tenant.findUnique({ where: { id: tenantId }, select: { name: true, slug: true } }),
+      this.prisma.booking.findMany({
+        where: { tenantId, date: { gte: start, lte: end } },
+        include: {
+          service: { select: { name: true, price: true } },
+          product: { select: { name: true, price: true } },
+          customer: { select: { name: true, phone: true, email: true } },
+          employee: { select: { name: true } },
+        },
+        orderBy: { date: 'asc' },
+        take: 5000,
+      }),
+      this.prisma.booking.aggregate({
+        where: { tenantId, date: { gte: start, lte: end }, status: 'COMPLETED' },
+        _sum: { totalPrice: true },
+        _count: { id: true },
+      }),
+    ]);
+
+    const brandColor = '1B7A8A';
+    const brandLight = 'E8F5F7';
+    const white = 'FFFFFF';
+    const grayBg = 'F8FAFC';
+    const borderColor = 'E2E8F0';
+    const greenBg = 'ECFDF5';
+    const greenText = '047857';
+    const redBg = 'FEF2F2';
+    const redText = 'B91C1C';
+    const yellowBg = 'FFFBEB';
+    const yellowText = '92400E';
+    const blueBg = 'EFF6FF';
+    const blueText = '1E40AF';
+
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'TurnoLink';
+    wb.created = new Date();
+
+    // ─── Sheet 1: Resumen ───
+    const ws1 = wb.addWorksheet('Resumen', {
+      properties: { tabColor: { argb: brandColor } },
+    });
+    ws1.columns = [
+      { width: 3 }, { width: 28 }, { width: 22 }, { width: 22 }, { width: 22 }, { width: 22 },
+    ];
+
+    // Header row
+    ws1.mergeCells('B2:F2');
+    const titleCell = ws1.getCell('B2');
+    titleCell.value = tenant?.name || 'Reporte';
+    titleCell.font = { name: 'Calibri', size: 20, bold: true, color: { argb: white } };
+    titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: brandColor } };
+    titleCell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+    ws1.getRow(2).height = 48;
+    for (let c = 2; c <= 6; c++) {
+      ws1.getCell(2, c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: brandColor } };
+    }
+
+    // Subtitle
+    ws1.mergeCells('B3:F3');
+    const subCell = ws1.getCell('B3');
+    const startStr = start.toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' });
+    const endStr = end.toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' });
+    subCell.value = `Reporte de sesiones · ${startStr} — ${endStr}`;
+    subCell.font = { name: 'Calibri', size: 11, color: { argb: white }, italic: true };
+    subCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: brandColor } };
+    subCell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+    ws1.getRow(3).height = 28;
+    for (let c = 2; c <= 6; c++) {
+      ws1.getCell(3, c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: brandColor } };
+    }
+
+    // KPI cards row
+    const totalCompleted = overview._count?.id || 0;
+    const totalRevenue = Number(overview._sum?.totalPrice || 0);
+    const totalBookings = bookings.length;
+    const cancelled = bookings.filter(b => b.status === 'CANCELLED').length;
+    const noShow = bookings.filter(b => b.status === 'NO_SHOW').length;
+    const avgTicket = totalCompleted > 0 ? totalRevenue / totalCompleted : 0;
+
+    const kpis = [
+      { label: 'Ingresos', value: totalRevenue, format: '$#,##0', bg: greenBg, color: greenText },
+      { label: 'Sesiones', value: totalBookings, format: '0', bg: blueBg, color: blueText },
+      { label: 'Completadas', value: totalCompleted, format: '0', bg: greenBg, color: greenText },
+      { label: 'Ticket promedio', value: avgTicket, format: '$#,##0', bg: blueBg, color: blueText },
+      { label: 'Cancelaciones', value: cancelled, format: '0', bg: cancelled > 0 ? redBg : grayBg, color: cancelled > 0 ? redText : '475569' },
+    ];
+
+    ws1.addRow([]);
+    const kpiRow = ws1.addRow(['', ...kpis.map(k => k.label)]);
+    kpiRow.height = 22;
+    kpiRow.eachCell((cell, colNumber) => {
+      if (colNumber >= 2) {
+        cell.font = { name: 'Calibri', size: 9, bold: true, color: { argb: '64748B' } };
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: grayBg } };
+        cell.border = { bottom: { style: 'thin', color: { argb: borderColor } } };
+      }
+    });
+
+    const kpiValRow = ws1.addRow(['', ...kpis.map(k => k.value)]);
+    kpiValRow.height = 36;
+    kpiValRow.eachCell((cell, colNumber) => {
+      if (colNumber >= 2) {
+        const kpi = kpis[colNumber - 2];
+        cell.font = { name: 'Calibri', size: 18, bold: true, color: { argb: kpi.color } };
+        cell.numFmt = kpi.format;
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: kpi.bg } };
+        cell.border = {
+          top: { style: 'thin', color: { argb: borderColor } },
+          bottom: { style: 'medium', color: { argb: brandColor } },
+          left: { style: 'thin', color: { argb: borderColor } },
+          right: { style: 'thin', color: { argb: borderColor } },
+        };
+      }
+    });
+
+    // Revenue by service
+    ws1.addRow([]);
+    ws1.addRow([]);
+    const svcTitleRow = ws1.addRow(['', 'Ingresos por servicio']);
+    svcTitleRow.getCell(2).font = { name: 'Calibri', size: 13, bold: true, color: { argb: '1E293B' } };
+
+    const serviceMap = new Map<string, { count: number; revenue: number }>();
+    bookings.filter(b => b.status === 'COMPLETED').forEach(b => {
+      const name = b.service?.name ?? b.product?.name ?? 'Otro';
+      const price = b.totalPrice ? Number(b.totalPrice) : Number(b.service?.price ?? b.product?.price ?? 0);
+      const existing = serviceMap.get(name) || { count: 0, revenue: 0 };
+      serviceMap.set(name, { count: existing.count + 1, revenue: existing.revenue + price });
+    });
+
+    const svcHeaderRow = ws1.addRow(['', 'Servicio', 'Sesiones', 'Ingresos', '% del total']);
+    svcHeaderRow.height = 26;
+    svcHeaderRow.eachCell((cell, colNumber) => {
+      if (colNumber >= 2) {
+        cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: white } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: brandColor } };
+        cell.alignment = { horizontal: colNumber === 2 ? 'left' : 'center', vertical: 'middle', indent: colNumber === 2 ? 1 : 0 };
+        cell.border = { bottom: { style: 'thin', color: { argb: borderColor } } };
+      }
+    });
+
+    const sortedServices = [...serviceMap.entries()].sort((a, b) => b[1].revenue - a[1].revenue);
+    sortedServices.forEach(([name, data], i) => {
+      const pct = totalRevenue > 0 ? data.revenue / totalRevenue : 0;
+      const row = ws1.addRow(['', name, data.count, data.revenue, pct]);
+      row.height = 24;
+      const bg = i % 2 === 0 ? white : grayBg;
+      row.eachCell((cell, colNumber) => {
+        if (colNumber >= 2) {
+          cell.font = { name: 'Calibri', size: 10, color: { argb: '334155' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
+          cell.alignment = { horizontal: colNumber === 2 ? 'left' : 'center', vertical: 'middle', indent: colNumber === 2 ? 1 : 0 };
+          cell.border = { bottom: { style: 'thin', color: { argb: borderColor } } };
+          if (colNumber === 4) cell.numFmt = '$#,##0';
+          if (colNumber === 5) cell.numFmt = '0.0%';
+        }
+      });
+    });
+
+    // Revenue by employee
+    ws1.addRow([]);
+    const empTitleRow = ws1.addRow(['', 'Rendimiento por profesional']);
+    empTitleRow.getCell(2).font = { name: 'Calibri', size: 13, bold: true, color: { argb: '1E293B' } };
+
+    const empMap = new Map<string, { count: number; revenue: number }>();
+    bookings.filter(b => b.status === 'COMPLETED' && b.employee).forEach(b => {
+      const name = b.employee!.name;
+      const price = b.totalPrice ? Number(b.totalPrice) : Number(b.service?.price ?? b.product?.price ?? 0);
+      const existing = empMap.get(name) || { count: 0, revenue: 0 };
+      empMap.set(name, { count: existing.count + 1, revenue: existing.revenue + price });
+    });
+
+    const empHeaderRow = ws1.addRow(['', 'Profesional', 'Sesiones', 'Ingresos', '% del total']);
+    empHeaderRow.height = 26;
+    empHeaderRow.eachCell((cell, colNumber) => {
+      if (colNumber >= 2) {
+        cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: white } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: brandColor } };
+        cell.alignment = { horizontal: colNumber === 2 ? 'left' : 'center', vertical: 'middle', indent: colNumber === 2 ? 1 : 0 };
+      }
+    });
+
+    [...empMap.entries()].sort((a, b) => b[1].revenue - a[1].revenue).forEach(([name, data], i) => {
+      const pct = totalRevenue > 0 ? data.revenue / totalRevenue : 0;
+      const row = ws1.addRow(['', name, data.count, data.revenue, pct]);
+      row.height = 24;
+      const bg = i % 2 === 0 ? white : grayBg;
+      row.eachCell((cell, colNumber) => {
+        if (colNumber >= 2) {
+          cell.font = { name: 'Calibri', size: 10, color: { argb: '334155' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
+          cell.alignment = { horizontal: colNumber === 2 ? 'left' : 'center', vertical: 'middle', indent: colNumber === 2 ? 1 : 0 };
+          cell.border = { bottom: { style: 'thin', color: { argb: borderColor } } };
+          if (colNumber === 4) cell.numFmt = '$#,##0';
+          if (colNumber === 5) cell.numFmt = '0.0%';
+        }
+      });
+    });
+
+    // Footer
+    ws1.addRow([]);
+    const footerRow = ws1.addRow(['', `Generado por TurnoLink · ${new Date().toLocaleDateString('es-AR')} ${new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}`]);
+    footerRow.getCell(2).font = { name: 'Calibri', size: 9, italic: true, color: { argb: '94A3B8' } };
+
+    // ─── Sheet 2: Detalle ───
+    const ws2 = wb.addWorksheet('Detalle de sesiones', {
+      properties: { tabColor: { argb: '3B82F6' } },
+    });
+
+    const statusLabels: Record<string, string> = {
+      COMPLETED: 'Completada', CONFIRMED: 'Confirmada', PENDING: 'Pendiente',
+      CANCELLED: 'Cancelada', NO_SHOW: 'No asistió',
+    };
+    const statusColors: Record<string, { bg: string; text: string }> = {
+      COMPLETED: { bg: greenBg, text: greenText },
+      CONFIRMED: { bg: blueBg, text: blueText },
+      PENDING: { bg: yellowBg, text: yellowText },
+      CANCELLED: { bg: redBg, text: redText },
+      NO_SHOW: { bg: redBg, text: redText },
+    };
+
+    ws2.columns = [
+      { header: '', width: 3 },
+      { header: 'Fecha', width: 14 },
+      { header: 'Hora', width: 14 },
+      { header: 'Servicio', width: 30 },
+      { header: 'Paciente', width: 24 },
+      { header: 'Teléfono', width: 18 },
+      { header: 'Email', width: 26 },
+      { header: 'Profesional', width: 22 },
+      { header: 'Estado', width: 15 },
+      { header: 'Precio', width: 14 },
+    ];
+
+    // Header
+    ws2.mergeCells('B1:J1');
+    const detailTitle = ws2.getCell('B1');
+    detailTitle.value = 'Detalle de sesiones';
+    detailTitle.font = { name: 'Calibri', size: 16, bold: true, color: { argb: white } };
+    detailTitle.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: brandColor } };
+    detailTitle.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+    ws2.getRow(1).height = 40;
+    for (let c = 2; c <= 10; c++) {
+      ws2.getCell(1, c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: brandColor } };
+    }
+
+    // Column headers
+    const headers = ['', 'Fecha', 'Hora', 'Servicio', 'Paciente', 'Teléfono', 'Email', 'Profesional', 'Estado', 'Precio'];
+    const headerRow2 = ws2.addRow(headers);
+    headerRow2.height = 28;
+    headerRow2.eachCell((cell, colNumber) => {
+      if (colNumber >= 2) {
+        cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '475569' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: grayBg } };
+        cell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
+        cell.border = { bottom: { style: 'medium', color: { argb: brandColor } } };
+      }
+    });
+
+    // Data rows
+    bookings.forEach((b, i) => {
+      const date = b.date.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      const time = `${b.startTime} - ${b.endTime}`;
+      const serviceName = b.service?.name ?? b.product?.name ?? 'Sin detalle';
+      const price = b.totalPrice ? Number(b.totalPrice) : Number(b.service?.price ?? b.product?.price ?? 0);
+      const statusLabel = statusLabels[b.status] || b.status;
+      const sColor = statusColors[b.status] || { bg: grayBg, text: '475569' };
+
+      const row = ws2.addRow([
+        '', date, time, serviceName,
+        b.customer.name, b.customer.phone, b.customer.email || '',
+        b.employee?.name || '', statusLabel, price,
+      ]);
+      row.height = 26;
+      const bg = i % 2 === 0 ? white : grayBg;
+      row.eachCell((cell, colNumber) => {
+        if (colNumber >= 2) {
+          cell.font = { name: 'Calibri', size: 10, color: { argb: '334155' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
+          cell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
+          cell.border = { bottom: { style: 'thin', color: { argb: borderColor } } };
+          if (colNumber === 9) {
+            cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: sColor.text } };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: sColor.bg } };
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+          }
+          if (colNumber === 10) cell.numFmt = '$#,##0';
+        }
+      });
+    });
+
+    // Total row
+    ws2.addRow([]);
+    const totalRow = ws2.addRow(['', '', '', '', '', '', '', '', 'TOTAL', totalRevenue]);
+    totalRow.height = 30;
+    totalRow.getCell(9).font = { name: 'Calibri', size: 11, bold: true, color: { argb: brandColor } };
+    totalRow.getCell(9).alignment = { horizontal: 'center', vertical: 'middle' };
+    totalRow.getCell(10).font = { name: 'Calibri', size: 14, bold: true, color: { argb: brandColor } };
+    totalRow.getCell(10).numFmt = '$#,##0';
+    totalRow.getCell(10).alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
+    totalRow.getCell(10).border = { top: { style: 'double', color: { argb: brandColor } } };
+
+    // Auto-filter on detail sheet
+    ws2.autoFilter = { from: { row: 2, column: 2 }, to: { row: bookings.length + 2, column: 10 } };
+
+    // Freeze header rows
+    ws2.views = [{ state: 'frozen', xSplit: 0, ySplit: 2 }];
+    ws1.views = [{ state: 'frozen', xSplit: 0, ySplit: 3 }];
+
+    const buffer = await wb.xlsx.writeBuffer();
+    return Buffer.from(buffer);
   }
 
   // ============ ORDER-BASED REPORTS (mercado/ecommerce) ============

@@ -440,14 +440,21 @@ export class AuthService {
         where: { tokenHash },
       });
 
+      // Grace period: allow recently-revoked tokens to refresh (handles race
+      // conditions when multiple tabs/requests rotate the same token in parallel).
+      const REFRESH_GRACE_PERIOD_MS = 10 * 1000;
       if (storedToken?.revokedAt) {
-        // Token was already used — possible token theft, revoke all user tokens
-        await this.prisma.refreshToken.updateMany({
-          where: { userId: payload.sub, revokedAt: null },
-          data: { revokedAt: new Date() },
-        });
-        this.logger.warn(`Refresh token reuse detected for user ${payload.sub} — all tokens revoked`);
-        throw new UnauthorizedException('Invalid refresh token');
+        const revokedAgeMs = Date.now() - storedToken.revokedAt.getTime();
+        if (revokedAgeMs > REFRESH_GRACE_PERIOD_MS) {
+          // Outside grace window — token was reused later, possible theft
+          await this.prisma.refreshToken.updateMany({
+            where: { userId: payload.sub, revokedAt: null },
+            data: { revokedAt: new Date() },
+          });
+          this.logger.warn(`Refresh token reuse detected for user ${payload.sub} — all tokens revoked`);
+          throw new UnauthorizedException('Invalid refresh token');
+        }
+        this.logger.log(`Refresh within grace period for user ${payload.sub} (${revokedAgeMs}ms after revocation)`);
       }
 
       const user = await this.usersService.findByIdSafe(payload.sub);
@@ -455,8 +462,9 @@ export class AuthService {
         throw new UnauthorizedException('Invalid refresh token');
       }
 
-      // Revoke the current refresh token (it's being rotated)
-      if (storedToken) {
+      // Revoke the current refresh token (it's being rotated). Skip if already
+      // revoked within the grace window to avoid clobbering revokedAt timestamp.
+      if (storedToken && !storedToken.revokedAt) {
         await this.prisma.refreshToken.update({
           where: { id: storedToken.id },
           data: { revokedAt: new Date() },

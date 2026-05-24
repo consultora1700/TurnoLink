@@ -156,36 +156,35 @@ function VideollamadasPageContent() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-4xl">
       {/* Header */}
-      <div className="relative overflow-hidden rounded-xl sm:rounded-2xl bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-600 p-4 sm:p-6 md:p-8 text-white">
+      <div className="relative overflow-hidden rounded-xl sm:rounded-2xl bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-600 p-4 sm:p-6 lg:p-8 text-white">
         <div className="absolute inset-0 bg-grid opacity-10" />
         <div className="absolute -top-24 -right-24 w-48 sm:w-64 h-48 sm:h-64 bg-white/10 rounded-full blur-3xl" />
         <div className="absolute -bottom-24 -left-24 w-48 sm:w-64 h-48 sm:h-64 bg-white/10 rounded-full blur-3xl" />
 
-        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+        <div className="relative flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center flex-shrink-0">
               <Video className="h-5 w-5 sm:h-6 sm:w-6" />
             </div>
             <div className="min-w-0">
               <h1 className="text-2xl sm:text-3xl font-bold">Videollamadas</h1>
-              <p className="text-white/80 text-sm sm:text-base truncate sm:whitespace-normal">
+              <p className="text-white/80 text-sm sm:text-base">
                 Conecta Zoom o Google Meet para sesiones online
               </p>
             </div>
           </div>
 
-          <Badge className={`text-xs sm:text-sm py-1.5 sm:py-2 px-3 sm:px-4 w-fit ${videoStatus?.isConnected ? 'bg-white text-indigo-700' : 'bg-white/20 text-white'}`}>
+          <Badge className={`text-xs sm:text-sm py-1.5 sm:py-2 px-3 sm:px-4 whitespace-nowrap ${videoStatus?.isConnected ? 'bg-white text-indigo-700' : 'bg-white/20 text-white'}`}>
             {videoStatus?.isConnected ? (
               <>
-                <CheckCircle2 className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                <span className="hidden sm:inline">{providerLabels[videoStatus.provider || ''] || 'Conectado'}</span>
-                <span className="sm:hidden">Conectado</span>
+                <CheckCircle2 className="mr-1.5 h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                {providerLabels[videoStatus.provider || ''] || 'Conectado'}
               </>
             ) : (
               <>
-                <X className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <X className="mr-1.5 h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 Sin conectar
               </>
             )}
@@ -210,38 +209,41 @@ function VideollamadasPageContent() {
                   </CardDescription>
                 </div>
               </div>
-              <Badge variant="secondary" className="bg-emerald-100 text-emerald-700">
+              <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 hidden sm:flex">
                 Conectado
               </Badge>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center gap-3 p-4 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-100 dark:border-emerald-800">
-              <div className="h-10 w-10 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center">
-                <Check className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-              </div>
-              <div className="flex-1">
-                <p className="font-medium text-emerald-800 dark:text-emerald-300">Cuenta conectada</p>
-                <div className="text-sm text-emerald-600 dark:text-emerald-400 space-y-0.5">
-                  {videoStatus.accountEmail && (
-                    <p>{videoStatus.accountEmail}</p>
-                  )}
-                  {videoStatus.connectedAt && (
-                    <p>Conectada el {new Date(videoStatus.connectedAt).toLocaleDateString('es-AR')}</p>
-                  )}
+            <div className="flex items-center justify-between gap-4 p-4 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-100 dark:border-emerald-800">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center flex-shrink-0">
+                  <Check className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <div>
+                  <p className="font-medium text-emerald-800 dark:text-emerald-300">Cuenta conectada</p>
+                  <div className="text-sm text-emerald-600 dark:text-emerald-400 space-y-0.5">
+                    {videoStatus.accountEmail && (
+                      <p>{videoStatus.accountEmail}</p>
+                    )}
+                    {videoStatus.connectedAt && (
+                      <p>Conectada el {new Date(videoStatus.connectedAt).toLocaleDateString('es-AR')}</p>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <Button
-              variant="destructive"
-              onClick={() => setShowDisconnectDialog(true)}
-              disabled={processing}
-              className="w-full"
-            >
-              <Unlink className="mr-2 h-4 w-4" />
-              Desconectar
-            </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setShowDisconnectDialog(true)}
+                disabled={processing}
+                className="flex-shrink-0"
+              >
+                <Unlink className="mr-2 h-4 w-4" />
+                Desconectar
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}
@@ -254,7 +256,7 @@ function VideollamadasPageContent() {
             <div className="h-1 bg-gradient-to-r from-blue-500 to-blue-600" />
             <CardHeader>
               <div className="flex items-center gap-3">
-                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center flex-shrink-0">
                   <Video className="h-6 w-6 text-white" />
                 </div>
                 <div>
@@ -271,7 +273,7 @@ function VideollamadasPageContent() {
                   Conecta tu cuenta de Zoom para generar links de videollamada automáticamente cuando tus {clientLabelPlural.toLowerCase()} {terms.bookingVerb}n {gender.articleUn} {terms.bookingSingular.toLowerCase()} online.
                 </p>
                 <Button
-                  className="w-full bg-blue-600 hover:bg-blue-700"
+                  className="bg-blue-600 hover:bg-blue-700"
                   onClick={() => handleConnect('zoom')}
                   disabled={processing}
                 >
@@ -287,7 +289,7 @@ function VideollamadasPageContent() {
             <div className="h-1 bg-gradient-to-r from-green-500 to-emerald-500" />
             <CardHeader>
               <div className="flex items-center gap-3">
-                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center">
+                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center flex-shrink-0">
                   <Video className="h-6 w-6 text-white" />
                 </div>
                 <div>
@@ -304,7 +306,7 @@ function VideollamadasPageContent() {
                   Conecta tu cuenta de Google para generar links de Google Meet automáticamente cuando tus {clientLabelPlural.toLowerCase()} {terms.bookingVerb}n {gender.articleUn} {terms.bookingSingular.toLowerCase()} online.
                 </p>
                 <Button
-                  className="w-full bg-green-600 hover:bg-green-700"
+                  className="bg-green-600 hover:bg-green-700"
                   onClick={() => handleConnect('google_meet')}
                   disabled={processing}
                 >
@@ -324,18 +326,18 @@ function VideollamadasPageContent() {
           <CardTitle className="text-lg">Como funciona</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3 text-sm text-muted-foreground">
-            <p>1. Conecta tu cuenta de Zoom o Google Meet desde esta pagina.</p>
-            <p>2. Configura tus {terms.servicePlural.toLowerCase()} como &quot;Online&quot; o &quot;Ambos&quot; desde la sección de {terms.servicePlural}.</p>
-            <p>3. Cuando un {clientLabelSingular.toLowerCase()} reserve {gender.articleUn} {terms.bookingSingular.toLowerCase()} online, se generará automáticamente un link de videollamada.</p>
-            <p>4. El link se incluye en la confirmación y recordatorio que recibe el {clientLabelSingular.toLowerCase()}.</p>
-          </div>
+          <ol className="space-y-2 text-sm text-muted-foreground list-decimal list-inside">
+            <li>Conecta tu cuenta de Zoom o Google Meet desde esta pagina.</li>
+            <li>Configura tus {terms.servicePlural.toLowerCase()} como &quot;Online&quot; o &quot;Ambos&quot; desde la sección de {terms.servicePlural}.</li>
+            <li>Cuando un {clientLabelSingular.toLowerCase()} reserve {gender.articleUn} {terms.bookingSingular.toLowerCase()} online, se generará automáticamente un link de videollamada.</li>
+            <li>El link se incluye en la confirmación y recordatorio que recibe el {clientLabelSingular.toLowerCase()}.</li>
+          </ol>
         </CardContent>
       </Card>
 
       {/* Disconnect Dialog */}
       <AlertDialog open={showDisconnectDialog} onOpenChange={setShowDisconnectDialog}>
-        <AlertDialogContent>
+        <AlertDialogContent className="max-w-md">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <div className="h-8 w-8 rounded-lg bg-red-100 dark:bg-red-900/40 flex items-center justify-center">
@@ -347,11 +349,11 @@ function VideollamadasPageContent() {
               No se generaran links de videollamada automaticamente hasta que vuelvas a conectar.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
-            <AlertDialogCancel className="w-full sm:w-auto mt-0">Cancelar</AlertDialogCancel>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmDisconnect}
-              className="w-full sm:w-auto bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Desconectar
             </AlertDialogAction>

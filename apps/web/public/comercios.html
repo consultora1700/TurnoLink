@@ -1,0 +1,1456 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="auto">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Comercios — TurnoLink</title>
+<meta name="description" content="Directorio de negocios activos en TurnoLink. Belleza, salud, deportes, reservas y espacios.">
+<meta name="robots" content="noindex, follow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  *,*::before,*::after{box-sizing:border-box}
+  html{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+  body{
+    margin:0;
+    font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+    background:#fafaf9;
+    color:#0c0a09;
+    min-height:100vh;
+  }
+  @media (prefers-color-scheme: dark) {
+    body{background:#0a0a0a;color:#fafaf9}
+  }
+
+  .page{
+    max-width:1240px;
+    margin:0 auto;
+    padding:48px 24px 96px;
+  }
+
+  /* ── Hero ─────────────────────────────── */
+  .hero{
+    text-align:center;
+    margin-bottom:56px;
+    animation:fadeUp .8s ease-out both;
+  }
+  .hero-eyebrow{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    padding:6px 14px;
+    border-radius:9999px;
+    background:linear-gradient(135deg,#fef3c7,#fed7aa);
+    color:#92400e;
+    font-size:11px;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    margin-bottom:20px;
+  }
+  @media (prefers-color-scheme: dark) {
+    .hero-eyebrow{background:linear-gradient(135deg,#451a03,#7c2d12);color:#fed7aa}
+  }
+  .hero-eyebrow::before{
+    content:'';width:6px;height:6px;border-radius:50%;background:#16a34a;
+    box-shadow:0 0 0 4px rgba(22,163,74,.18);
+    animation:pulse 2s infinite;
+  }
+  .hero h1{
+    font-size:clamp(36px,6vw,64px);
+    font-weight:800;
+    letter-spacing:-0.04em;
+    line-height:1.05;
+    margin:0 0 16px;
+    background:linear-gradient(135deg,#0c0a09 0%,#525252 100%);
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+    background-clip:text;
+  }
+  @media (prefers-color-scheme: dark) {
+    .hero h1{background:linear-gradient(135deg,#fafaf9 0%,#a3a3a3 100%);-webkit-background-clip:text;background-clip:text}
+  }
+  .hero p{
+    font-size:17px;
+    line-height:1.6;
+    color:#525252;
+    max-width:560px;
+    margin:0 auto;
+  }
+  @media (prefers-color-scheme: dark) {
+    .hero p{color:#a3a3a3}
+  }
+
+  /* ── Filters ─────────────────────────── */
+  .filters{
+    display:flex;flex-wrap:wrap;gap:8px;justify-content:center;
+    margin-bottom:40px;
+    animation:fadeUp .9s ease-out .1s both;
+  }
+  .filter-chip{
+    border:1px solid #e7e5e4;
+    background:#fff;
+    color:#525252;
+    padding:8px 16px;
+    border-radius:9999px;
+    font-size:13px;
+    font-weight:600;
+    cursor:pointer;
+    transition:all .2s;
+    font-family:inherit;
+  }
+  .filter-chip:hover{
+    border-color:#a3a3a3;
+    transform:translateY(-1px);
+  }
+  .filter-chip.active{
+    background:#0c0a09;
+    border-color:#0c0a09;
+    color:#fff;
+  }
+  @media (prefers-color-scheme: dark) {
+    .filter-chip{border-color:#262626;background:#171717;color:#a3a3a3}
+    .filter-chip:hover{border-color:#525252}
+    .filter-chip.active{background:#fafaf9;border-color:#fafaf9;color:#0c0a09}
+  }
+
+  /* ── Grid ─────────────────────────────── */
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(280px,1fr));
+    gap:20px;
+  }
+
+  .card{
+    position:relative;
+    background:#fff;
+    border-radius:20px;
+    overflow:hidden;
+    border:1px solid #e7e5e4;
+    transition:all .3s cubic-bezier(0.4,0,0.2,1);
+    text-decoration:none;
+    color:inherit;
+    display:flex;
+    flex-direction:column;
+    animation:fadeUp 1s ease-out both;
+  }
+  .card:nth-child(2){animation-delay:.05s}
+  .card:nth-child(3){animation-delay:.1s}
+  .card:nth-child(4){animation-delay:.15s}
+  .card:nth-child(5){animation-delay:.2s}
+  .card:nth-child(6){animation-delay:.25s}
+  .card:nth-child(n+7){animation-delay:.3s}
+
+  .card:hover{
+    transform:translateY(-4px);
+    border-color:transparent;
+    box-shadow:0 12px 32px -8px rgba(0,0,0,.15),0 0 0 1px var(--accent,#0c0a09);
+  }
+  @media (prefers-color-scheme: dark) {
+    .card{background:#171717;border-color:#262626}
+    .card:hover{box-shadow:0 12px 32px -8px rgba(0,0,0,.5),0 0 0 1px var(--accent,#fafaf9)}
+  }
+
+  .card-cover{
+    height:120px;
+    position:relative;
+    overflow:hidden;
+    background:linear-gradient(135deg,var(--accent,#0c0a09),var(--accent-2,#525252));
+  }
+  .card-cover img{
+    width:100%;height:100%;object-fit:cover;
+    transition:transform .6s cubic-bezier(0.4,0,0.2,1);
+  }
+  .card:hover .card-cover img{transform:scale(1.06)}
+  .card-cover::after{
+    content:'';
+    position:absolute;inset:0;
+    background:linear-gradient(to bottom,transparent 30%,rgba(0,0,0,.35) 100%);
+    pointer-events:none;
+  }
+
+  .card-body{
+    padding:18px 20px 22px;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    flex:1;
+  }
+
+  .card-header{
+    display:flex;align-items:flex-start;gap:12px;
+    margin-top:-44px;
+    position:relative;
+    z-index:2;
+  }
+  .logo-circle{
+    width:56px;height:56px;
+    border-radius:16px;
+    background:#fff;
+    box-shadow:0 4px 12px rgba(0,0,0,.12),0 0 0 4px #fff;
+    overflow:hidden;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    shrink:0;
+    flex-shrink:0;
+  }
+  @media (prefers-color-scheme: dark) {
+    .logo-circle{background:#171717;box-shadow:0 4px 12px rgba(0,0,0,.4),0 0 0 4px #171717}
+  }
+  .logo-circle img{width:100%;height:100%;object-fit:contain;padding:4px}
+  .logo-initial{
+    font-size:22px;font-weight:800;letter-spacing:-.03em;
+    color:#fff;
+    width:100%;height:100%;
+    display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(135deg,var(--accent,#0c0a09),var(--accent-2,#525252));
+  }
+
+  .name{
+    font-size:17px;
+    font-weight:700;
+    letter-spacing:-.015em;
+    line-height:1.2;
+    margin:8px 0 0;
+  }
+
+  .rubro{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    font-size:11px;
+    font-weight:600;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    color:#737373;
+    margin-top:2px;
+  }
+  @media (prefers-color-scheme: dark) {
+    .rubro{color:#a3a3a3}
+  }
+  .rubro::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--accent,#737373)}
+
+  .desc{
+    font-size:13px;
+    line-height:1.55;
+    color:#525252;
+    margin:0;
+    display:-webkit-box;
+    -webkit-line-clamp:3;
+    -webkit-box-orient:vertical;
+    overflow:hidden;
+    flex:1;
+  }
+  @media (prefers-color-scheme: dark) {
+    .desc{color:#a3a3a3}
+  }
+  .desc.empty{font-style:italic;color:#a3a3a3}
+
+  .cta{
+    margin-top:auto;
+    padding-top:14px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    border-top:1px solid #f5f5f4;
+  }
+  @media (prefers-color-scheme: dark) {
+    .cta{border-top-color:#262626}
+  }
+  .visit{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    font-size:13px;
+    font-weight:600;
+    color:var(--accent,#0c0a09);
+    transition:transform .2s;
+  }
+  .card:hover .visit{transform:translateX(2px)}
+  .visit svg{transition:transform .25s cubic-bezier(0.4,0,0.2,1)}
+  .card:hover .visit svg{transform:translateX(3px)}
+
+  .slug{
+    font-family:'SF Mono','Menlo',monospace;
+    font-size:11px;
+    color:#a3a3a3;
+    letter-spacing:-.02em;
+  }
+  @media (prefers-color-scheme: dark) {
+    .slug{color:#737373}
+  }
+
+  /* ── Animations ─────────────────────── */
+  @keyframes fadeUp{
+    from{opacity:0;transform:translateY(20px)}
+    to{opacity:1;transform:translateY(0)}
+  }
+  @keyframes pulse{
+    0%,100%{box-shadow:0 0 0 0 rgba(22,163,74,.5)}
+    50%{box-shadow:0 0 0 6px rgba(22,163,74,0)}
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *{animation:none!important;transition:none!important}
+  }
+
+  /* ── Footer ─────────────────────────── */
+  .foot{
+    margin-top:80px;
+    text-align:center;
+    padding:24px;
+    color:#a3a3a3;
+    font-size:12px;
+  }
+  .foot a{color:#525252;text-decoration:none;font-weight:600}
+  .foot a:hover{color:#0c0a09}
+  @media (prefers-color-scheme: dark) {
+    .foot a{color:#a3a3a3}
+    .foot a:hover{color:#fafaf9}
+  }
+</style>
+</head>
+<body>
+<main class="page">
+  <header class="hero">
+    <span class="hero-eyebrow">61 negocios activos en TurnoLink</span>
+    <h1>Directorio de negocios</h1>
+    <p>Negocios que usan TurnoLink para gestionar sus turnos, reservas y servicios. Hacé click en cualquiera para visitar su sitio público.</p>
+  </header>
+
+  <div class="filters" role="tablist" aria-label="Filtrar por rubro">
+    <button class="filter-chip active" data-filter="all" role="tab" aria-selected="true">Todos</button>
+    <button class="filter-chip" data-filter="belleza" role="tab" aria-selected="false">Belleza</button>
+    <button class="filter-chip" data-filter="salud" role="tab" aria-selected="false">Salud</button>
+    <button class="filter-chip" data-filter="deportes" role="tab" aria-selected="false">Deportes</button>
+    <button class="filter-chip" data-filter="reservas" role="tab" aria-selected="false">Reservas & espacios</button>
+  </div>
+
+  <div class="grid" id="grid">
+
+    <a class="card" href="/albergue-luxury" target="_blank" rel="noopener" data-rubro="reservas" style="--accent:#9f1239;--accent-2:#5f0a22">
+      <div class="card-cover"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><div class="logo-initial">A</div></div>
+        </div>
+        <div>
+          <h3 class="name">Albergue Luxury</h3>
+          <span class="rubro">Hospedaje por horas</span>
+        </div>
+        <p class="desc">Experiencia exclusiva y discreta. Turnos de 2hs, 4hs, pernocte y suite VIP.</p>
+        <div class="cta">
+          <span class="slug">/albergue-luxury</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/alma-relax-spa" target="_blank" rel="noopener" data-rubro="belleza" style="--accent:#D97706;--accent-2:#824703">
+      <div class="card-cover"><img src="https://images.unsplash.com/photo-1540555700478-4be289fbec6d?w=1600&amp;h=600&amp;fit=crop" alt="" loading="lazy"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><img src="https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=400&amp;h=400&amp;fit=crop" alt="Alma Relax Spa" loading="lazy"></div>
+        </div>
+        <div>
+          <h3 class="name">Alma Relax Spa</h3>
+          <span class="rubro">Spa &amp; masajes</span>
+        </div>
+        <p class="desc">Spa holístico con tratamientos de relajación, faciales y circuitos wellness. Un oasis de tranquilidad en San Telmo.</p>
+        <div class="cta">
+          <span class="slug">/alma-relax-spa</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/armenon" target="_blank" rel="noopener" data-rubro="reservas" style="--accent:#1a1a2e;--accent-2:#0f0f1b">
+      <div class="card-cover"><img src="https://armenon.com/wp-content/uploads/2021/05/h_Loft_08.jpg" alt="" loading="lazy"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><img src="https://armenon.com/wp-content/uploads/2021/02/ARM_perfil-1b.jpg" alt="Armenón Hotel" loading="lazy"></div>
+        </div>
+        <div>
+          <h3 class="name">Armenón Hotel</h3>
+          <span class="rubro">Hospedaje por horas</span>
+        </div>
+        <p class="desc">Albergue transitorio premium en el corazón de Almagro, a metros del Abasto. Habitaciones temáticas exclusivas que combinan diseño, tecnología y confort para una experiencia…</p>
+        <div class="cta">
+          <span class="slug">/armenon</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/barber-club" target="_blank" rel="noopener" data-rubro="belleza" style="--accent:#d4a017;--accent-2:#7f600d">
+      <div class="card-cover"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><div class="logo-initial">B</div></div>
+        </div>
+        <div>
+          <h3 class="name">Barber Club</h3>
+          <span class="rubro">Barbería</span>
+        </div>
+        <p class="desc">Barberia premium. Cortes clasicos, fades, barba y tratamientos capilares.</p>
+        <div class="cta">
+          <span class="slug">/barber-club</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/demo-estetica" target="_blank" rel="noopener" data-rubro="belleza" style="--accent:#ec4899;--accent-2:#8d2b5b">
+      <div class="card-cover"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><div class="logo-initial">B</div></div>
+        </div>
+        <div>
+          <h3 class="name">Bella Estética</h3>
+          <span class="rubro">Estética &amp; belleza</span>
+        </div>
+        <p class="desc">Centro de belleza y bienestar. Tratamientos faciales, corporales, manicura, pedicura y más.</p>
+        <div class="cta">
+          <span class="slug">/demo-estetica</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/bella-estetica" target="_blank" rel="noopener" data-rubro="belleza" style="--accent:#ec4899;--accent-2:#8d2b5b">
+      <div class="card-cover"><img src="https://images.unsplash.com/photo-1560066984-138dadb4c035?w=1200&amp;h=400&amp;fit=crop" alt="" loading="lazy"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><img src="https://api.turnolink.com.ar/api/cdn/760829a0-9a7e-4173-b0e1-7bae9e77c3db/logos/24565a1f-6c95-4f8c-87cf-45bce3d506bf.jpeg" alt="Bella Estética" loading="lazy"></div>
+        </div>
+        <div>
+          <h3 class="name">Bella Estética</h3>
+          <span class="rubro">Estética &amp; belleza</span>
+        </div>
+        <p class="desc">Centro de belleza y bienestar. Tratamientos faciales, corporales y spa.</p>
+        <div class="cta">
+          <span class="slug">/bella-estetica</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/wash-pro-lavadero" target="_blank" rel="noopener" data-rubro="reservas" style="--accent:#0f172a;--accent-2:#090d19">
+      <div class="card-cover"><img src="https://images.unsplash.com/photo-1603584173870-7f23fdae1b7a?w=1200&amp;h=630&amp;fit=crop" alt="" loading="lazy"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><img src="https://api.turnolink.com.ar/api/cdn/f946dc46-4dba-46f8-95f3-abbc232dd129/logos/e38bdaad-806f-40d7-96cd-082e626e37cc.webp" alt="Black Diamond Detailing" loading="lazy"></div>
+        </div>
+        <div>
+          <h3 class="name">Black Diamond Detailing</h3>
+          <span class="rubro">Otros</span>
+        </div>
+        <p class="desc">Estudio premium de detailing automotriz. Corrección de pintura, coating cerámico y PPF. Cada vehículo recibe tratamiento de élite.</p>
+        <div class="cta">
+          <span class="slug">/wash-pro-lavadero</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/cabanas-del-lago" target="_blank" rel="noopener" data-rubro="reservas" style="--accent:#1e3a5f;--accent-2:#122239">
+      <div class="card-cover"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><div class="logo-initial">C</div></div>
+        </div>
+        <div>
+          <h3 class="name">Cabañas del Lago</h3>
+          <span class="rubro">General</span>
+        </div>
+        <p class="desc">Tu escape perfecto con vista al lago en Villa La Angostura. Cabañas equipadas y experiencias al aire libre.</p>
+        <div class="cta">
+          <span class="slug">/cabanas-del-lago</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/cafe-origen" target="_blank" rel="noopener" data-rubro="reservas" style="--accent:#3F8697;--accent-2:#25505a">
+      <div class="card-cover"><img src="https://api.turnolink.com.ar/api/cdn/e216ea56-1f4f-4565-92a1-6cabb29a7d37/covers/7addf572-5aa8-4e78-9ee4-8284f4f8ccd7.webp" alt="" loading="lazy"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><img src="https://api.turnolink.com.ar/api/cdn/e216ea56-1f4f-4565-92a1-6cabb29a7d37/logos/373d252e-3ff7-4027-9c8c-0a5a0a26d2c2.webp" alt="Café Origen" loading="lazy"></div>
+        </div>
+        <div>
+          <h3 class="name">Café Origen</h3>
+          <span class="rubro">Gastronomía</span>
+        </div>
+        <p class="desc">Café de especialidad, pastelería artesanal y brunch. Granos seleccionados de fincas latinoamericanas, tostados en casa.</p>
+        <div class="cta">
+          <span class="slug">/cafe-origen</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/centro-de-servicios" target="_blank" rel="noopener" data-rubro="reservas" style="--accent:#0c0a09;--accent-2:#070605">
+      <div class="card-cover"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><div class="logo-initial">C</div></div>
+        </div>
+        <div>
+          <h3 class="name">Centro de servicios</h3>
+          <span class="rubro">Otros</span>
+        </div>
+        <p class="desc empty">Visitá el sitio público para más información.</p>
+        <div class="cta">
+          <span class="slug">/centro-de-servicios</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/consultorio-medico" target="_blank" rel="noopener" data-rubro="salud" style="--accent:#2563eb;--accent-2:#163b8d">
+      <div class="card-cover"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><div class="logo-initial">C</div></div>
+        </div>
+        <div>
+          <h3 class="name">Centro Medico Salud Integral</h3>
+          <span class="rubro">Salud</span>
+        </div>
+        <p class="desc">Centro medico multidisciplinario. Consultas clinicas, pediatria, dermatologia, cardiologia y nutricion.</p>
+        <div class="cta">
+          <span class="slug">/consultorio-medico</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/demo-talent-pool" target="_blank" rel="noopener" data-rubro="reservas" style="--accent:#0c0a09;--accent-2:#070605">
+      <div class="card-cover"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><div class="logo-initial">D</div></div>
+        </div>
+        <div>
+          <h3 class="name">Demo Talent Pool</h3>
+          <span class="rubro">Otros</span>
+        </div>
+        <p class="desc empty">Visitá el sitio público para más información.</p>
+        <div class="cta">
+          <span class="slug">/demo-talent-pool</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/dra-martinez-dermatologia" target="_blank" rel="noopener" data-rubro="salud" style="--accent:#1565c0;--accent-2:#0c3c73">
+      <div class="card-cover"><img src="https://images.unsplash.com/photo-1629909613654-28e377c37b09?w=1600&amp;h=600&amp;fit=crop" alt="" loading="lazy"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><img src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&amp;h=400&amp;fit=crop" alt="Dra. Martínez Dermatología" loading="lazy"></div>
+        </div>
+        <div>
+          <h3 class="name">Dra. Martínez Dermatología</h3>
+          <span class="rubro">Salud</span>
+        </div>
+        <p class="desc">Consultorio dermatológico especializado en tratamientos estéticos y médicos. Botox, rellenos con ácido hialurónico, peelings químicos, microagujado y dermatoscopía digital.…</p>
+        <div class="cta">
+          <span class="slug">/dra-martinez-dermatologia</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/escribania-mendez" target="_blank" rel="noopener" data-rubro="salud" style="--accent:#0c0a09;--accent-2:#070605">
+      <div class="card-cover"><img src="https://images.unsplash.com/photo-1497366216548-37526070297c?w=1600&amp;h=600&amp;fit=crop" alt="" loading="lazy"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><img src="https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=400&amp;h=400&amp;fit=crop" alt="Escribanía Méndez" loading="lazy"></div>
+        </div>
+        <div>
+          <h3 class="name">Escribanía Méndez</h3>
+          <span class="rubro">Consultoría</span>
+        </div>
+        <p class="desc">Escribanía con 20 años de trayectoria en CABA. Escrituras, poderes, certificaciones, actas notariales y asesoramiento inmobiliario. Atención con turno previo.</p>
+        <div class="cta">
+          <span class="slug">/escribania-mendez</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/espacio-nuvra" target="_blank" rel="noopener" data-rubro="reservas" style="--accent:#000000;--accent-2:#000000">
+      <div class="card-cover"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><img src="https://api.turnolink.com.ar/api/cdn/c5e59555-d722-4303-8146-a001d6a488d4/logos/71d25a5e-0101-48fd-8fd6-da26bfc8650c.webp" alt="Espacio nuvra" loading="lazy"></div>
+        </div>
+        <div>
+          <h3 class="name">Espacio nuvra</h3>
+          <span class="rubro">Otros</span>
+        </div>
+        <p class="desc">Sala de ensayo / fotografía / clases</p>
+        <div class="cta">
+          <span class="slug">/espacio-nuvra</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/essen-catalogo" target="_blank" rel="noopener" data-rubro="reservas" style="--accent:#6366f1;--accent-2:#3b3d90">
+      <div class="card-cover"><img src="https://api.turnolink.com.ar/api/cdn/671eb1de-a814-40c3-8add-83698a5237c8/covers/fce129a3-0d02-48a8-87d9-cfb303891357.webp" alt="" loading="lazy"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><img src="https://api.turnolink.com.ar/api/cdn/671eb1de-a814-40c3-8add-83698a5237c8/logos/ff9b7396-e7f8-445b-b0bb-192e7c63a228.webp" alt="Essen - Catalogo Oficial" loading="lazy"></div>
+        </div>
+        <div>
+          <h3 class="name">Essen - Catalogo Oficial</h3>
+          <span class="rubro">Tienda</span>
+        </div>
+        <p class="desc empty">Visitá el sitio público para más información.</p>
+        <div class="cta">
+          <span class="slug">/essen-catalogo</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/estudio-contable-ruiz" target="_blank" rel="noopener" data-rubro="salud" style="--accent:#0c0a09;--accent-2:#070605">
+      <div class="card-cover"><img src="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=1600&amp;h=600&amp;fit=crop" alt="" loading="lazy"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><img src="https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=400&amp;h=400&amp;fit=crop" alt="Estudio Contable Ruiz &amp; Asociados" loading="lazy"></div>
+        </div>
+        <div>
+          <h3 class="name">Estudio Contable Ruiz &amp; Asociados</h3>
+          <span class="rubro">Consultoría</span>
+        </div>
+        <p class="desc">Estudio contable e impositivo con más de 10 años de trayectoria. Especialistas en monotributo, responsables inscriptos, sociedades y liquidación de sueldos.</p>
+        <div class="cta">
+          <span class="slug">/estudio-contable-ruiz</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/estudio-molina-asociados" target="_blank" rel="noopener" data-rubro="salud" style="--accent:#0c0a09;--accent-2:#070605">
+      <div class="card-cover"><img src="https://images.unsplash.com/photo-1497366216548-37526070297c?w=1600&amp;h=600&amp;fit=crop" alt="" loading="lazy"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><img src="https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=400&amp;h=400&amp;fit=crop" alt="Estudio Molina &amp; Asociados" loading="lazy"></div>
+        </div>
+        <div>
+          <h3 class="name">Estudio Molina &amp; Asociados</h3>
+          <span class="rubro">Consultoría</span>
+        </div>
+        <p class="desc">Estudio jurídico especializado en derecho civil, comercial y de familia. Más de 15 años de experiencia brindando asesoramiento legal integral a personas y empresas en Buenos Aires.</p>
+        <div class="cta">
+          <span class="slug">/estudio-molina-asociados</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/ffffffff" target="_blank" rel="noopener" data-rubro="deportes" style="--accent:#6366f1;--accent-2:#3b3d90">
+      <div class="card-cover"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><div class="logo-initial">F</div></div>
+        </div>
+        <div>
+          <h3 class="name">ffffffff</h3>
+          <span class="rubro">Fitness</span>
+        </div>
+        <p class="desc empty">Visitá el sitio público para más información.</p>
+        <div class="cta">
+          <span class="slug">/ffffffff</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/fine-line-studio" target="_blank" rel="noopener" data-rubro="belleza" style="--accent:#1A1A1A;--accent-2:#0f0f0f">
+      <div class="card-cover"><img src="https://images.unsplash.com/photo-1598371839696-5c5bb1304a8a?w=1600&amp;h=600&amp;fit=crop" alt="" loading="lazy"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><img src="https://images.unsplash.com/photo-1590246814883-57c511c5e7b5?w=400&amp;h=400&amp;fit=crop" alt="Fine Line Studio" loading="lazy"></div>
+        </div>
+        <div>
+          <h3 class="name">Fine Line Studio</h3>
+          <span class="rubro">Tatuajes &amp; piercing</span>
+        </div>
+        <p class="desc">Estudio de tatuajes minimalistas especializados en fine line, micro realismo y piercing premium en Villa Crespo.</p>
+        <div class="cta">
+          <span class="slug">/fine-line-studio</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/fitzone-training" target="_blank" rel="noopener" data-rubro="deportes" style="--accent:#e65100;--accent-2:#8a3000">
+      <div class="card-cover"><img src="https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=1600&amp;h=600&amp;fit=crop" alt="" loading="lazy"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><img src="https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=400&amp;h=400&amp;fit=crop" alt="FitZone Training" loading="lazy"></div>
+        </div>
+        <div>
+          <h3 class="name">FitZone Training</h3>
+          <span class="rubro">Fitness</span>
+        </div>
+        <p class="desc">Centro de entrenamiento personalizado. Sesiones individuales, funcional en grupo reducido, spinning, yoga, pilates reformer y asesoramiento nutricional. Entrenamiento inteligente…</p>
+        <div class="cta">
+          <span class="slug">/fitzone-training</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/pro-franco-1e74bf" target="_blank" rel="noopener" data-rubro="reservas" style="--accent:#6366f1;--accent-2:#3b3d90">
+      <div class="card-cover"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><div class="logo-initial">F</div></div>
+        </div>
+        <div>
+          <h3 class="name">Franco </h3>
+          <span class="rubro">Otros</span>
+        </div>
+        <p class="desc empty">Visitá el sitio público para más información.</p>
+        <div class="cta">
+          <span class="slug">/pro-franco-1e74bf</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/franco-valencia-sosa-dc56dc" target="_blank" rel="noopener" data-rubro="reservas" style="--accent:#0c0a09;--accent-2:#070605">
+      <div class="card-cover"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><div class="logo-initial">F</div></div>
+        </div>
+        <div>
+          <h3 class="name">Franco Valencia Sosa</h3>
+          <span class="rubro">Otros</span>
+        </div>
+        <p class="desc empty">Visitá el sitio público para más información.</p>
+        <div class="cta">
+          <span class="slug">/franco-valencia-sosa-dc56dc</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/franco-valencia-sosa-84d567" target="_blank" rel="noopener" data-rubro="salud" style="--accent:#0c0a09;--accent-2:#070605">
+      <div class="card-cover"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><div class="logo-initial">F</div></div>
+        </div>
+        <div>
+          <h3 class="name">Franco Valencia Sosa</h3>
+          <span class="rubro">Consultoría</span>
+        </div>
+        <p class="desc empty">Visitá el sitio público para más información.</p>
+        <div class="cta">
+          <span class="slug">/franco-valencia-sosa-84d567</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/happy-paws" target="_blank" rel="noopener" data-rubro="salud" style="--accent:#2e7d32;--accent-2:#1b4b1e">
+      <div class="card-cover"><img src="https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=1600&amp;h=600&amp;fit=crop" alt="" loading="lazy"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><img src="https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=400&amp;h=400&amp;fit=crop" alt="Happy Paws" loading="lazy"></div>
+        </div>
+        <div>
+          <h3 class="name">Happy Paws</h3>
+          <span class="rubro">Veterinaria</span>
+        </div>
+        <p class="desc">Peluquería y spa canino profesional. Baño, corte de raza, deslanado, tratamientos antipulgas, limpieza dental y spa premium. Porque tu mascota merece lo mejor.</p>
+        <div class="cta">
+          <span class="slug">/happy-paws</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/hola-pa" target="_blank" rel="noopener" data-rubro="reservas" style="--accent:#6366f1;--accent-2:#3b3d90">
+      <div class="card-cover"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><div class="logo-initial">H</div></div>
+        </div>
+        <div>
+          <h3 class="name">Hola pa</h3>
+          <span class="rubro">Otros</span>
+        </div>
+        <p class="desc empty">Visitá el sitio público para más información.</p>
+        <div class="cta">
+          <span class="slug">/hola-pa</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/hotel-costa-serena" target="_blank" rel="noopener" data-rubro="reservas" style="--accent:#059669;--accent-2:#035a3f">
+      <div class="card-cover"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><div class="logo-initial">H</div></div>
+        </div>
+        <div>
+          <h3 class="name">Hotel Costa Serena</h3>
+          <span class="rubro">Hospedaje por horas</span>
+        </div>
+        <p class="desc">Hotel boutique frente al mar. Habitaciones con vista al oceano, suites premium y cabanas.</p>
+        <div class="cta">
+          <span class="slug">/hotel-costa-serena</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/imola-autos" target="_blank" rel="noopener" data-rubro="reservas" style="--accent:#1a1a2e;--accent-2:#0f0f1b">
+      <div class="card-cover"><img src="https://api.turnolink.com.ar/api/cdn/d762f52e-fff2-4d70-a063-fbdac0788a70/covers/551d7fbf-69fb-4e22-b297-12b3e6b4f739.webp" alt="" loading="lazy"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><img src="https://api.turnolink.com.ar/api/cdn/d762f52e-fff2-4d70-a063-fbdac0788a70/logos/37dbb880-5364-4475-a741-4c8fe6863409.webp" alt="Imola Autos" loading="lazy"></div>
+        </div>
+        <div>
+          <h3 class="name">Imola Autos</h3>
+          <span class="rubro">Automotora</span>
+        </div>
+        <p class="desc">Concesionaria multimarca en Buenos Aires. Venta de autos usados y 0km con financiación.</p>
+        <div class="cta">
+          <span class="slug">/imola-autos</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/ink-master-studio" target="_blank" rel="noopener" data-rubro="belleza" style="--accent:#c62828;--accent-2:#761818">
+      <div class="card-cover"><img src="https://images.unsplash.com/photo-1611501275019-9b5cda994e8d?w=1600&amp;h=600&amp;fit=crop" alt="" loading="lazy"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><img src="https://images.unsplash.com/photo-1611501275019-9b5cda994e8d?w=400&amp;h=400&amp;fit=crop" alt="Ink Master Studio" loading="lazy"></div>
+        </div>
+        <div>
+          <h3 class="name">Ink Master Studio</h3>
+          <span class="rubro">Tatuajes &amp; piercing</span>
+        </div>
+        <p class="desc">Estudio de tatuajes profesional en Palermo Soho. Realismo, blackwork, neotradicional, fine line, piercing y micropigmentación. Arte permanente en tu piel con los más altos…</p>
+        <div class="cta">
+          <span class="slug">/ink-master-studio</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/iphone-buenos-aires" target="_blank" rel="noopener" data-rubro="reservas" style="--accent:#6366f1;--accent-2:#3b3d90">
+      <div class="card-cover"><img src="https://api.turnolink.com.ar/api/cdn/1e70c85e-2b7f-4408-ac4a-3bde73baaaa6/covers/3574daf2-b05d-4d23-8c48-2592eae82ec7.webp" alt="" loading="lazy"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><img src="https://api.turnolink.com.ar/api/cdn/1e70c85e-2b7f-4408-ac4a-3bde73baaaa6/logos/75ecd7f0-b4e7-4090-85e2-fa5be45376dc.webp" alt="iPhone Buenos Aires" loading="lazy"></div>
+        </div>
+        <div>
+          <h3 class="name">iPhone Buenos Aires</h3>
+          <span class="rubro">Celulares</span>
+        </div>
+        <p class="desc">Los mejores iPhones al mejor precio. Equipos nuevos, sellados, con garantía oficial. Envíos a todo el país.</p>
+        <div class="cta">
+          <span class="slug">/iphone-buenos-aires</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/juanaspa" target="_blank" rel="noopener" data-rubro="belleza" style="--accent:#0c0a09;--accent-2:#070605">
+      <div class="card-cover"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><div class="logo-initial">J</div></div>
+        </div>
+        <div>
+          <h3 class="name">JuanaSpa</h3>
+          <span class="rubro">Spa &amp; masajes</span>
+        </div>
+        <p class="desc empty">Visitá el sitio público para más información.</p>
+        <div class="cta">
+          <span class="slug">/juanaspa</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/kados-tattoo" target="_blank" rel="noopener" data-rubro="belleza" style="--accent:#0c0a09;--accent-2:#070605">
+      <div class="card-cover"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><div class="logo-initial">K</div></div>
+        </div>
+        <div>
+          <h3 class="name">Kados Tattoo</h3>
+          <span class="rubro">Tatuajes &amp; piercing</span>
+        </div>
+        <p class="desc empty">Visitá el sitio público para más información.</p>
+        <div class="cta">
+          <span class="slug">/kados-tattoo</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/lash-studio-ba" target="_blank" rel="noopener" data-rubro="belleza" style="--accent:#7b1fa2;--accent-2:#491261">
+      <div class="card-cover"><img src="https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=1600&amp;h=600&amp;fit=crop" alt="" loading="lazy"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><img src="https://api.turnolink.com.ar/api/cdn/024302be-e18d-4ae3-a161-f90f86178ec3/logos/e30793e2-655b-446c-bdd4-422933f9bdb5.jpg" alt="Lash Studio BA" loading="lazy"></div>
+        </div>
+        <div>
+          <h3 class="name">Lash Studio BA</h3>
+          <span class="rubro">Estética &amp; belleza</span>
+        </div>
+        <p class="desc">Estudio premium de extensiones de pestañas, lifting y diseño de cejas en Palermo. Técnicas clásicas, volumen ruso y mega volumen. Tu mirada perfecta garantizada.</p>
+        <div class="cta">
+          <span class="slug">/lash-studio-ba</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/leonardo-0aec07" target="_blank" rel="noopener" data-rubro="reservas" style="--accent:#0c0a09;--accent-2:#070605">
+      <div class="card-cover"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><div class="logo-initial">L</div></div>
+        </div>
+        <div>
+          <h3 class="name">Leonardo</h3>
+          <span class="rubro">Otros</span>
+        </div>
+        <p class="desc empty">Visitá el sitio público para más información.</p>
+        <div class="cta">
+          <span class="slug">/leonardo-0aec07</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/lic-gomez-psicologia" target="_blank" rel="noopener" data-rubro="reservas" style="--accent:#5b21b6;--accent-2:#36136d">
+      <div class="card-cover"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><div class="logo-initial">L</div></div>
+        </div>
+        <div>
+          <h3 class="name">Lic. Laura Gómez — Psicología</h3>
+          <span class="rubro">General</span>
+        </div>
+        <p class="desc">Psicología clínica, terapia de pareja y orientación vocacional. Consultorio en Belgrano, Buenos Aires.</p>
+        <div class="cta">
+          <span class="slug">/lic-gomez-psicologia</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/nutricionya" target="_blank" rel="noopener" data-rubro="salud" style="--accent:#6366f1;--accent-2:#3b3d90">
+      <div class="card-cover"><img src="https://api.turnolink.com.ar/api/cdn/a22e7002-14cc-46f6-a913-17734c85e201/covers/f8e6e1fb-a9d3-4229-b3d1-66f65d1fa578.jpg" alt="" loading="lazy"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><img src="https://api.turnolink.com.ar/api/cdn/a22e7002-14cc-46f6-a913-17734c85e201/logos/32e2e854-e12b-496c-a60b-ae6e05af26e7.webp" alt="Lic. Noelia Holder " loading="lazy"></div>
+        </div>
+        <div>
+          <h3 class="name">Lic. Noelia Holder </h3>
+          <span class="rubro">Salud</span>
+        </div>
+        <p class="desc">Consultorio de Nutrición • Planes alimentarios personalizados • Nutrición deportiva, clínica e infantil • Turnos online y presenciales • M.N 1121</p>
+        <div class="cta">
+          <span class="slug">/nutricionya</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/psicologiaya" target="_blank" rel="noopener" data-rubro="salud" style="--accent:#3F8697;--accent-2:#25505a">
+      <div class="card-cover"><img src="https://api.turnolink.com.ar/api/cdn/a742f54f-f695-4eee-bc30-000f84c8a3b2/general/b9327e51-e011-4302-b4a3-07b1cf10e7bb.jpg" alt="" loading="lazy"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><img src="https://api.turnolink.com.ar/api/cdn/a742f54f-f695-4eee-bc30-000f84c8a3b2/logos/7769c57b-957c-4987-866c-94cb89047121.jpg" alt="Lic. Valentina Herrera" loading="lazy"></div>
+        </div>
+        <div>
+          <h3 class="name">Lic. Valentina Herrera</h3>
+          <span class="rubro">Psicología</span>
+        </div>
+        <p class="desc">Psicóloga clínica especializada en terapia cognitivo-conductual, ansiedad, depresión y manejo del estrés. Sesiones presenciales y online. MN 78.542</p>
+        <div class="cta">
+          <span class="slug">/psicologiaya</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/linaje" target="_blank" rel="noopener" data-rubro="reservas" style="--accent:#6366f1;--accent-2:#3b3d90">
+      <div class="card-cover"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><div class="logo-initial">L</div></div>
+        </div>
+        <div>
+          <h3 class="name">Linaje</h3>
+          <span class="rubro">Tienda</span>
+        </div>
+        <p class="desc empty">Visitá el sitio público para más información.</p>
+        <div class="cta">
+          <span class="slug">/linaje</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/lo-de-jesus" target="_blank" rel="noopener" data-rubro="reservas" style="--accent:#b91c1c;--accent-2:#6f1010">
+      <div class="card-cover"><img src="https://api.turnolink.com.ar/uploads/1a130754-0cc2-4121-b9e6-e1ba3c8e9612/covers/49d34cb2-bf4b-4bda-960a-be2a5ab9714f.webp" alt="" loading="lazy"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><img src="https://api.turnolink.com.ar/api/cdn/1a130754-0cc2-4121-b9e6-e1ba3c8e9612/logos/54f03676-a39f-46aa-bf6b-59cfd6cd41b3.webp" alt="Lo de Jesús" loading="lazy"></div>
+        </div>
+        <div>
+          <h3 class="name">Lo de Jesús</h3>
+          <span class="rubro">Gastronomía</span>
+        </div>
+        <p class="desc">Restaurante de comida casera y parrilla en Caballito. Delivery, take away y salón.</p>
+        <div class="cta">
+          <span class="slug">/lo-de-jesus</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/pro-melisa-leslie-a1d74f" target="_blank" rel="noopener" data-rubro="reservas" style="--accent:#0c0a09;--accent-2:#070605">
+      <div class="card-cover"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><div class="logo-initial">M</div></div>
+        </div>
+        <div>
+          <h3 class="name">Melisa Leslie </h3>
+          <span class="rubro">Otros</span>
+        </div>
+        <p class="desc empty">Visitá el sitio público para más información.</p>
+        <div class="cta">
+          <span class="slug">/pro-melisa-leslie-a1d74f</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/meliu" target="_blank" rel="noopener" data-rubro="reservas" style="--accent:#EC4899;--accent-2:#8d2b5b">
+      <div class="card-cover"><img src="https://api.turnolink.com.ar/api/cdn/1c3dcedb-0779-44e2-be5e-8de30012596d/covers/5ec6b963-3a6c-4243-8dc1-02f7799b5e85.webp" alt="" loading="lazy"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><img src="https://api.turnolink.com.ar/api/cdn/1c3dcedb-0779-44e2-be5e-8de30012596d/logos/70f563be-86da-4ae1-8d98-cd9301b41cfb.webp" alt="Meliuu Repostería" loading="lazy"></div>
+        </div>
+        <div>
+          <h3 class="name">Meliuu Repostería</h3>
+          <span class="rubro">Tienda</span>
+        </div>
+        <p class="desc">Tortas artesanales, tartas y dulces para cada momento especial. Pedidos personalizados con amor.</p>
+        <div class="cta">
+          <span class="slug">/meliu</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/moda-urbana-ba" target="_blank" rel="noopener" data-rubro="reservas" style="--accent:#E11D48;--accent-2:#87112b">
+      <div class="card-cover"><img src="https://api.turnolink.com.ar/api/cdn/31bd1d81-2c5b-4313-b066-d1daff7bedc5/covers/50731f18-5547-43f5-819d-d322a2957175.webp" alt="" loading="lazy"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><img src="https://api.turnolink.com.ar/api/cdn/31bd1d81-2c5b-4313-b066-d1daff7bedc5/logos/30cc3dff-468f-41f0-a7fb-86532c6cae09.webp" alt="Moda Urbana BA" loading="lazy"></div>
+        </div>
+        <div>
+          <h3 class="name">Moda Urbana BA</h3>
+          <span class="rubro">Indumentaria</span>
+        </div>
+        <p class="desc">Moda femenina urbana con estilo propio. Remeras, blusas, sweaters, jeans, vestidos, abrigos y calzado. Envíos a todo el país. 3 cuotas sin interés.</p>
+        <div class="cta">
+          <span class="slug">/moda-urbana-ba</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/nails-and-co" target="_blank" rel="noopener" data-rubro="belleza" style="--accent:#d81b60;--accent-2:#811039">
+      <div class="card-cover"><img src="https://images.unsplash.com/photo-1610992015732-2449b76344bc?w=1600&amp;h=600&amp;fit=crop" alt="" loading="lazy"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><img src="https://images.unsplash.com/photo-1604654894610-df63bc536371?w=400&amp;h=400&amp;fit=crop" alt="Nails &amp; Co." loading="lazy"></div>
+        </div>
+        <div>
+          <h3 class="name">Nails &amp; Co.</h3>
+          <span class="rubro">Estética &amp; belleza</span>
+        </div>
+        <p class="desc">Centro especializado en uñas esculpidas, esmaltado semipermanente, manicura rusa y nail art de diseño. Técnicas de vanguardia y productos premium para uñas perfectas.</p>
+        <div class="cta">
+          <span class="slug">/nails-and-co</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/odontologiaya" target="_blank" rel="noopener" data-rubro="salud" style="--accent:#0c0a09;--accent-2:#070605">
+      <div class="card-cover"><img src="https://api.turnolink.com.ar/api/cdn/9f0ba599-41db-4685-a1aa-9d53101990eb/covers/2dfa57bc-63d7-47c9-8bf1-635619815968.jpg" alt="" loading="lazy"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><img src="https://api.turnolink.com.ar/api/cdn/9f0ba599-41db-4685-a1aa-9d53101990eb/logos/aac7b4b1-3812-4de8-ab0a-6a34b42465a9.jpg" alt="Odontología Ya" loading="lazy"></div>
+        </div>
+        <div>
+          <h3 class="name">Odontología Ya</h3>
+          <span class="rubro">Odontología</span>
+        </div>
+        <p class="desc">Consultorio odontológico del Dr. Martín Olivera. Atención integral en odontología general, estética y rehabilitación oral. Tecnología de última generación y un equipo comprometido…</p>
+        <div class="cta">
+          <span class="slug">/odontologiaya</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/padel-futbol-sur" target="_blank" rel="noopener" data-rubro="deportes" style="--accent:#22C55E;--accent-2:#147638">
+      <div class="card-cover"><img src="https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?w=1600&amp;h=600&amp;fit=crop" alt="" loading="lazy"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><img src="https://api.turnolink.com.ar/api/cdn/9e84685f-1d6b-4ddb-848c-51b945720fc6/logos/13fcb5c1-5fe8-4627-ba0e-3bb1efa41a51.webp" alt="Pádel &amp; Fútbol Sur" loading="lazy"></div>
+        </div>
+        <div>
+          <h3 class="name">Pádel &amp; Fútbol Sur</h3>
+          <span class="rubro">Deportes</span>
+        </div>
+        <p class="desc">Complejo deportivo con canchas de pádel, fútbol 5, fútbol 7, tenis y básquet. Clases grupales y alquiler de equipamiento.</p>
+        <div class="cta">
+          <span class="slug">/padel-futbol-sur</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/prueba-qr" target="_blank" rel="noopener" data-rubro="reservas" style="--accent:#0c0a09;--accent-2:#070605">
+      <div class="card-cover"><img src="https://api.turnolink.com.ar/api/cdn/3c7f2699-9408-4565-9a1a-c653a433d783/covers/a48d0b3f-b99a-4a3c-965b-f173000b5328.webp" alt="" loading="lazy"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><img src="https://api.turnolink.com.ar/api/cdn/3c7f2699-9408-4565-9a1a-c653a433d783/logos/9fedbc50-e84c-421b-856a-81ce56bf7c5c.webp" alt="Prueba qr" loading="lazy"></div>
+        </div>
+        <div>
+          <h3 class="name">Prueba qr</h3>
+          <span class="rubro">Otros</span>
+        </div>
+        <p class="desc">Q se yo</p>
+        <div class="cta">
+          <span class="slug">/prueba-qr</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/quinta-los-alamos" target="_blank" rel="noopener" data-rubro="reservas" style="--accent:#0c0a09;--accent-2:#070605">
+      <div class="card-cover"><img src="https://images.unsplash.com/photo-1711110066231-cb235d6e117e?w=1200&amp;q=80&amp;auto=format&amp;fit=crop" alt="" loading="lazy"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><img src="https://images.unsplash.com/photo-1711110065992-6d6aff9ae35c?w=1200&amp;q=80&amp;auto=format&amp;fit=crop" alt="Quinta Los Álamos" loading="lazy"></div>
+        </div>
+        <div>
+          <h3 class="name">Quinta Los Álamos</h3>
+          <span class="rubro">Alquiler temporario</span>
+        </div>
+        <p class="desc">Hermosa casa de campo con pileta, parrilla y amplio parque arbolado. Ubicada a solo 45 minutos de Capital Federal, ideal para escapadas de fin de semana, reuniones familiares o…</p>
+        <div class="cta">
+          <span class="slug">/quinta-los-alamos</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/quintaya" target="_blank" rel="noopener" data-rubro="reservas" style="--accent:#6366f1;--accent-2:#3b3d90">
+      <div class="card-cover"><img src="https://api.turnolink.com.ar/api/cdn/637b0d45-84d5-40ba-8258-4d96a665b54c/general/af8e6e85-08be-45e2-b6c2-fc1970e9e22e.webp" alt="" loading="lazy"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><img src="https://api.turnolink.com.ar/api/cdn/637b0d45-84d5-40ba-8258-4d96a665b54c/general/fe91353c-9906-4b11-b8d3-ed915368ab66.webp" alt="Quinta Ya" loading="lazy"></div>
+        </div>
+        <div>
+          <h3 class="name">Quinta Ya</h3>
+          <span class="rubro">Alquiler temporario</span>
+        </div>
+        <p class="desc">Tu escape al campo - cabanas, quincho, pileta y naturaleza a minutos de la ciudad</p>
+        <div class="cta">
+          <span class="slug">/quintaya</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/rodrigo-propiedades" target="_blank" rel="noopener" data-rubro="reservas" style="--accent:#381f14;--accent-2:#21120c">
+      <div class="card-cover"><img src="https://api.turnolink.com.ar/api/cdn/2ae4a1a4-e93c-4e09-bd5b-534941ac2d87/covers/05b667c1-846b-4242-8627-5d1881b7b14a.webp" alt="" loading="lazy"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><img src="https://api.turnolink.com.ar/api/cdn/2ae4a1a4-e93c-4e09-bd5b-534941ac2d87/logos/920598ec-e7ca-4129-bc16-ed8adf60a6c2.webp" alt="Rodrigo Propiedades" loading="lazy"></div>
+        </div>
+        <div>
+          <h3 class="name">Rodrigo Propiedades</h3>
+          <span class="rubro">Inmobiliaria</span>
+        </div>
+        <p class="desc">Inmobiliaria en La Plata y alrededores. Venta y alquiler de departamentos, casas, terrenos, locales, oficinas y más. Operamos en La Plata, City Bell, Villa Elisa, Berazategui…</p>
+        <div class="cta">
+          <span class="slug">/rodrigo-propiedades</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/salon-noir" target="_blank" rel="noopener" data-rubro="belleza" style="--accent:#6a1b9a;--accent-2:#3f105c">
+      <div class="card-cover"><img src="https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?w=1600&amp;h=600&amp;fit=crop" alt="" loading="lazy"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><img src="https://api.turnolink.com.ar/api/cdn/9dbc71cf-8990-4423-84b4-0b8d81e4bbcf/logos/logo.jpg" alt="Salón Noir" loading="lazy"></div>
+        </div>
+        <div>
+          <h3 class="name">Salón Noir</h3>
+          <span class="rubro">Estética &amp; belleza</span>
+        </div>
+        <p class="desc">Peluquería unisex de alta gama en Palermo Soho. Color, corte de precisión, mechas balayage, alisados con keratina y tratamientos capilares premium. Tu estilo, nuestra firma.</p>
+        <div class="cta">
+          <span class="slug">/salon-noir</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/sonrisas-odontologia" target="_blank" rel="noopener" data-rubro="salud" style="--accent:#0277bd;--accent-2:#014771">
+      <div class="card-cover"><img src="https://images.unsplash.com/photo-1629909615184-74f495363b67?w=1600&amp;h=600&amp;fit=crop" alt="" loading="lazy"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><img src="https://images.unsplash.com/photo-1606811841689-23dfddce3e95?w=400&amp;h=400&amp;fit=crop" alt="Sonrisas Odontología" loading="lazy"></div>
+        </div>
+        <div>
+          <h3 class="name">Sonrisas Odontología</h3>
+          <span class="rubro">Odontología</span>
+        </div>
+        <p class="desc">Consultorio odontológico integral en Buenos Aires. Odontología general, estética dental, ortodoncia, blanqueamiento, implantes y cirugía. Tecnología de última generación para tu…</p>
+        <div class="cta">
+          <span class="slug">/sonrisas-odontologia</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/stanley-catalogo" target="_blank" rel="noopener" data-rubro="reservas" style="--accent:#6366f1;--accent-2:#3b3d90">
+      <div class="card-cover"><img src="https://api.turnolink.com.ar/api/cdn/770ab34b-cbc9-402a-afdb-f6f529e1f5b1/covers/526624cd-a2e8-4bfe-bb67-a89ad34fcd65.webp" alt="" loading="lazy"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><img src="https://api.turnolink.com.ar/api/cdn/770ab34b-cbc9-402a-afdb-f6f529e1f5b1/logos/7e675077-e95a-4525-b2f3-64c9e4a7f838.webp" alt="Stanley 1913 - Catálogo Oficial" loading="lazy"></div>
+        </div>
+        <div>
+          <h3 class="name">Stanley 1913 - Catálogo Oficial</h3>
+          <span class="rubro">Tienda</span>
+        </div>
+        <p class="desc empty">Visitá el sitio público para más información.</p>
+        <div class="cta">
+          <span class="slug">/stanley-catalogo</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/taller-martinez-hnos" target="_blank" rel="noopener" data-rubro="reservas" style="--accent:#dc2626;--accent-2:#841616">
+      <div class="card-cover"><img src="https://api.turnolink.com.ar/api/cdn/ce8f89d8-614f-4508-8ac9-267899c18a23/covers/38e7631f-4e18-4c79-a269-530b22e04ba1.webp" alt="" loading="lazy"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><img src="https://api.turnolink.com.ar/api/cdn/ce8f89d8-614f-4508-8ac9-267899c18a23/logos/a56a61a4-5c8a-4846-8b04-a79a44865f1b.webp" alt="Taller Martínez Hnos." loading="lazy"></div>
+        </div>
+        <div>
+          <h3 class="name">Taller Martínez Hnos.</h3>
+          <span class="rubro">General</span>
+        </div>
+        <p class="desc">Mecánica integral, service oficial y diagnóstico computarizado. Más de 30 años en Avellaneda.</p>
+        <div class="cta">
+          <span class="slug">/taller-martinez-hnos</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/techstore-ba" target="_blank" rel="noopener" data-rubro="reservas" style="--accent:#3F8697;--accent-2:#25505a">
+      <div class="card-cover"><img src="https://api.turnolink.com.ar/uploads/4497d417-4e02-4ef8-ade7-30b75bb2d5e9/branding/c5f7dd34-3c66-4880-920c-086ab9802d37.webp" alt="" loading="lazy"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><img src="https://api.turnolink.com.ar/api/cdn/4497d417-4e02-4ef8-ade7-30b75bb2d5e9/branding/b25b846e-f8f8-4e2e-8459-9317b1efc677.webp" alt="TechStore BA" loading="lazy"></div>
+        </div>
+        <div>
+          <h3 class="name">TechStore BA</h3>
+          <span class="rubro">Tienda</span>
+        </div>
+        <p class="desc">Tu tienda de tecnología de confianza. Productos originales con garantía.</p>
+        <div class="cta">
+          <span class="slug">/techstore-ba</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/the-barber-club" target="_blank" rel="noopener" data-rubro="belleza" style="--accent:#263238;--accent-2:#161e21">
+      <div class="card-cover"><img src="https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=1600&amp;h=600&amp;fit=crop" alt="" loading="lazy"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><img src="https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=400&amp;h=400&amp;fit=crop" alt="The Barber Club" loading="lazy"></div>
+        </div>
+        <div>
+          <h3 class="name">The Barber Club</h3>
+          <span class="rubro">Barbería</span>
+        </div>
+        <p class="desc">Barbería premium con estilo clásico y moderno. Cortes fade, barba sculpting, afeitada a navaja, keratina y coloración. Experiencia de barbería de primer nivel.</p>
+        <div class="cta">
+          <span class="slug">/the-barber-club</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/the-nail-studio-zn" target="_blank" rel="noopener" data-rubro="belleza" style="--accent:#f3f2f2;--accent-2:#919191">
+      <div class="card-cover"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><div class="logo-initial">T</div></div>
+        </div>
+        <div>
+          <h3 class="name">The Nail Studio ZN</h3>
+          <span class="rubro">Estética &amp; belleza</span>
+        </div>
+        <p class="desc">nails, lashes &amp; brows</p>
+        <div class="cta">
+          <span class="slug">/the-nail-studio-zn</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/apart-hotel-centro" target="_blank" rel="noopener" data-rubro="reservas" style="--accent:#b45309;--accent-2:#6c3105">
+      <div class="card-cover"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><div class="logo-initial">U</div></div>
+        </div>
+        <div>
+          <h3 class="name">Urban Apart Hotel</h3>
+          <span class="rubro">General</span>
+        </div>
+        <p class="desc">Departamentos equipados en el corazón de Córdoba. Check-in 24hs, ideal para viajeros y ejecutivos.</p>
+        <div class="cta">
+          <span class="slug">/apart-hotel-centro</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/vanina-gonzalez" target="_blank" rel="noopener" data-rubro="salud" style="--accent:#0c0a09;--accent-2:#070605">
+      <div class="card-cover"><img src="https://api.turnolink.com.ar/api/cdn/a357f6e3-4625-49e6-b720-6dbb205f08d4/covers/734d4607-fcc1-49d8-b00c-9715d54fa0fa.webp" alt="" loading="lazy"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><img src="https://api.turnolink.com.ar/api/cdn/a357f6e3-4625-49e6-b720-6dbb205f08d4/logos/f94c8088-49e8-42a3-8281-bd3866835d4f.webp" alt="Vanina Gonzalez" loading="lazy"></div>
+        </div>
+        <div>
+          <h3 class="name">Vanina Gonzalez</h3>
+          <span class="rubro">Consultoría</span>
+        </div>
+        <p class="desc empty">Visitá el sitio público para más información.</p>
+        <div class="cta">
+          <span class="slug">/vanina-gonzalez</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/vetcare-centro" target="_blank" rel="noopener" data-rubro="salud" style="--accent:#0D9488;--accent-2:#075851">
+      <div class="card-cover"><img src="https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=1600&amp;h=600&amp;fit=crop" alt="" loading="lazy"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><img src="https://images.unsplash.com/photo-1628009368231-7bb7cf0a1f59?w=400&amp;h=400&amp;fit=crop" alt="VetCare Centro Veterinario" loading="lazy"></div>
+        </div>
+        <div>
+          <h3 class="name">VetCare Centro Veterinario</h3>
+          <span class="rubro">Veterinaria</span>
+        </div>
+        <p class="desc">Centro veterinario integral con consultas, vacunación, cirugía y diagnóstico por imágenes en Caballito.</p>
+        <div class="cta">
+          <span class="slug">/vetcare-centro</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/workhub-coworking" target="_blank" rel="noopener" data-rubro="reservas" style="--accent:#8B5CF6;--accent-2:#533793">
+      <div class="card-cover"><img src="https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=1600&amp;h=600&amp;fit=crop" alt="" loading="lazy"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><img src="https://images.unsplash.com/photo-1497366216548-37526070297c?w=400&amp;h=400&amp;fit=crop" alt="WorkHub Coworking" loading="lazy"></div>
+        </div>
+        <div>
+          <h3 class="name">WorkHub Coworking</h3>
+          <span class="rubro">Espacios flexibles</span>
+        </div>
+        <p class="desc">Espacios de trabajo flexibles en el corazón de Buenos Aires. Hot desks, oficinas privadas, salas de reuniones y espacios para eventos.</p>
+        <div class="cta">
+          <span class="slug">/workhub-coworking</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="/zen-spa-masajes" target="_blank" rel="noopener" data-rubro="belleza" style="--accent:#00796b;--accent-2:#004840">
+      <div class="card-cover"><img src="https://images.unsplash.com/photo-1540555700478-4be289fbec6d?w=1600&amp;h=600&amp;fit=crop" alt="" loading="lazy"></div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="logo-circle"><img src="https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=400&amp;h=400&amp;fit=crop" alt="Zen Spa &amp; Masajes" loading="lazy"></div>
+        </div>
+        <div>
+          <h3 class="name">Zen Spa &amp; Masajes</h3>
+          <span class="rubro">Spa &amp; masajes</span>
+        </div>
+        <p class="desc">Spa urbano de relax y bienestar en Belgrano. Masajes relajantes, descontracturantes, piedras calientes, drenaje linfático, tratamientos corporales y circuitos de spa. Tu oasis en…</p>
+        <div class="cta">
+          <span class="slug">/zen-spa-masajes</span>
+          <span class="visit">Visitar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+        </div>
+      </div>
+    </a>
+  </div>
+
+  <footer class="foot">
+    Directorio generado desde la base de datos · <a href="https://turnolink.com.ar">TurnoLink</a>
+  </footer>
+</main>
+
+<script>
+  // Filtro por rubro
+  const chips = document.querySelectorAll('.filter-chip');
+  const cards = document.querySelectorAll('.card');
+  chips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      const filter = chip.dataset.filter;
+      chips.forEach(c => {
+        c.classList.toggle('active', c === chip);
+        c.setAttribute('aria-selected', c === chip);
+      });
+      cards.forEach(card => {
+        const match = filter === 'all' || card.dataset.rubro === filter;
+        card.style.display = match ? 'flex' : 'none';
+      });
+    });
+  });
+</script>
+</body>
+</html>

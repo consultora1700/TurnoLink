@@ -13,7 +13,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagg
 import { ConfigService } from '@nestjs/config';
 import { VideoIntegrationService } from './video-integration.service';
 import { JwtAuthGuard, TenantGuard } from '../../common/guards';
-import { CurrentTenant } from '../../common/decorators';
+import { CurrentTenant, Public } from '../../common/decorators';
 import { GetVideoOAuthUrlDto } from './dto/connect-video.dto';
 import { Tenant } from '@prisma/client';
 
@@ -54,6 +54,7 @@ export class VideoIntegrationController {
     };
   }
 
+  @Public()
   @Get('oauth/callback')
   @ApiOperation({ summary: 'OAuth callback handler for video providers' })
   @ApiResponse({ status: 302, description: 'Redirects to frontend with result' })

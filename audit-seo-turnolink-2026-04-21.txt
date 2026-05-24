@@ -1,0 +1,247 @@
+================================================================================
+AUDITORÍA SEO — TURNOLINK
+Fecha: 21 de abril de 2026
+Rol: Senior Marketing Comercial + Senior SEO/Posicionamiento
+================================================================================
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 1. LO QUE VE UN USUARIO EN GOOGLE HOY                                        │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+Simulación fiel del snippet actual en Google (desktop, Argentina):
+
+    🔗 turnolink.com.ar
+    https://turnolink.com.ar ▸
+    TurnoLink — Sistema Operativo Comercial: Servicios, Tienda Online …
+    Gestiona servicios y turnos, vende productos con tu tienda online y
+    controla ingresos, gastos y proyecciones financieras. Todo en una sola…
+
+Fuentes de configuración:
+  - apps/web/app/page.tsx (líneas 14-16)
+  - apps/web/app/layout.tsx (líneas 14-34)
+
+Favicon: hasta el 21/04 Google mostraba el diseño VIEJO "TL" (fantasma),
+ya corregido en el servidor — pendiente de re-crawl por parte de Google
+(3 días a 4 semanas).
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 2. DIAGNÓSTICO — 7 PROBLEMAS DETECTADOS                                      │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+─── 🔴 CRÍTICO #1: DESALINEACIÓN MARCA / MENSAJE ───
+
+El title vende:
+  "Sistema Operativo Comercial: Servicios, Tienda Online y Finanzas"
+
+Pero la realidad del producto (según memoria interna) es:
+  - Landing V3 (18 abr) ya se simplificó a SOLO turnos/servicios,
+    sin Mercado, sin pilares.
+  - Según project_colmen_split.md: tienda, catálogo, mercado,
+    gastronomía → Colmen.com.ar.
+  - Finanzas = herramienta interna, NO pilar.
+
+El title y description de Google siguen prometiendo 3 cosas que
+TurnoLink ya NO es o está sacando.
+
+IMPACTO COMERCIAL:
+  - Usuario clickea esperando "tienda online" → llega a landing de turnos.
+  - Bounce rate alto → Google baja el ranking.
+  - Pérdida de presupuesto de marketing por expectativa vs. realidad.
+
+
+─── 🔴 CRÍTICO #2: EL TÍTULO NO TIENE LA KEYWORD QUE LA GENTE BUSCA ───
+
+"Sistema Operativo Comercial" NO es una query real.
+Nadie googlea "sistema operativo comercial".
+
+Búsquedas reales con volumen en Argentina:
+
+    Query                                    Intención
+    ──────────────────────────────────────   ───────────
+    sistema de turnos online                 comercial
+    turnos online argentina                  comercial
+    agenda online para peluquería            comercial (vertical)
+    agenda online para kinesiólogo           comercial (vertical)
+    turnero online                           categoría
+    software de reservas                     categoría
+    cobrar seña con mercado pago             diferenciador
+
+La marca "TurnoLink" ya carga la palabra "turno" → estás regalando
+ese capital al poner una keyword débil como principal.
+
+
+─── 🟡 PROBLEMA #3: TITLE TRUNCADO EN SERP (76 caracteres) ───
+
+Google corta a ~60 caracteres en desktop, ~50 en mobile.
+Tu título actual se ve cortado como:
+
+    "TurnoLink — Sistema Operativo Comercial: Servicios, Tienda O…"
+
+La palabra "Finanzas" ni siquiera aparece.
+
+
+─── 🟡 PROBLEMA #4: DESCRIPTION TRUNCADA (~260 caracteres) ───
+
+Google muestra ~155-160 caracteres. Se pierde todo desde
+"Mercado Pago integrado…" en adelante, incluyendo:
+  - "+40 industrias"
+  - el CTA "Empieza gratis"
+
+
+─── 🟡 PROBLEMA #5: DESCRIPTION SIN HOOK NI CTA AL INICIO ───
+
+Empieza con "Gestiona…" (verbo imperativo genérico).
+No hay promesa de valor ni urgencia en los primeros 80 caracteres
+(los que Google muestra en mobile).
+
+Falta mencionar el "14 días gratis, sin tarjeta" que sí está
+en el JSON-LD pero no en la descripción visible.
+
+
+─── 🟡 PROBLEMA #6: KEYWORDS OBSOLETAS ───
+
+Archivo: apps/web/app/page.tsx (líneas 17-32)
+
+Lista keywords que ya no aplican a TurnoLink:
+  - "tienda online para negocios"         ❌ → va a Colmen
+  - "catalogo de productos online"        ❌ → va a Colmen
+  - "vender productos online Argentina"   ❌ → va a Colmen
+  - "control de gastos negocio"           ❌ → Colmen/finanzas interno
+
+Nota técnica: Google no usa <meta keywords> desde 2009, pero es
+un indicador de que el copywriting no se actualizó con el split.
+
+
+─── 🟡 PROBLEMA #7: JSON-LD "SoftwareApplication" DESALINEADO ───
+
+Archivo: apps/web/app/layout.tsx (líneas 120-127)
+
+featureList declara:
+  - "Tienda online y catálogo de productos"   ❌ → Colmen
+  - "Gestión financiera integral"             ❌ → no pilar
+
+Esto afecta los rich results y cómo Google entiende qué ES tu producto.
+
+
+─── 🟢 MENOR #8: SITEMAP INCLUYE INDUSTRIAS DE COLMEN ───
+
+Archivo: apps/web/app/sitemap.ts (líneas 8-17)
+
+Incluye:
+  - mercado
+  - hospedaje-por-horas
+  - alquiler-temporario
+  - espacios-flexibles
+
+Según el split, estas van a Colmen. Mantenerlas en el sitemap de
+TurnoLink diluye el foco temático del dominio a ojos de Google.
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 3. PROPUESTA CONCRETA — COPY OPTIMIZADO                                      │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+─── TÍTULO (máximo 60 caracteres, keyword fuerte primero) ───
+
+OPCIÓN A (recomendada — foco categoría):
+    "Turnos Online con Cobro Automático | TurnoLink"
+    (47 caracteres)
+
+OPCIÓN B (foco industrias):
+    "Agenda Online para tu Negocio — +40 Industrias | TurnoLink"
+    (59 caracteres)
+
+OPCIÓN C (foco diferenciador Mercado Pago):
+    "Sistema de Turnos con Mercado Pago | TurnoLink"
+    (46 caracteres)
+
+
+─── DESCRIPTION (máximo 155 caracteres, hook + prueba + CTA) ───
+
+OPCIÓN A:
+    "Agendá, cobrá señas con Mercado Pago y enviá recordatorios
+     automáticos. Ideal para peluquerías, salud, deportes y +40
+     rubros. 14 días gratis, sin tarjeta."
+
+OPCIÓN B (urgencia + prueba social):
+    "El sistema de turnos online que usan miles de negocios en
+     Argentina. Cobro automático, recordatorios WhatsApp, +40
+     rubros. Probalo gratis 14 días."
+
+
+─── OPEN GRAPH (para WhatsApp, redes sociales) ───
+
+    Title: Turnos online con cobro automático — TurnoLink
+    Desc:  Agendá, cobrá señas y recordá turnos en automático.
+           +40 industrias. Empezá gratis 14 días.
+
+
+─── JSON-LD "featureList" CORREGIDO ───
+
+    featureList: [
+      'Reservas y turnos online 24/7',
+      'Cobro de señas con Mercado Pago',
+      'Recordatorios automáticos por WhatsApp y email',
+      'Agenda multi-profesional y multi-sucursal',
+      'CRM de clientes',
+      'Reportes de ocupación y facturación',
+    ]
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 4. PLAN DE ACCIÓN PRIORIZADO                                                 │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+ #  Cambio                                   Archivo              Impacto   Esfuerzo
+ ─  ──────────────────────────────────────   ──────────────────   ───────   ────────
+ 1  Reescribir title + description home      page.tsx,layout.tsx  🔥 Alto   10 min
+ 2  Alinear Open Graph / Twitter             layout.tsx           🔥 Alto    5 min
+ 3  Arreglar featureList del JSON-LD         layout.tsx:120       Medio      5 min
+ 4  Limpiar keywords obsoletas               page.tsx,layout.tsx  Bajo       5 min
+ 5  Sacar industrias "Colmen" del sitemap    sitemap.ts:8-17      Medio      5 min
+ 6  Re-indexar en Search Console             Search Console       🔥 Alto    2 min
+ 7  Auditar title/desc por vertical          layouts industrias   Medio     30 min
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 5. PREGUNTAS DE VALIDACIÓN ANTES DE APLICAR                                  │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+Antes de tocar código, necesito tu validación sobre:
+
+  1. ¿Está oficial el split con Colmen?
+     - Si SÍ → borramos toda mención a tienda/mercado/finanzas del SEO.
+     - Si NO (transición) → mantenemos alguna mención suave.
+
+  2. ¿Qué opción de title/description preferís? (A, B o C)
+     Afecta qué búsquedas vamos a ganar en Google.
+
+  3. ¿Integramos "WhatsApp" en el messaging?
+     Diferenciador fuerte en Argentina — confirmar que la feature
+     está 100% productiva antes de prometerla.
+
+  4. ¿Auditamos también por vertical ahora (belleza, salud, deportes)
+     o preferís ver primero el resultado en la home?
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 6. NOTAS ADICIONALES                                                         │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+- robots.txt: ✅ Correcto. Allow público + Disallow admin/api/auth.
+- Sitemap.xml: ⚠️ Genera dinámicamente desde industrias y tenants.
+  Requiere limpieza (ver problema #8).
+- Canonical URLs: ✅ Configurado per-page.
+- hreflang es-AR y x-default: ✅ OK.
+- metadataBase + title template: ✅ Bien estructurado.
+- Schema.org Organization: ✅ Presente.
+- Schema.org SoftwareApplication: ⚠️ featureList desalineado.
+- Favicon en SERP: 🟡 Pendiente re-crawl de Google (ya arreglado
+  en servidor el 21/04).
+
+
+================================================================================
+Fin del informe — Esperando decisiones de 1 a 4 para aplicar cambios.
+================================================================================

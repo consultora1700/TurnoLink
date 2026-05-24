@@ -321,12 +321,14 @@ export function DashboardHeader({ user }: Props) {
                   <div className="h-10 w-10 rounded-full bg-muted animate-pulse ring-2 ring-border" />
                 )}
                 {logoLoaded && tenantLogo && (
-                  <div className="h-10 w-10 rounded-full ring-2 ring-border overflow-hidden flex items-center justify-center bg-background">
+                  <div className="h-10 w-10 rounded-full ring-2 ring-border overflow-hidden bg-background">
                     <img
                       src={tenantLogo}
                       alt={tenantName || user.name || 'Perfil'}
-                      className="max-w-full max-h-full object-contain"
-                      style={{ transform: `scale(${logoTransform.scale}) translate(${logoTransform.x}%, ${logoTransform.y}%)`, transformOrigin: 'center' }}
+                      className="w-full h-full object-cover"
+                      style={(logoTransform.scale !== 1 || logoTransform.x !== 0 || logoTransform.y !== 0)
+                        ? { transform: `scale(${logoTransform.scale}) translate(${logoTransform.x}%, ${logoTransform.y}%)`, transformOrigin: 'center' }
+                        : undefined}
                     />
                   </div>
                 )}

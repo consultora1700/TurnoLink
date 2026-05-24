@@ -41,7 +41,7 @@ export const CITIES: Record<string, CityData> = {
       { label: 'Consultorios Médicos', href: '/salud', icon: '🩺', desc: 'Turnos por especialidad, formularios pre-consulta y fichas de pacientes.' },
       { label: 'Canchas & Clubes', href: '/deportes', icon: '⚽', desc: 'Reservas de canchas, turnos fijos y cobro automático.' },
       { label: 'Centros de Estética', href: '/belleza/centros-de-estetica', icon: '💆', desc: 'Gestión de tratamientos, packs y promociones.' },
-      { label: 'Tiendas Online', href: '/mercado', icon: '🛍️', desc: 'Catálogo digital, pedidos por WhatsApp y control de stock.' },
+      { label: 'Profesionales & Consultores', href: '/turnos-profesionales', icon: '💼', desc: 'Agenda de consultas para abogados, contadores, psicólogos y más.' },
       { label: 'Espacios de Coworking', href: '/espacios-flexibles', icon: '🏢', desc: 'Reservas de salas, escritorios y espacios por hora.' },
     ],
     painPoints: [
@@ -81,7 +81,7 @@ export const CITIES: Record<string, CityData> = {
       { label: 'Consultorios Médicos', href: '/salud', icon: '🩺', desc: 'Turnos por especialidad y fichas de pacientes.' },
       { label: 'Canchas de Fútbol & Pádel', href: '/deportes', icon: '⚽', desc: 'Reservas de canchas con cobro automático.' },
       { label: 'Centros de Estética', href: '/belleza/centros-de-estetica', icon: '💆', desc: 'Gestión de tratamientos y packs.' },
-      { label: 'Tiendas & Mercados', href: '/mercado', icon: '🛍️', desc: 'Catálogo digital con pedidos por WhatsApp.' },
+      { label: 'Profesionales & Consultores', href: '/turnos-profesionales', icon: '💼', desc: 'Agenda online para abogados, contadores y consultores.' },
       { label: 'Alquiler Temporario', href: '/alquiler-temporario', icon: '🏡', desc: 'Reservas de cabañas y departamentos en Sierras.' },
     ],
     painPoints: [
@@ -120,7 +120,7 @@ export const CITIES: Record<string, CityData> = {
       { label: 'Consultorios & Centros de Salud', href: '/salud', icon: '🩺', desc: 'Turnos médicos con fichas digitales.' },
       { label: 'Canchas & Complejos Deportivos', href: '/deportes', icon: '⚽', desc: 'Reservas de canchas 24/7.' },
       { label: 'Spas & Centros de Estética', href: '/belleza/centros-de-estetica', icon: '💆', desc: 'Tratamientos, packs y promociones.' },
-      { label: 'Tiendas & Comercios', href: '/mercado', icon: '🛍️', desc: 'Catálogo online con pedidos por WhatsApp.' },
+      { label: 'Profesionales & Estudios', href: '/turnos-profesionales', icon: '💼', desc: 'Reservas de consultas y servicios profesionales.' },
       { label: 'Hospedaje por Horas', href: '/hospedaje-por-horas', icon: '🏨', desc: 'Reservas de habitaciones y turnos de alojamiento.' },
     ],
     painPoints: [
@@ -159,7 +159,7 @@ export const CITIES: Record<string, CityData> = {
       { label: 'Canchas Deportivas', href: '/deportes', icon: '⚽', desc: 'Reservas de canchas y cobro automático.' },
       { label: 'Alquiler Temporario', href: '/alquiler-temporario', icon: '🏡', desc: 'Cabañas, departamentos y alojamientos turísticos.' },
       { label: 'Hospedaje por Horas', href: '/hospedaje-por-horas', icon: '🏨', desc: 'Hoteles y alojamientos por turnos.' },
-      { label: 'Tiendas & Bodegas', href: '/mercado', icon: '🍷', desc: 'Catálogo online de productos regionales.' },
+      { label: 'Hospedaje & Cabañas', href: '/alquiler-temporario', icon: '🏡', desc: 'Reservas de alojamiento y experiencias turísticas.' },
     ],
     painPoints: [
       'Turistas que quieren reservar desde otra provincia y no pueden contactarte fuera de horario.',
@@ -196,7 +196,7 @@ export const CITIES: Record<string, CityData> = {
       { label: 'Consultorios Médicos', href: '/salud', icon: '🩺', desc: 'Turnos médicos con recordatorios.' },
       { label: 'Canchas Deportivas', href: '/deportes', icon: '⚽', desc: 'Reservas de canchas y cobro automático.' },
       { label: 'Centros de Estética', href: '/belleza/centros-de-estetica', icon: '💆', desc: 'Tratamientos y packs de sesiones.' },
-      { label: 'Tiendas & Comercios', href: '/mercado', icon: '🛍️', desc: 'Catálogo digital y pedidos online.' },
+      { label: 'Coworkings & Eventos', href: '/espacios-flexibles', icon: '🏢', desc: 'Reservas de salas, escritorios y espacios por hora.' },
       { label: 'Espacios de Eventos', href: '/espacios-flexibles', icon: '🏢', desc: 'Reservas de salones y espacios.' },
     ],
     painPoints: [
@@ -233,7 +233,7 @@ export const CITIES: Record<string, CityData> = {
       { label: 'Consultorios Médicos', href: '/salud', icon: '🩺', desc: 'Turnos por especialidad.' },
       { label: 'Canchas de Fútbol & Pádel', href: '/deportes', icon: '⚽', desc: 'Reservas y cobro automático.' },
       { label: 'Centros de Estética', href: '/belleza/centros-de-estetica', icon: '💆', desc: 'Tratamientos y promociones.' },
-      { label: 'Tiendas & Comercios', href: '/mercado', icon: '🛍️', desc: 'Catálogo digital online.' },
+      { label: 'Profesionales & Consultoras', href: '/turnos-profesionales', icon: '💼', desc: 'Turnos para consultas y servicios profesionales.' },
       { label: 'Espacios Flexibles', href: '/espacios-flexibles', icon: '🏢', desc: 'Coworkings y salas de reuniones.' },
     ],
     painPoints: [
@@ -307,7 +307,7 @@ export const CITIES: Record<string, CityData> = {
       { label: 'Consultorios Médicos', href: '/salud', icon: '🩺', desc: 'Turnos por especialidad.' },
       { label: 'Canchas Deportivas', href: '/deportes', icon: '⚽', desc: 'Reservas y cobro automático.' },
       { label: 'Alojamientos Turísticos', href: '/alquiler-temporario', icon: '🏡', desc: 'Cabañas, hostels y departamentos.' },
-      { label: 'Tiendas Regionales', href: '/mercado', icon: '🛍️', desc: 'Productos locales con catálogo online.' },
+      { label: 'Hospedaje & Turismo', href: '/alquiler-temporario', icon: '🏡', desc: 'Reservas de alojamiento y servicios turísticos.' },
       { label: 'Centros de Estética', href: '/belleza/centros-de-estetica', icon: '💆', desc: 'Tratamientos y promociones.' },
     ],
     painPoints: [
@@ -321,7 +321,7 @@ export const CITIES: Record<string, CityData> = {
       'Los negocios digitalizados facturan un 30% más que los que dependen solo del boca a boca.',
     ],
     faqs: [
-      { q: '¿Funciona para negocios turísticos en Salta?', a: 'Sí. Alojamientos, tours, gastronomía y servicios de bienestar pueden gestionar todas sus reservas con TurnoLink.' },
+      { q: '¿Funciona para negocios turísticos en Salta?', a: 'Sí. Alojamientos, tours, centros de bienestar y servicios profesionales pueden gestionar todas sus reservas con TurnoLink.' },
       { q: '¿Puedo cobrar en pesos?', a: 'Sí. Todo el sistema opera en pesos argentinos con Mercado Pago.' },
       { q: '¿Es gratis empezar?', a: 'Sí. Plan Gratis permanente con 30 reservas por mes.' },
     ],
@@ -344,7 +344,7 @@ export const CITIES: Record<string, CityData> = {
       { label: 'Consultorios Médicos', href: '/salud', icon: '🩺', desc: 'Turnos médicos con fichas.' },
       { label: 'Canchas Deportivas', href: '/deportes', icon: '⚽', desc: 'Reservas y cobro automático.' },
       { label: 'Centros de Estética', href: '/belleza/centros-de-estetica', icon: '💆', desc: 'Tratamientos y promociones.' },
-      { label: 'Tiendas', href: '/mercado', icon: '🛍️', desc: 'Catálogo digital online.' },
+      { label: 'Profesionales', href: '/turnos-profesionales', icon: '💼', desc: 'Reservas de consultas profesionales.' },
       { label: 'Espacios de Coworking', href: '/espacios-flexibles', icon: '🏢', desc: 'Salas y escritorios por hora.' },
     ],
     painPoints: [
@@ -381,7 +381,7 @@ export const CITIES: Record<string, CityData> = {
       { label: 'Consultorios Médicos', href: '/salud', icon: '🩺', desc: 'Turnos por especialidad.' },
       { label: 'Canchas Deportivas', href: '/deportes', icon: '⚽', desc: 'Reservas de canchas.' },
       { label: 'Alquiler Temporario', href: '/alquiler-temporario', icon: '🏡', desc: 'Cabañas y alojamientos.' },
-      { label: 'Tiendas & Comercios', href: '/mercado', icon: '🛍️', desc: 'Catálogo online.' },
+      { label: 'Coworkings & Estudios', href: '/espacios-flexibles', icon: '🏢', desc: 'Reservas de espacios por hora o día.' },
       { label: 'Centros de Estética', href: '/belleza/centros-de-estetica', icon: '💆', desc: 'Tratamientos y packs.' },
     ],
     painPoints: [
@@ -417,7 +417,7 @@ export const CITIES: Record<string, CityData> = {
       { label: 'Consultorios Médicos', href: '/salud', icon: '🩺', desc: 'Turnos médicos digitales.' },
       { label: 'Canchas Deportivas', href: '/deportes', icon: '⚽', desc: 'Reservas automáticas.' },
       { label: 'Centros de Estética', href: '/belleza/centros-de-estetica', icon: '💆', desc: 'Tratamientos y packs.' },
-      { label: 'Tiendas', href: '/mercado', icon: '🛍️', desc: 'Catálogo online.' },
+      { label: 'Profesionales', href: '/turnos-profesionales', icon: '💼', desc: 'Turnos online para profesionales.' },
       { label: 'Espacios Flexibles', href: '/espacios-flexibles', icon: '🏢', desc: 'Coworkings y salas.' },
     ],
     painPoints: [

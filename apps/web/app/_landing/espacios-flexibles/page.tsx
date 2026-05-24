@@ -7,9 +7,9 @@ import { BreadcrumbListJsonLd, FaqJsonLd } from '../_components/seo-schemas';
 const SITE_URL = 'https://turnolink.com.ar';
 
 export const metadata: Metadata = {
-  title: 'TurnoLink para Espacios de Trabajo — Reservas para Coworking, Oficinas y Salas de Reuniones',
+  title: 'Reservas para Coworking y Salas',
   description:
-    'Sistema de reservas para coworking, oficinas por hora, salas de reuniones, boxes profesionales y estudios compartidos. Reservas online 24/7, cobro automático con Mercado Pago, dashboard de ocupación, precios por franja horaria. Probá 14 días gratis.',
+    'Reservas online para coworkings, salas de reuniones, oficinas flexibles y estudios compartidos. Cobro automático y dashboard de ocupación. 14 días gratis.',
   keywords: [
     'sistema reservas coworking',
     'reservas oficinas por hora',

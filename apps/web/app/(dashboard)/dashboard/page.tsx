@@ -11,7 +11,9 @@ import {
   Clock,
   TrendingUp,
   ArrowRight,
-  Sparkles,
+  Sun,
+  Moon,
+  Coffee,
   Activity,
   ShoppingBag,
   Package,
@@ -200,34 +202,38 @@ export default function DashboardPage() {
     );
   }
 
-  const greeting = () => {
+  const greetingData = (() => {
     const hour = new Date().getHours();
-    if (hour < 12) return 'Buenos días';
-    if (hour < 18) return 'Buenas tardes';
-    return 'Buenas noches';
-  };
+    if (hour < 6)  return { text: 'Buenas noches',  Icon: Moon,   hint: 'Servicio nocturno' };
+    if (hour < 12) return { text: 'Buenos días',    Icon: Sun,    hint: 'Que sea un buen turno' };
+    if (hour < 18) return { text: 'Buenas tardes',  Icon: Coffee, hint: 'A todo motor' };
+    return                  { text: 'Buenas noches', Icon: Moon,  hint: 'Cierre tranquilo' };
+  })();
+  const HeroIcon = greetingData.Icon;
+  const userDisplayName = (session?.user?.name || '').trim() || 'Bienvenido';
 
   return (
     <div className="space-y-6">
-      {/* Header with greeting */}
-      <div className="relative overflow-hidden rounded-xl sm:rounded-2xl bg-gradient-to-r from-primary via-primary/90 to-teal-600 p-4 sm:p-6 text-white shadow-lg">
-        <div className="absolute inset-0 bg-grid opacity-10" />
-        <div className="absolute -top-24 -right-24 w-36 sm:w-48 h-36 sm:h-48 bg-white/10 rounded-full blur-2xl" />
-        <div className="absolute -bottom-12 -left-12 w-28 sm:w-36 h-28 sm:h-36 bg-white/10 rounded-full blur-xl" />
-
-        <div className="relative">
-          <div className="flex items-center gap-2 mb-1">
-            <Sparkles className="h-4 w-4 sm:h-5 sm:w-5" />
-            <span className="text-xs sm:text-sm font-medium text-white/80 truncate">
-              {format(new Date(), "EEEE d 'de' MMMM, yyyy", { locale: es })}
-            </span>
+      {/* Hero — alineado al patrón visual del sistema (Reportes, Finanzas,
+          Clientes): rounded-xl, gradient teal puro, ícono cuadrado 40px a la
+          izquierda, título + subtítulo. Sin badge derecho — KPIs hablan solos. */}
+      <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-primary via-primary/90 to-teal-600 p-4 sm:p-6 text-white shadow-md">
+        <div className="absolute inset-0 bg-grid opacity-10" aria-hidden />
+        <div className="absolute -top-20 -right-20 w-44 h-44 bg-white/10 rounded-full blur-2xl" aria-hidden />
+        <div className="relative flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="h-10 w-10 rounded-lg bg-white/15 border border-white/25 flex items-center justify-center shrink-0">
+            <HeroIcon className="h-5 w-5 text-white" />
           </div>
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">
-            {greeting()}, {session?.user?.name?.split(' ')[0] || 'Usuario'}
-          </h1>
-          <p className="mt-1 text-white/80 text-sm sm:text-base">
-            Aquí está el resumen de tu negocio para hoy
-          </p>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold leading-tight truncate">
+              {greetingData.text}, {userDisplayName}
+            </h1>
+            <p className="mt-1 text-white/80 text-sm">
+              {format(new Date(), "EEEE d 'de' MMMM", { locale: es })}
+              {' · '}
+              {greetingData.hint}
+            </p>
+          </div>
         </div>
       </div>
 

@@ -9,7 +9,6 @@ const NICHE_LOADERS: Record<string, () => Promise<{ default: NicheConfig }>> = {
   'hospedaje-por-horas': () => import('./hospedaje-por-horas') as Promise<{ default: NicheConfig }>,
   'alquiler-temporario': () => import('./alquiler-temporario') as Promise<{ default: NicheConfig }>,
   'espacios-flexibles': () => import('./espacios-flexibles') as Promise<{ default: NicheConfig }>,
-  mercado: () => import('./mercado') as Promise<{ default: NicheConfig }>,
 };
 
 /* ─── Cached configs ─── */

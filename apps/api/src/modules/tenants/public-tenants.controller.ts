@@ -143,7 +143,7 @@ export class PublicTenantsController {
       where: {
         employeeId,
         employee: { tenantId: tenant.id, isActive: true },
-        service: { isActive: true },
+        service: { isActive: true, deletedAt: null },
       },
       include: {
         service: {
@@ -174,7 +174,7 @@ export class PublicTenantsController {
 
     // Fallback: no assignments → return all active services
     const services = await this.prisma.service.findMany({
-      where: { tenantId: tenant.id, isActive: true },
+      where: { tenantId: tenant.id, isActive: true, deletedAt: null },
       orderBy: { order: 'asc' },
       select: {
         id: true,

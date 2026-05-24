@@ -3,9 +3,9 @@ import { ProfesionalesLanding } from './profesionales-landing';
 import { fetchPricingByGroup } from '../_components/pricing-api';
 
 export const metadata: Metadata = {
-  title: 'TurnoLink para Profesionales — Agenda Online para Abogados, Contadores y Escribanos',
+  title: 'Agenda Online para Abogados y Contadores',
   description:
-    'Sistema de turnos para estudios jurídicos, contables y notariales. Agenda online 24/7, cobro anticipado de honorarios con Mercado Pago, recordatorios automáticos, videollamadas y base de clientes. Probá 14 días gratis.',
+    'Sistema de turnos para estudios jurídicos, contables y notariales. Cobro anticipado de honorarios con Mercado Pago y videollamadas. 14 días gratis.',
   keywords: [
     'turnos abogados online',
     'agenda contadores digital',

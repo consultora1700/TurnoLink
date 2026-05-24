@@ -245,7 +245,7 @@ function ClassicHero({ tenant, reputationStats, coverSettings, heroButtons, logo
         {/* Mobile */}
         <div className="md:hidden">
           <div className="flex items-center gap-3 mb-4">
-            <LogoFallback tenant={tenant} size="w-14 h-14" radius="rounded-xl" gradient="bg-gradient-to-br from-[hsl(var(--tenant-secondary-500))] to-[hsl(var(--tenant-primary-500))]" textSize="text-xl" border="border-2 border-white/20" hidden={hidelogo} scale={logoScale} offsetX={logoOffsetX} offsetY={logoOffsetY} />
+            <LogoFallback tenant={tenant} size="w-14 h-14" radius="rounded-full" gradient="bg-gradient-to-br from-[hsl(var(--tenant-secondary-500))] to-[hsl(var(--tenant-primary-500))]" textSize="text-xl" border="border-2 border-white/20" hidden={hidelogo} scale={logoScale} offsetX={logoOffsetX} offsetY={logoOffsetY} />
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
                 <h1 className={`text-lg font-bold ${txt} truncate`}>{tenant.name}</h1>
@@ -270,7 +270,7 @@ function ClassicHero({ tenant, reputationStats, coverSettings, heroButtons, logo
         {/* Desktop */}
         <div className="hidden md:block py-6 lg:py-10">
           <div className="flex items-start gap-8">
-            <LogoFallback tenant={tenant} size="w-24 h-24 lg:w-28 lg:h-28" radius="rounded-2xl" gradient="bg-gradient-to-br from-[hsl(var(--tenant-secondary-500))] to-[hsl(var(--tenant-primary-500))]" textSize="text-4xl lg:text-5xl" border="border-2 border-white/20" hidden={hidelogo} scale={logoScale} offsetX={logoOffsetX} offsetY={logoOffsetY} />
+            <LogoFallback tenant={tenant} size="w-24 h-24 lg:w-28 lg:h-28" radius="rounded-full" gradient="bg-gradient-to-br from-[hsl(var(--tenant-secondary-500))] to-[hsl(var(--tenant-primary-500))]" textSize="text-4xl lg:text-5xl" border="border-2 border-white/20" hidden={hidelogo} scale={logoScale} offsetX={logoOffsetX} offsetY={logoOffsetY} />
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-4 mb-3">
                 <h1 className={`text-3xl lg:text-4xl font-bold ${txt}`}>{tenant.name}</h1>

@@ -217,6 +217,7 @@ interface Props {
   tenant: unknown;
   slug: string;
   isEmbed?: boolean;
+  branding?: { logoScale?: number; logoOffsetX?: number; logoOffsetY?: number } | null;
 }
 
 interface BookingResponse {
@@ -234,11 +235,11 @@ interface BookingResponse {
 
 type Step = 'branch' | 'employee' | 'specialty' | 'services' | 'datetime' | 'details' | 'payment' | 'confirmation';
 
-export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }: Props) {
+export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false, branding }: Props) {
   const tenant = tenantData as Tenant;
-  const logoScale = (tenant.settings as any)?.logoScale ?? 1;
-  const logoOffsetX = (tenant.settings as any)?.logoOffsetX ?? 0;
-  const logoOffsetY = (tenant.settings as any)?.logoOffsetY ?? 0;
+  const logoScale = branding?.logoScale ?? (tenant.settings as any)?.logoScale ?? 1;
+  const logoOffsetX = branding?.logoOffsetX ?? (tenant.settings as any)?.logoOffsetX ?? 0;
+  const logoOffsetY = branding?.logoOffsetY ?? (tenant.settings as any)?.logoOffsetY ?? 0;
   const [branches, setBranches] = useState<BranchPublic[]>([]);
   const [selectedBranch, setSelectedBranch] = useState<BranchPublic | null>(null);
   const [branchServices, setBranchServices] = useState<Service[]>([]);
@@ -632,7 +633,7 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
         }
         toast({
           title: `${terms.booking} confirmada`,
-          description: `Tu ${terms.appointment.toLowerCase()} ha sido registrado exitosamente.`,
+          description: `Tu ${terms.appointment.toLowerCase()} ha sido registrada exitosamente.`,
         });
       }
     }
@@ -2559,9 +2560,20 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
             <h2 className="text-2xl md:text-3xl font-bold mb-3 text-slate-900 dark:text-white">
               ¡{terms.booking} Confirmada!
             </h2>
-            <p className="text-muted-foreground text-base mb-4">
-              {isDailyMode ? 'Tu estadía ha sido registrada exitosamente.' : `Tu ${terms.appointment.toLowerCase()} ha sido registrado exitosamente.`}
+            <p className="text-muted-foreground text-base mb-1">
+              {isDailyMode ? 'Tu estadía ha sido registrada exitosamente.' : `Tu ${terms.appointment.toLowerCase()} ha sido registrada exitosamente.`}
             </p>
+            {selectedDate && selectedTime && !isDailyMode && (
+              <p className="text-base font-medium text-slate-700 dark:text-slate-300 mb-4 capitalize">
+                {format(selectedDate, "EEEE d 'de' MMMM", { locale: es })} a las {selectedTime} hs
+              </p>
+            )}
+            {isDailyMode && checkInDate && checkOutDate && (
+              <p className="text-base font-medium text-slate-700 dark:text-slate-300 mb-4 capitalize">
+                {format(checkInDate, "d 'de' MMM", { locale: es })} → {format(checkOutDate, "d 'de' MMM", { locale: es })}
+              </p>
+            )}
+            {!selectedDate && !isDailyMode && <div className="mb-4" />}
 
             {/* Email Confirmation Banner */}
             <div className="flex items-center justify-center gap-2 mb-8 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl">
@@ -2573,7 +2585,7 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
               </span>
             </div>
 
-            {/* Video Call Link */}
+            {/* Video Call Info */}
             {((bookingResult as BookingResponse)?.videoJoinUrl || pendingBooking?.videoJoinUrl) && (
               <div className="mb-8 p-4 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-xl text-left">
                 <div className="flex items-center gap-3">
@@ -2583,19 +2595,10 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-indigo-800 dark:text-indigo-300">Sesión online</p>
                     <p className="text-sm text-indigo-600 dark:text-indigo-400 mt-0.5">
-                      También recibirás el link por email y WhatsApp
+                      Recibirás el link de acceso por email y WhatsApp antes de tu sesión
                     </p>
                   </div>
                 </div>
-                <a
-                  href={(bookingResult as BookingResponse)?.videoJoinUrl || pendingBooking?.videoJoinUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-3 w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors"
-                >
-                  <Video className="h-4 w-4" />
-                  Entrar a la sesión
-                </a>
               </div>
             )}
 
@@ -2831,21 +2834,13 @@ export function PublicBookingPage({ tenant: tenantData, slug, isEmbed = false }:
           </a>
         </footer>
       ) : (
-        <footer className="bg-slate-900 text-white mt-auto relative z-10">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-5">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <a href="/register" className="inline-flex items-center gap-2 text-xs font-medium text-[#4DA4B8] hover:text-white transition-colors">
-                Creá tu cuenta gratis en TurnoLink →
-              </a>
-              <div className="flex items-center gap-2 text-xs text-slate-500">
-                <span>Powered by</span>
-                <a href="/register" className="hover:opacity-80 transition-opacity">
-                  <img src="/oscuro2.png" alt="TurnoLink" className="h-7 w-auto" />
-                </a>
-                <span className="hidden sm:inline">· © {new Date().getFullYear()}</span>
-              </div>
-            </div>
-          </div>
+        <footer className="mt-auto relative z-10 py-4">
+          <p className="text-center text-xs text-slate-400">
+            Página creada con{' '}
+            <a href="/register" className="font-semibold text-[#4DA4B8] hover:underline transition-colors">TurnoLink</a>
+            {' · '}
+            <a href="/register" className="text-[#4DA4B8] hover:underline transition-colors">Creá tu página gratis</a>
+          </p>
         </footer>
       )}
 

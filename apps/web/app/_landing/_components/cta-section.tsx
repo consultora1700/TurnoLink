@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowRight, Rocket, Shield, CreditCard, ShoppingBag } from 'lucide-react';
+import { ArrowRight, Rocket, Shield, CreditCard, CalendarCheck } from 'lucide-react';
 import { useScrollReveal } from './hooks';
 import { SectionTag } from './ui';
 
@@ -57,7 +57,7 @@ export function CTASection({
                 <CreditCard size={12} style={{ color }} /> Cobros a tu cuenta de MP
               </span>
               <span className="flex items-center gap-1.5">
-                <ShoppingBag size={12} style={{ color }} /> Tienda online incluida
+                <CalendarCheck size={12} style={{ color }} /> Agenda inteligente incluida
               </span>
             </div>
           </div>

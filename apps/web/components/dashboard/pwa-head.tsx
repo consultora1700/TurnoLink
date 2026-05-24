@@ -12,7 +12,7 @@ export function PwaHead() {
 
     const manifest = document.createElement('link');
     manifest.rel = 'manifest';
-    manifest.href = '/manifest.json';
+    manifest.href = '/manifest.json?v=tlink-1';
     document.head.appendChild(manifest);
     tags.push(manifest);
 
@@ -20,7 +20,7 @@ export function PwaHead() {
       'mobile-web-app-capable': 'yes',
       'apple-mobile-web-app-capable': 'yes',
       'apple-mobile-web-app-status-bar-style': 'black-translucent',
-      'apple-mobile-web-app-title': 'TurnoLink',
+      'apple-mobile-web-app-title': 'TLink',
     };
 
     for (const [name, content] of Object.entries(metaTags)) {
@@ -32,8 +32,8 @@ export function PwaHead() {
     }
 
     const appleTouchSizes = [
-      { href: '/icons/apple-touch-icon-180x180.png', sizes: '180x180' },
-      { href: '/icons/icon-192x192.png', sizes: '192x192' },
+      { href: '/icons/apple-touch-icon-180x180.png?v=tlink-1', sizes: '180x180' },
+      { href: '/icons/icon-192x192.png?v=tlink-1', sizes: '192x192' },
     ];
 
     for (const { href, sizes } of appleTouchSizes) {

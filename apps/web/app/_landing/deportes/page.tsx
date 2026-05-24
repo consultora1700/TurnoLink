@@ -7,9 +7,9 @@ import { BreadcrumbListJsonLd, FaqJsonLd } from '../_components/seo-schemas';
 const SITE_URL = 'https://turnolink.com.ar';
 
 export const metadata: Metadata = {
-  title: 'TurnoLink para Deportes — Reservas Online para Canchas, Estudios y Espacios por Hora',
+  title: 'Reservas Online para Canchas y Estudios',
   description:
-    'Sistema de reservas para canchas de fútbol, pádel, tenis, básquet, estudios de danza, gimnasios, entrenadores personales, salas de ensayo y estudios de grabación. Reservas online 24/7, cobro de señas con Mercado Pago, gestión de múltiples espacios. Empezá gratis.',
+    'Reservas para canchas de fútbol, pádel, tenis, gimnasios y estudios de danza. Cobro de señas con Mercado Pago y recordatorios automáticos. 14 días gratis.',
   keywords: [
     'reserva canchas online',
     'sistema turnos cancha fútbol',

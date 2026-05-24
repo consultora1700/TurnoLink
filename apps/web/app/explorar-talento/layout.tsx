@@ -1,7 +1,7 @@
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Explorar Talento Profesional | TurnoLink',
+  title: 'Explorar Talento Profesional',
   description:
     'Encontra profesionales verificados para tu negocio. Estilistas, barberos, dentistas, nutricionistas, personal trainers y mas. El talento que necesitas en TurnoLink.',
   keywords: [

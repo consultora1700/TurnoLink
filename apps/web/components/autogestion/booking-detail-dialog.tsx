@@ -437,6 +437,14 @@ export function BookingDetailDialog({
                       Llamar
                     </Button>
                   </div>
+                  <Button
+                    variant="outline"
+                    className="w-full h-10 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30"
+                    onClick={() => setShowCancelDialog(true)}
+                  >
+                    <XCircle className="h-4 w-4 mr-2" />
+                    Cancelar turno
+                  </Button>
                 </>
               )}
 

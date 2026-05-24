@@ -895,7 +895,7 @@ export default function OrderTrackingPage() {
       <div className="text-center py-4">
         <p className="text-[11px] text-gray-300 dark:text-neutral-700">
           Powered by{' '}
-          <a href="https://turnolink.com.ar/mercado" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-400 dark:hover:text-neutral-500 transition-colors">
+          <a href="https://turnolink.com.ar" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-400 dark:hover:text-neutral-500 transition-colors">
             TurnoLink
           </a>
         </p>

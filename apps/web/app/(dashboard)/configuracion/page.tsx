@@ -46,12 +46,12 @@ import {
   BookOpen,
   Bike,
   Navigation,
-  RotateCcw,
   Trash2,
   AlertTriangle,
 } from 'lucide-react';
 import { getAmenitiesCatalog } from '@/lib/amenities-catalog';
 import { RestartTourButton } from '@/components/onboarding/onboarding-tour';
+import { PhotoEditor } from '@/components/branding/photo-editor';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -521,6 +521,7 @@ function ConfiguracionContent() {
   const [logoScale, setLogoScale] = useState(1.0);
   const [logoOffsetX, setLogoOffsetX] = useState(0);
   const [logoOffsetY, setLogoOffsetY] = useState(0);
+  const [photoEditorOpen, setPhotoEditorOpen] = useState(false);
 
   useEffect(() => {
     if (session?.accessToken) {
@@ -697,7 +698,7 @@ function ConfiguracionContent() {
         logoScale,
         logoOffsetX,
         logoOffsetY,
-      }).catch(() => {});
+      });
 
       // Purge ISR cache for the public page so changes appear immediately
       const activeSlug = slug || tenant?.slug;
@@ -1084,85 +1085,56 @@ function ConfiguracionContent() {
                     Recomendado: imagen cuadrada, mínimo 200x200px
                   </p>
 
-                  {/* Logo Scale / Zoom */}
-                  <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium">Zoom de la imagen</span>
-                      <span className="text-xs font-mono text-muted-foreground bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
-                        {Math.round(logoScale * 100)}%
-                      </span>
-                    </div>
-                    <p className="text-xs text-muted-foreground mb-2">
-                      Ajustá el encuadre de tu logo dentro del marco
-                    </p>
-                    <div className="flex items-center gap-3">
-                      <span className="text-[10px] text-muted-foreground w-6 text-right">50%</span>
-                      <input
-                        type="range"
-                        min="0.5"
-                        max="3"
-                        step="0.05"
-                        value={logoScale}
-                        onChange={(e) => setLogoScale(parseFloat(e.target.value))}
-                        className="flex-1 h-2 rounded-full appearance-none cursor-pointer accent-amber-500 bg-slate-200 dark:bg-slate-700"
-                      />
-                      <span className="text-[10px] text-muted-foreground w-8">300%</span>
-                    </div>
-                    {/* Position controls */}
-                    <div className="mt-3 space-y-2">
-                      <span className="text-sm font-medium">Posición</span>
-                      <div className="flex items-center gap-3">
-                        <span className="text-[10px] text-muted-foreground w-10 text-right">← Izq</span>
-                        <input
-                          type="range"
-                          min="-50"
-                          max="50"
-                          step="1"
-                          value={logoOffsetX}
-                          onChange={(e) => setLogoOffsetX(parseFloat(e.target.value))}
-                          className="flex-1 h-1.5 rounded-full appearance-none cursor-pointer accent-blue-500 bg-slate-200 dark:bg-slate-700"
-                        />
-                        <span className="text-[10px] text-muted-foreground w-10">Der →</span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-[10px] text-muted-foreground w-10 text-right">↑ Arr</span>
-                        <input
-                          type="range"
-                          min="-50"
-                          max="50"
-                          step="1"
-                          value={logoOffsetY}
-                          onChange={(e) => setLogoOffsetY(parseFloat(e.target.value))}
-                          className="flex-1 h-1.5 rounded-full appearance-none cursor-pointer accent-blue-500 bg-slate-200 dark:bg-slate-700"
-                        />
-                        <span className="text-[10px] text-muted-foreground w-10">Abj ↓</span>
-                      </div>
-                      {(logoScale !== 1 || logoOffsetX !== 0 || logoOffsetY !== 0) && (
-                        <button
-                          type="button"
-                          onClick={() => { setLogoOffsetX(0); setLogoOffsetY(0); setLogoScale(1); }}
-                          className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-600 font-medium mt-1"
-                        >
-                          <RotateCcw className="h-3 w-3" />
-                          Reiniciar imagen original
-                        </button>
-                      )}
-                    </div>
-                    {/* Live preview — zoom + position inside fixed frame */}
-                    {formData.logo && (
-                      <div className="mt-4 flex flex-col items-center gap-2">
-                        <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-dashed border-slate-300 dark:border-slate-600 shadow-sm bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
+                  {/* Encuadre del logo */}
+                  {formData.logo && (
+                    <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                      <span className="text-sm font-medium">Encuadre del logo</span>
+                      <p className="text-xs text-muted-foreground mt-1 mb-3">
+                        Ajustá zoom y posición de tu logo dentro del marco
+                      </p>
+                      <div className="flex items-center gap-4">
+                        <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-dashed border-slate-300 dark:border-slate-600 shadow-sm flex-shrink-0"
+                          style={{ backgroundColor: themeSettings.primaryColor }}>
                           <img
                             src={formData.logo}
                             alt="Preview"
-                            className="max-w-full max-h-full object-contain transition-transform duration-150"
-                            style={{ transform: `scale(${logoScale}) translate(${logoOffsetX}%, ${logoOffsetY}%)`, transformOrigin: 'center' }}
+                            className="w-full h-full object-cover"
+                            style={(logoScale !== 1 || logoOffsetX !== 0 || logoOffsetY !== 0)
+                              ? { transform: `scale(${logoScale}) translate(${logoOffsetX}%, ${logoOffsetY}%)`, transformOrigin: 'center' }
+                              : undefined}
                           />
                         </div>
-                        <span className="text-[10px] text-muted-foreground">Así se ve tu logo en el panel</span>
+                        <div className="flex flex-col gap-1">
+                          <span className="text-xs font-mono text-muted-foreground">
+                            {Math.round(logoScale * 100)}% · ({Math.round(logoOffsetX)}, {Math.round(logoOffsetY)})
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setPhotoEditorOpen(true)}
+                            className="text-sm font-medium text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300"
+                          >
+                            Ajustar foto
+                          </button>
+                        </div>
                       </div>
-                    )}
-                  </div>
+                      <PhotoEditor
+                        open={photoEditorOpen}
+                        imageUrl={formData.logo}
+                        initialScale={logoScale}
+                        initialOffsetX={logoOffsetX}
+                        initialOffsetY={logoOffsetY}
+                        fallbackBgColor={themeSettings.primaryColor}
+                        shape="round"
+                        onApply={(s, ox, oy) => {
+                          setLogoScale(s);
+                          setLogoOffsetX(ox);
+                          setLogoOffsetY(oy);
+                          setPhotoEditorOpen(false);
+                        }}
+                        onCancel={() => setPhotoEditorOpen(false)}
+                      />
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2">

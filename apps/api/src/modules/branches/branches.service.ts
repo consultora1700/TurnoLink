@@ -202,7 +202,7 @@ export class BranchesService {
 
     // Verify service belongs to tenant
     const service = await this.prisma.service.findFirst({
-      where: { id: serviceId, tenantId },
+      where: { id: serviceId, tenantId, deletedAt: null },
     });
 
     if (!service) {
@@ -258,7 +258,7 @@ export class BranchesService {
 
     // Verify all services belong to tenant
     const services = await this.prisma.service.findMany({
-      where: { id: { in: serviceIds }, tenantId },
+      where: { id: { in: serviceIds }, tenantId, deletedAt: null },
     });
 
     if (services.length !== serviceIds.length) {

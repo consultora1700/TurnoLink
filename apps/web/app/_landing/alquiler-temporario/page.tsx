@@ -7,9 +7,9 @@ import { BreadcrumbListJsonLd, FaqJsonLd } from '../_components/seo-schemas';
 const SITE_URL = 'https://turnolink.com.ar';
 
 export const metadata: Metadata = {
-  title: 'TurnoLink para Alquiler Temporario — Reservas por Día para Cabañas, Quintas y Departamentos',
+  title: 'Reservas por Día para Cabañas y Quintas',
   description:
-    'Sistema de reservas para casas quinta, cabañas, departamentos temporarios, campos recreativos, salones por día, quinchos y espacios para eventos. Calendario por día, cobro de señas con Mercado Pago, precios por temporada, estadía mínima. Probá 14 días gratis.',
+    'Sistema de reservas por día para cabañas, quintas, departamentos temporarios y salones. Cobro de seña automático y precios por temporada. 14 días gratis.',
   keywords: [
     'sistema reservas cabañas',
     'reservas departamento temporario',

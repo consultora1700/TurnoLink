@@ -7,9 +7,9 @@ import { BreadcrumbListJsonLd, FaqJsonLd } from '../_components/seo-schemas';
 const SITE_URL = 'https://turnolink.com.ar';
 
 export const metadata: Metadata = {
-  title: 'TurnoLink para Salud — Agenda Online para Consultorios, Médicos, Odontólogos y Psicólogos',
+  title: 'Agenda Online para Consultorios y Salud',
   description:
-    'Sistema de turnos online para consultorios médicos, odontólogos, psicólogos, nutricionistas, kinesiólogos y fonoaudiólogos. Agenda 24/7, recordatorios automáticos, cobro de señas con Mercado Pago. Probá 14 días gratis.',
+    'Turnos online para consultorios médicos, odontólogos, psicólogos y kinesiólogos. Recordatorios automáticos y cobro de señas con Mercado Pago. 14 días gratis.',
   keywords: [
     'turnos consultorio online',
     'agenda médica digital',

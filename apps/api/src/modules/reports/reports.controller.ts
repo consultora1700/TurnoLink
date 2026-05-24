@@ -223,6 +223,26 @@ export class ReportsController {
     res.send('\uFEFF' + csv); // BOM for Excel UTF-8
   }
 
+  @Get('export/excel')
+  @ApiOperation({ summary: 'Export bookings as styled Excel (.xlsx)' })
+  async exportExcel(
+    @CurrentUser() user: User,
+    @Query() query: ReportsQueryDto,
+    @Res() res: Response,
+  ) {
+    await this.requireFeature(user.tenantId!, 'advanced_reports');
+    const buffer = await this.reportsService.exportBookingsExcel(
+      user.tenantId!,
+      query.period,
+      query.startDate,
+      query.endDate,
+    );
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename=reporte-turnolink.xlsx');
+    res.send(buffer);
+  }
+
   // ============ ORDER-BASED REPORTS (mercado/ecommerce) ============
 
   @Get('orders/overview')

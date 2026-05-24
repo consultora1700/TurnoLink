@@ -334,14 +334,17 @@ export default async function BusinessPage({ params }: Props) {
     );
   }
 
-  const stats = await getReviewStats(params.slug);
+  const [stats, branding] = await Promise.all([
+    getReviewStats(params.slug),
+    publicApi.getBranding(params.slug).catch(() => null),
+  ]);
 
   return (
     <>
       <BusinessJsonLd tenant={tenant} stats={stats} slug={params.slug} />
       <BreadcrumbJsonLd tenant={tenant} slug={params.slug} />
       <ServiceListJsonLd tenant={tenant} slug={params.slug} />
-      <PublicBookingPage tenant={tenant} slug={params.slug} />
+      <PublicBookingPage tenant={tenant} slug={params.slug} branding={branding} />
     </>
   );
 }

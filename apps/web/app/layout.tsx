@@ -11,34 +11,34 @@ const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://turnolink.com.ar';
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: 'TurnoLink — Sistema Operativo Comercial: Servicios, Tienda y Finanzas',
+    default: 'Turnos Online con Cobro Automático | TurnoLink',
     template: '%s | TurnoLink',
   },
   description:
-    'Sistema operativo comercial para tu negocio. Gestiona servicios y turnos, vende productos con tu tienda online y controla ingresos, gastos y proyecciones. Mercado Pago integrado. +40 industrias. Empezá gratis.',
+    'Sistema de turnos online para tu negocio. Agendá, cobrá señas con Mercado Pago y enviá recordatorios automáticos. +40 rubros. Empezá gratis 14 días.',
   keywords: [
-    'sistema de turnos online',
-    'reservas online',
-    'agenda digital',
+    'turnos online',
     'turnos online argentina',
-    'cobro automatico mercado pago',
-    'turnolink',
-    'software de turnos',
-    'sistema de reservas',
+    'sistema de turnos',
+    'sistema de reservas online',
     'agenda online para negocios',
-    'recordatorio de turnos automatico',
-    'tienda online negocios',
-    'catalogo productos online',
-    'gestion financiera negocio',
-    'control ingresos gastos',
-    'sistema operativo comercial',
+    'agenda digital',
+    'software de turnos',
+    'turnero online',
+    'turnolink',
+    'reservas con mercado pago',
+    'cobro de seña automatico',
+    'recordatorios de turnos automaticos',
+    'turnos para peluqueria',
+    'turnos para consultorio',
+    'reservas de canchas online',
   ],
   icons: {
     icon: [
-      { url: '/favicon.ico', sizes: 'any' },
-      { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/favicon.ico?v=tlink-1', sizes: 'any' },
+      { url: '/favicon-32x32.png?v=tlink-1', sizes: '32x32', type: 'image/png' },
     ],
-    apple: [{ url: '/icons/apple-touch-icon-180x180.png', sizes: '180x180' }],
+    apple: [{ url: '/icons/apple-touch-icon-180x180.png?v=tlink-1', sizes: '180x180' }],
   },
   // manifest is injected ONLY in the dashboard layout via PwaHead component
   // to prevent browsers from showing "Install App" prompts on public pages
@@ -47,9 +47,9 @@ export const metadata: Metadata = {
     locale: 'es_AR',
     url: SITE_URL,
     siteName: 'TurnoLink',
-    title: 'TurnoLink — Servicios, Tienda Online y Finanzas en Un Solo Lugar',
+    title: 'Turnos online con cobro automático — TurnoLink',
     description:
-      'Sistema operativo comercial: servicios, tienda online y finanzas. Para +40 industrias. Empezá gratis.',
+      'Agendá, cobrá señas con Mercado Pago y enviá recordatorios automáticos. Para +40 rubros. Empezá gratis 14 días.',
     images: [
       {
         url: '/og-image.jpg?v=2',
@@ -61,9 +61,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'TurnoLink — Servicios, Tienda y Finanzas en una plataforma',
+    title: 'Turnos online con cobro automático — TurnoLink',
     description:
-      'Sistema operativo comercial para tu negocio. Servicios, tienda online y gestión financiera. Empezá gratis.',
+      'Agendá, cobrá señas y enviá recordatorios. Para +40 rubros. Empezá gratis 14 días.',
     images: ['/og-image.jpg?v=2'],
   },
   // canonical is set per-page to avoid all pages pointing to root
@@ -116,14 +116,14 @@ export default function RootLayout({
               applicationCategory: 'BusinessApplication',
               operatingSystem: 'Web',
               description:
-                'Sistema operativo comercial: gestiona servicios y turnos con cobro automático, vende productos con tienda online integrada y controla ingresos, gastos y proyecciones financieras. +40 industrias.',
+                'Sistema de turnos online para gestionar reservas, cobrar señas con Mercado Pago, enviar recordatorios automáticos y administrar la agenda de tu negocio. Para peluquerías, consultorios, canchas, spas y +40 rubros más.',
               featureList: [
-                'Reservas y turnos online',
-                'Tienda online y catálogo de productos',
-                'Gestión financiera integral',
-                'Cobro automático con Mercado Pago',
-                'Multi-sucursal',
+                'Reservas y turnos online 24/7',
+                'Cobro de señas con Mercado Pago',
+                'Recordatorios automáticos por WhatsApp y email',
+                'Agenda multi-profesional y multi-sucursal',
                 'CRM de clientes',
+                'Reportes de ocupación y facturación',
               ],
               offers: {
                 '@type': 'Offer',

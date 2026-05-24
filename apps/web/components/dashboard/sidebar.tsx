@@ -728,10 +728,17 @@ export function DashboardSidebar() {
     effectiveHiddenSections = Array.from(new Set([...effectiveHiddenSections, ...INMOBILIARIA_SECTIONS]));
   }
 
-  // Hide Fidelización section for alquiler rubro
+  // Hide Fidelización section for rubros where it doesn't apply
   const FIDELIZACION_SECTIONS = ['/fidelizacion', '/fidelizacion/clientes', '/fidelizacion/niveles', '/fidelizacion/recompensas', '/fidelizacion/canjes', '/fidelizacion/cupones', '/fidelizacion/sorteos', '/fidelizacion/configuracion'];
-  if (rubro === 'alquiler' || rubro === 'hospedaje') {
+  const RUBROS_SIN_FIDELIZACION = ['alquiler', 'hospedaje', 'psicologia', 'salud', 'nutricion', 'kinesiologia', 'fonoaudiologia'];
+  if (RUBROS_SIN_FIDELIZACION.includes(rubro)) {
     effectiveHiddenSections = Array.from(new Set([...effectiveHiddenSections, ...FIDELIZACION_SECTIONS]));
+  }
+
+  // Hide Presupuestos for rubros where quoting doesn't apply
+  const RUBROS_SIN_PRESUPUESTOS = ['psicologia', 'salud', 'nutricion', 'kinesiologia', 'fonoaudiologia', 'alquiler', 'hospedaje'];
+  if (RUBROS_SIN_PRESUPUESTOS.includes(rubro)) {
+    effectiveHiddenSections = Array.from(new Set([...effectiveHiddenSections, '/presupuestos']));
   }
 
   const [subscriptionBlocked, setSubscriptionBlocked] = useState(false);

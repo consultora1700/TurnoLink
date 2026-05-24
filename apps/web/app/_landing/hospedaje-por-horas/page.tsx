@@ -7,9 +7,9 @@ import { BreadcrumbListJsonLd, FaqJsonLd } from '../_components/seo-schemas';
 const SITE_URL = 'https://turnolink.com.ar';
 
 export const metadata: Metadata = {
-  title: 'TurnoLink para Hospedaje por Horas — Turnos por Bloque 24/7 para Albergues, Hoteles y Boxes',
+  title: 'Turnos por Hora para Albergues y Hoteles',
   description:
-    'Sistema de reservas y gestión para albergues transitorios, hoteles por turno, hostels por bloque, habitaciones de 12 horas y boxes privados. Check-in digital, cobro automático con Mercado Pago, buffer de limpieza entre turnos, dashboard de ocupación 24/7. Probá 14 días gratis.',
+    'Reservas por bloque 24/7 para albergues transitorios, hoteles por turno y boxes. Check-in digital, cobro automático y buffer de limpieza. 14 días gratis.',
   keywords: [
     'sistema reservas albergue transitorio',
     'turnos hotel por hora',

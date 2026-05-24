@@ -264,7 +264,7 @@ export class EmployeesService {
     if (normalized.length > 0) {
       const serviceIds = normalized.map((s) => s.serviceId);
       const found = await this.prisma.service.findMany({
-        where: { id: { in: serviceIds }, tenantId },
+        where: { id: { in: serviceIds }, tenantId, deletedAt: null },
       });
 
       if (found.length !== serviceIds.length) {

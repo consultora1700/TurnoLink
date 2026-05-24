@@ -80,6 +80,7 @@ export class ServicesService {
     const services = await this.prisma.service.findMany({
       where: {
         tenantId,
+        deletedAt: null,
         ...(includeInactive ? {} : { isActive: true }),
       },
       include: {
@@ -101,7 +102,7 @@ export class ServicesService {
 
   async findById(tenantId: string, id: string) {
     const service = await this.prisma.service.findFirst({
-      where: { id, tenantId },
+      where: { id, tenantId, deletedAt: null },
       include: { category: true, specialty: true },
     });
 
@@ -120,7 +121,7 @@ export class ServicesService {
     const updated = await this.prisma.$transaction(async (tx) => {
       // Verify ownership atomically
       const service = await tx.service.findFirst({
-        where: { id, tenantId },
+        where: { id, tenantId, deletedAt: null },
       });
 
       if (!service) {
@@ -153,13 +154,15 @@ export class ServicesService {
 
   /**
    * Delete a service with atomic tenant isolation.
-   * Soft deletes if service has bookings, hard deletes otherwise.
+   * Soft deletes (deletedAt) if service has bookings, hard deletes otherwise.
+   * deletedAt is the source of truth for deletion; isActive is independent
+   * (used to hide active services from public without deleting them).
    */
   async delete(tenantId: string, id: string) {
     const result = await this.prisma.$transaction(async (tx) => {
       // Verify ownership atomically
       const service = await tx.service.findFirst({
-        where: { id, tenantId },
+        where: { id, tenantId, deletedAt: null },
       });
 
       if (!service) {
@@ -172,10 +175,11 @@ export class ServicesService {
       });
 
       if (bookingsCount > 0) {
-        // Soft delete by deactivating
+        // Soft delete: mark deletedAt + isActive=false so it disappears from
+        // every list (admin and public). Bookings still reference the row.
         return tx.service.update({
           where: { id },
-          data: { isActive: false },
+          data: { deletedAt: new Date(), isActive: false },
         });
       }
 
@@ -195,7 +199,7 @@ export class ServicesService {
     await this.prisma.$transaction(async (tx) => {
       for (let index = 0; index < serviceIds.length; index++) {
         const result = await tx.service.updateMany({
-          where: { id: serviceIds[index], tenantId },
+          where: { id: serviceIds[index], tenantId, deletedAt: null },
           data: { order: index + 1 },
         });
 
@@ -228,10 +232,10 @@ export class ServicesService {
 
   async findAllCategories(tenantId: string) {
     const categories = await this.prisma.serviceCategory.findMany({
-      where: { tenantId },
+      where: { tenantId, deletedAt: null },
       include: {
         services: {
-          where: { isActive: true },
+          where: { isActive: true, deletedAt: null },
           orderBy: { order: 'asc' },
         },
       },
@@ -251,7 +255,7 @@ export class ServicesService {
   async updateCategory(tenantId: string, id: string, name: string) {
     return this.prisma.$transaction(async (tx) => {
       const category = await tx.serviceCategory.findFirst({
-        where: { id, tenantId },
+        where: { id, tenantId, deletedAt: null },
       });
 
       if (!category) {
@@ -309,7 +313,7 @@ export class ServicesService {
   async deleteCategory(tenantId: string, id: string) {
     return this.prisma.$transaction(async (tx) => {
       const category = await tx.serviceCategory.findFirst({
-        where: { id, tenantId },
+        where: { id, tenantId, deletedAt: null },
       });
 
       if (!category) {
@@ -318,7 +322,7 @@ export class ServicesService {
 
       // Remove category from services (don't delete services)
       await tx.service.updateMany({
-        where: { categoryId: id, tenantId },
+        where: { categoryId: id, tenantId, deletedAt: null },
         data: { categoryId: null },
       });
 

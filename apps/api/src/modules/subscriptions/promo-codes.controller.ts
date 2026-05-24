@@ -14,6 +14,7 @@ import { AdminKeyGuard } from '../admin/guards/admin-key.guard';
 import { CrossPlatformService } from '../admin/cross-platform.service';
 import { PromoCodesService } from './promo-codes.service';
 import { Public } from '../../common/decorators/public.decorator';
+import { SkipSubscriptionCheck } from '../../common/decorators/skip-subscription-check.decorator';
 
 // ============ ADMIN ENDPOINTS ============
 
@@ -87,6 +88,7 @@ export class AdminPromoCodesController {
 // ============ USER ENDPOINTS ============
 
 @Controller('subscriptions/promo-code')
+@SkipSubscriptionCheck()
 export class PromoCodesController {
   constructor(private readonly promoCodesService: PromoCodesService) {}
 

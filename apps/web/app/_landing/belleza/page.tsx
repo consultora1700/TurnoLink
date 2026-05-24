@@ -7,9 +7,9 @@ import { BreadcrumbListJsonLd, FaqJsonLd } from '../_components/seo-schemas';
 const SITE_URL = 'https://turnolink.com.ar';
 
 export const metadata: Metadata = {
-  title: 'TurnoLink para Belleza & Bienestar — Turnos Online para Peluquerías, Barberías y Spas',
+  title: 'Turnos para Peluquerías y Salones de Belleza',
   description:
-    'Sistema de turnos online para peluquerías, barberías, spas, centros de estética, uñas, pestañas, depilación y cosmetología. Reservas 24/7, cobro de señas con Mercado Pago, gestión de profesionales y clientes. Empezá gratis.',
+    'Sistema de reservas online para peluquerías, barberías, spas y centros de estética. Cobro de señas con Mercado Pago, recordatorios automáticos. 14 días gratis.',
   keywords: [
     'turnos peluquería online',
     'sistema turnos barbería',

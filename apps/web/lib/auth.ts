@@ -2,11 +2,11 @@ import { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { authApi, isApiError } from './api';
 
-// Token refresh buffer (5 minutes before expiry)
-const TOKEN_REFRESH_BUFFER = 5 * 60 * 1000;
+// Token refresh buffer (30 minutes before expiry)
+const TOKEN_REFRESH_BUFFER = 30 * 60 * 1000;
 
-// JWT expiration time (from backend) - typically 15 minutes
-const ACCESS_TOKEN_TTL = 15 * 60 * 1000;
+// JWT expiration time (from backend) - 4 hours
+const ACCESS_TOKEN_TTL = 4 * 60 * 60 * 1000;
 
 interface TokenData {
   accessToken: string;
@@ -145,7 +145,7 @@ export const authOptions: NextAuthOptions = {
   },
   session: {
     strategy: 'jwt',
-    maxAge: 14 * 24 * 60 * 60, // 14 days (refresh token rotation keeps it alive)
+    maxAge: 30 * 24 * 60 * 60, // 30 days (refresh token rotation keeps it alive)
   },
   cookies: {
     sessionToken: {

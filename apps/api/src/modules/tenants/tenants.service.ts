@@ -195,7 +195,7 @@ export class TenantsService {
         storeType: (['mercado', 'inmobiliarias'].includes(settings.rubro as string)) ? (settings.storeType ?? 'catalogo') : undefined,
         shipping: settings.shipping ?? null,
         gastroConfig: settings.gastroConfig ?? null,
-        logoScale: settings.logoScale ?? 100,
+        logoScale: settings.logoScale ?? 1,
         logoOffsetX: tenant.branding?.logoOffsetX ?? 0,
         logoOffsetY: tenant.branding?.logoOffsetY ?? 0,
       },

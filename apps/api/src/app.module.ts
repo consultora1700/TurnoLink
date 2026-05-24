@@ -46,7 +46,8 @@ import { ProductsModule } from './modules/products/products.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { QuotesModule } from './modules/quotes/quotes.module';
 import { BrandingModule } from './modules/branding/branding.module';
-import { GastroModule } from './modules/gastro/gastro.module';
+// DISABLED: Gastro functionality moves to Colmen (colmen.com.ar)
+// import { GastroModule } from './modules/gastro/gastro.module';
 import { RentalsModule } from './modules/rentals/rentals.module';
 import { DevelopmentsModule } from './modules/developments/developments.module';
 import { LeadsModule } from './modules/leads/leads.module';
@@ -177,8 +178,8 @@ import * as path from 'path';
     // Loyalty & Sorteos
     LoyaltyModule,
 
-    // Gastro Salon (Dine-in, Table Sessions)
-    GastroModule,
+    // DISABLED: Gastro moves to Colmen (colmen.com.ar)
+    // GastroModule,
 
     // Rentals (Inmobiliarias)
     RentalsModule,

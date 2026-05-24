@@ -755,8 +755,8 @@ export default function CheckoutForm({ tenant, branding, slug }: CheckoutFormPro
       <div className="text-center py-4">
         <p className="text-[11px]" style={{ color: pageColors.subtle }}>
           Powered by{' '}
-          <a href="https://turnolink.com.ar/mercado" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-500">
-            TurnoLink Mercado
+          <a href="https://turnolink.com.ar" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-500">
+            TurnoLink
           </a>
         </p>
       </div>

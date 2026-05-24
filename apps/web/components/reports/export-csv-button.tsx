@@ -20,7 +20,7 @@ export function ExportCsvButton({ params }: { params: ReportParams }) {
         .map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`);
       const query = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
 
-      const response = await fetch(`${API_URL}/api/reports/export/csv${query}`, {
+      const response = await fetch(`${API_URL}/api/reports/export/excel${query}`, {
         headers: { Authorization: `Bearer ${session.accessToken}` },
       });
 
@@ -30,7 +30,7 @@ export function ExportCsvButton({ params }: { params: ReportParams }) {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'reportes-turnos.csv';
+      a.download = 'reporte-turnolink.xlsx';
       a.click();
       URL.revokeObjectURL(url);
     } catch {
@@ -43,7 +43,7 @@ export function ExportCsvButton({ params }: { params: ReportParams }) {
   return (
     <Button variant="outline" size="sm" onClick={handleExport} disabled={loading}>
       {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
-      Exportar CSV
+      Exportar Excel
     </Button>
   );
 }

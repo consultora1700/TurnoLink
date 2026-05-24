@@ -1,0 +1,362 @@
+================================================================================
+                    AUDITORIA SEO / MARKETING - COLMEN.COM.AR
+================================================================================
+Fecha:   2026-04-21
+Alcance: 18 URLs clave (home, verticales, subnichos, landings de cliente)
+Autor:   Analisis tecnico-comercial
+================================================================================
+
+
+RESUMEN EJECUTIVO
+--------------------------------------------------------------------------------
+El sitio tiene buenas bases tecnicas (JSON-LD en todas las paginas, URLs
+limpias, HTML liviano, meta robots correcta) pero sufre TRES problemas criticos
+que le estan costando trafico AHORA MISMO:
+
+  1) Canonical apunta a OTRO dominio (turnolink.com.ar) en casi todas las
+     landings -> Google no consolida autoridad en colmen.com.ar.
+  2) robots.txt bloquea las verticales a todos los buscadores que no sean
+     Googlebot -> Bing, DuckDuckGo, Brave, Yandex no pueden rastrear.
+  3) Identidad de marca confusa (Colmen vs TurnoLink) en los titulos del SERP
+     -> baja CTR y confunde al usuario.
+
+Arreglar los tres puntos criticos es esfuerzo bajo/medio y recupera trafico
+perdido de inmediato.
+
+
+================================================================================
+CRITICOS (arreglar YA)
+================================================================================
+
+
+[C1] CANONICAL APUNTANDO A DOMINIO EXTERNO
+--------------------------------------------------------------------------------
+Severidad:     CRITICA
+Impacto:       Google consolida autoridad hacia turnolink.com.ar o directamente
+               no indexa las paginas de colmen.com.ar (las trata como copias).
+Esfuerzo fix:  ~30 minutos (probablemente 1 ENV var o 1 archivo de metadata).
+
+URLs afectadas (todas tienen canonical a turnolink.com.ar en lugar de colmen):
+
+   /salud                       -> https://turnolink.com.ar/salud
+   /belleza                     -> https://turnolink.com.ar/belleza
+   /mercado                     -> https://turnolink.com.ar/mercado
+   /gastronomia                 -> https://turnolink.com.ar/gastronomia
+   /deportes                    -> https://turnolink.com.ar/deportes
+   /hospedaje-por-horas         -> https://turnolink.com.ar/hospedaje-por-horas
+   /alquiler-temporario         -> https://turnolink.com.ar/alquiler-temporario
+   /espacios-flexibles          -> https://turnolink.com.ar/espacios-flexibles
+   /explorar-talento            -> https://turnolink.com.ar/explorar-talento
+   /salud/psicologos            -> https://turnolink.com.ar/salud/psicologos
+   /salud/odontologos           -> https://turnolink.com.ar/salud/odontologos
+   /register                    -> https://turnolink.com.ar/register
+   /integrar                    -> https://turnolink.com.ar/integrar
+
+URLs OK (canonical correcto):
+   /                            -> https://colmen.com.ar
+   /turnos-online               -> https://colmen.com.ar/turnos-online
+   /turnos-online/buenos-aires  -> https://colmen.com.ar/turnos-online/buenos-aires
+   /smash-house                 -> https://colmen.com.ar/smash-house
+
+Accion sugerida:
+  - Buscar donde se construye el canonical (probablemente en metadata del App
+    Router de Next.js o en una variable NEXT_PUBLIC_SITE_URL / APP_URL).
+  - Unificar a "https://colmen.com.ar" (o a turnolink si se decide migrar, ver
+    punto C3).
+
+
+[C2] ROBOTS.TXT BLOQUEA VERTICALES A TODOS LOS BOTS EXCEPTO GOOGLEBOT
+--------------------------------------------------------------------------------
+Severidad:     CRITICA
+Impacto:       Bing (y por extension ChatGPT Search que usa Bing), DuckDuckGo,
+               Brave, Yandex no pueden rastrear las landings mas importantes.
+               Aprox. 6-10% del trafico de busqueda en Argentina, regalado.
+Esfuerzo fix:  ~10 minutos.
+
+El bloque "User-Agent: *" tiene disallows masivos:
+
+   Disallow: /belleza
+   Disallow: /salud
+   Disallow: /deportes
+   Disallow: /hospedaje-por-horas
+   Disallow: /alquiler-temporario
+   Disallow: /espacios-flexibles
+   Disallow: /gastronomia
+   Disallow: /mercado
+   Disallow: /turnos-profesionales
+   Disallow: /turnos-online
+   Disallow: /explorar-talento
+   Disallow: /para
+   Disallow: /profesional
+
+Luego hay un bloque separado "User-Agent: Googlebot" que permite todo. Resultado:
+solo Google rastrea las verticales.
+
+Accion sugerida:
+  - Borrar los disallows de verticales en el bloque "User-Agent: *".
+  - Dejar solo los disallows legitimos: /admin/, /api/, /embed/, /login,
+    /checkout, /portal-empleado/, /_next/, /mi-perfil, /mi-suscripcion,
+    /configuracion, /reportes, etc.
+
+
+[C3] IDENTIDAD DE MARCA CONFUSA EN SERP
+--------------------------------------------------------------------------------
+Severidad:     CRITICA (comercial) / ALTA (SEO)
+Impacto:       El usuario ve "TurnoLink" en Google, clickea, llega a colmen.com.ar.
+               Confusion = menor CTR, mas rebote, peor conversion. Ademas
+               dispersa autoridad de marca entre dos nombres.
+Esfuerzo fix:  1h tecnico + decision estrategica.
+
+El dominio es colmen.com.ar pero los titulos dicen:
+   "TurnoLink para Salud ... | Colmen"
+   "TurnoLink Mercado ... | Colmen"
+   "Crear Cuenta - TurnoLink | Colmen"
+
+Decision a tomar:
+   Opcion A: Marca principal = Colmen.
+             -> Reescribir titulos: "Colmen para Salud", "Colmen Mercado", etc.
+             -> TurnoLink queda como submarca/producto si aplica.
+
+   Opcion B: Marca principal = TurnoLink.
+             -> Migrar el sitio a turnolink.com.ar con redirects 301.
+             -> Colmen queda como paraguas B2B.
+
+Hoy el sitio esta compitiendo contra si mismo en el SERP y ninguna de las dos
+marcas acumula autoridad plena.
+
+
+================================================================================
+ALTOS (impacto directo en CTR y en conversion)
+================================================================================
+
+
+[A1] OG:IMAGE VACIO EN TODAS LAS VERTICALES
+--------------------------------------------------------------------------------
+Severidad:     ALTA
+Impacto:       Cuando alguien pega el link en WhatsApp, Instagram, Slack,
+               LinkedIn, etc., sale SIN imagen -> CTR en compartidos cae >50%.
+Esfuerzo fix:  20 min (fallback) / unas horas (imagenes por vertical).
+
+URLs afectadas (og:image vacio):
+   /salud, /belleza, /mercado, /gastronomia, /deportes,
+   /hospedaje-por-horas, /alquiler-temporario, /espacios-flexibles,
+   /explorar-talento, /turnos-online, /turnos-online/buenos-aires,
+   /salud/psicologos, /salud/odontologos
+
+URLs OK (og:image seteado):
+   /               -> /og-image.jpg
+   /register       -> /og-image.jpg?v=2
+   /ayuda          -> /og-image.jpg?v=2
+   /integrar       -> /og-image.jpg?v=2
+   /smash-house    -> imagen propia del negocio (correcto)
+
+Accion sugerida:
+   Corto plazo: fallback a /og-image.jpg en metadata global.
+   Mediano plazo: una imagen por vertical (salud, belleza, etc.), generable
+                  con next/og de forma dinamica.
+
+
+[A2] META DESCRIPTIONS PASADAS DE LARGO (SE TRUNCAN EN GOOGLE)
+--------------------------------------------------------------------------------
+Severidad:     ALTA
+Impacto:       Google trunca a ~155-165 caracteres en mobile. La call-to-action
+               final ("Empeza gratis", "14 dias gratis") queda FUERA del
+               snippet visible -> pierde conversion.
+Esfuerzo fix:  ~1h de copywriting.
+
+URLs con description > 165 chars:
+
+   URL                          | chars | exceso
+   ---------------------------- | ----- | -------
+   /hospedaje-por-horas         |  277  | +112
+   /deportes                    |  263  | +98
+   /alquiler-temporario         |  259  | +94
+   /salud/odontologos           |  254  | +89
+   /espacios-flexibles          |  249  | +84
+   /salud/psicologos            |  248  | +83
+   /belleza                     |  223  | +58
+   /salud                       |  218  | +53
+   /mercado                     |  217  | +52
+   /gastronomia                 |  216  | +51
+   /turnos-online/buenos-aires  |  198  | +33
+   /turnos-online               |  184  | +19
+   /explorar-talento            |  164  | ok (borderline)
+
+Accion sugerida:
+  Reescribir cada description en <= 160 chars, con la keyword principal al
+  principio y la CTA al final dentro del limite.
+
+
+[A3] META DESCRIPTIONS DUPLICADAS DEL HOME
+--------------------------------------------------------------------------------
+Severidad:     ALTA
+Impacto:       Google puede considerar contenido duplicado a nivel metadata y
+               degradar el ranking de /ayuda y /integrar.
+Esfuerzo fix:  15 min.
+
+URLs que heredan la description generica del home:
+   /ayuda       -> "Gestiona operaciones, ventas, finanzas y clientes..."
+   /integrar    -> "Gestiona operaciones, ventas, finanzas y clientes..."
+
+Ambas deberian tener su propia description. Ejemplos:
+   /integrar  -> "API y webhooks para integrar reservas y turnos de TurnoLink
+                 en tu plataforma. Documentacion, OAuth, eventos en tiempo real."
+   /ayuda     -> "Centro de ayuda de TurnoLink: guias rapidas, tutoriales,
+                 preguntas frecuentes y soporte para gestionar tu negocio."
+
+
+[A4] FALTA DE H1 EN PAGINAS CLAVE
+--------------------------------------------------------------------------------
+Severidad:     ALTA
+Impacto:       H1 es la segunda senal SEO mas fuerte despues del title.
+               Sin H1, el mensaje semantico queda difuso.
+Esfuerzo fix:  20 min.
+
+Problemas detectados:
+   /register           -> h1Count = 0 (sin H1)
+   /explorar-talento   -> h1Count = 0 (sin H1)
+   /smash-house        -> h1Count = 2 (dos H1, elegir uno)
+
+Todas las landings verticales tienen h1Count = 1, OK.
+
+
+================================================================================
+MEDIOS (credibilidad tecnica y long-tail)
+================================================================================
+
+
+[M1] SITEMAP CON LASTMOD FALSO
+--------------------------------------------------------------------------------
+Severidad:     MEDIA
+Impacto:       Todas las URLs muestran lastmod = la hora exacta en que se
+               regenero el sitemap. Google detecta el patron "todo cambio
+               simultaneamente" e IGNORA el lastmod -> se pierde la senal de
+               frescura real.
+Esfuerzo fix:  1-2h.
+
+Ejemplo actual (todas las URLs comparten timestamp):
+   <loc>https://colmen.com.ar/</loc>
+   <lastmod>2026-04-21T09:19:57.054Z</lastmod>
+
+   <loc>https://colmen.com.ar/integrar</loc>
+   <lastmod>2026-04-21T09:19:57.054Z</lastmod>
+
+   <loc>https://colmen.com.ar/ayuda</loc>
+   <lastmod>2026-04-21T09:19:57.054Z</lastmod>
+
+Accion sugerida:
+  El lastmod deberia reflejar la fecha de ultimo cambio REAL de esa URL
+  (fecha del ultimo commit que toco el archivo, o fecha de modificacion del
+  contenido servido).
+
+
+[M2] TITULO DE /smash-house DESAPROVECHADO
+--------------------------------------------------------------------------------
+Severidad:     MEDIA
+Impacto:       Una landing de cliente que compite por queries locales
+               ("smash burger buenos aires", "hamburguesa smash palermo")
+               usa solo 37 de los ~60 caracteres disponibles.
+Esfuerzo fix:  5 min.
+
+Actual:  "Smash House - Reservar Turno | Colmen"  (37 chars)
+
+Propuesta:
+   "Smash House Buenos Aires - Smash Burgers Artesanales | Reservar y Delivery"
+   (74 chars, OK porque Google trunca por pixeles, no por chars)
+
+
+[M3] DISALLOWS ADMIN DUPLICADOS EN ROBOTS
+--------------------------------------------------------------------------------
+Severidad:     MEDIA (solo limpieza)
+Impacto:       Redundancia. El bloque Googlebot repite disallows del bloque *.
+Esfuerzo fix:  5 min.
+
+Al limpiar robots.txt por el punto [C2], conviene dejar un unico bloque
+User-Agent: * con los disallows realmente necesarios, y borrar el bloque
+Googlebot que hoy existe solo como workaround del bug [C2].
+
+
+================================================================================
+LO QUE ESTA BIEN (mantener)
+================================================================================
+
++ lang="es" consistente en todas las paginas.
++ meta robots = "index, follow" en todas.
++ JSON-LD (datos estructurados) en TODAS las paginas (1-3 scripts por pagina).
+  Esto esta por encima del promedio del mercado.
++ Twitter Card = summary_large_image configurado.
++ HTML liviano (40-170 KB) -> Core Web Vitals deberia estar bien.
++ Sitemap declarado en robots.txt.
++ Estructura de URLs limpia y semantica:
+     /salud/psicologos
+     /turnos-online/buenos-aires
+  Excelente para capturar long-tail.
++ H1 count = 1 en la mayoria de landings verticales (correcto semanticamente).
++ Titles generalmente entre 54-100 chars (rango SEO optimo).
+
+
+================================================================================
+PLAN PRIORIZADO (orden sugerido de ejecucion)
+================================================================================
+
+   #   Accion                                      Esfuerzo     Impacto
+   --- ------------------------------------------- ------------ ---------
+   1   Fix canonical -> todos a colmen.com.ar      30 min       CRITICO
+   2   Limpiar robots.txt (quitar disallows        10 min       CRITICO
+       de verticales)
+   3   Decidir marca (Colmen vs TurnoLink) y       1h + decision CRITICO
+       unificar titles
+   4   og:image fallback en metadata global        20 min       ALTO
+   5   Podar meta descriptions a <= 160 chars      1h           ALTO
+   6   H1 en /register y /explorar-talento         20 min       ALTO
+   7   Descriptions propias para /ayuda e          15 min       ALTO
+       /integrar
+   8   Sitemap con lastmod real por URL            1-2h         MEDIO
+   9   Titulo optimizado /smash-house              5 min        MEDIO
+
+Total estimado para los puntos 1-7: ~4 horas de trabajo tecnico + 1 decision
+estrategica (marca). Eso cubre todo el impacto critico y alto.
+
+
+================================================================================
+METODOLOGIA
+================================================================================
+
+URLs auditadas (18):
+   /
+   /salud
+   /belleza
+   /mercado
+   /turnos-online
+   /turnos-online/buenos-aires
+   /gastronomia
+   /deportes
+   /hospedaje-por-horas
+   /alquiler-temporario
+   /espacios-flexibles
+   /explorar-talento
+   /register
+   /ayuda
+   /integrar
+   /smash-house
+   /salud/psicologos
+   /salud/odontologos
+
+Verificaciones realizadas:
+   - HTTP status
+   - <title> y su longitud
+   - meta description y su longitud
+   - link rel="canonical"
+   - meta robots
+   - og:title, og:image
+   - twitter:card
+   - conteo de <h1> y texto del primer H1
+   - presencia y cantidad de <script type="application/ld+json">
+   - atributo lang del <html>
+   - tamano del HTML servido
+   - contenido de /robots.txt
+   - contenido de /sitemap.xml
+
+================================================================================
+                                   FIN DEL INFORME
+================================================================================

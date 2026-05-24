@@ -47,6 +47,7 @@ import {
   type ProfilePhotoStyle,
 } from '@/components/storefront/store-style-previews';
 import { AnnouncementBarPreview } from '@/components/storefront/announcement-bar';
+import { PhotoEditor } from '@/components/branding/photo-editor';
 
 const FONT_OPTIONS = [
   'Inter',
@@ -77,6 +78,7 @@ export default function MiTiendaPage() {
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [branding, setBranding] = useState<TenantBranding | null>(null);
   const [activeSection, setActiveSection] = useState('identidad');
+  const [photoEditorOpen, setPhotoEditorOpen] = useState(false);
 
   // Form state
   const [form, setForm] = useState({
@@ -579,6 +581,56 @@ export default function MiTiendaPage() {
                     />
                   </div>
                 </div>
+                {/* Encuadre del logo — sección Identidad */}
+                {form.logoUrl && (
+                  <div className="pt-2">
+                    <span className="text-sm font-medium">Encuadre del logo</span>
+                    <p className="text-xs text-muted-foreground mt-1 mb-3">
+                      Ajustá zoom y posición de tu logo dentro del marco
+                    </p>
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-dashed border-slate-300 dark:border-slate-600 shadow-sm flex-shrink-0"
+                        style={{ backgroundColor: form.primaryColor }}>
+                        <img
+                          src={form.logoUrl}
+                          alt="Preview"
+                          className="w-full h-full object-cover"
+                          style={(form.logoScale !== 1 || form.logoOffsetX !== 0 || form.logoOffsetY !== 0)
+                            ? { transform: `scale(${form.logoScale}) translate(${form.logoOffsetX}%, ${form.logoOffsetY}%)`, transformOrigin: 'center' }
+                            : undefined}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-xs font-mono text-muted-foreground">
+                          {Math.round(form.logoScale * 100)}% · ({Math.round(form.logoOffsetX)}, {Math.round(form.logoOffsetY)})
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setPhotoEditorOpen(true)}
+                          className="text-sm font-medium text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300"
+                        >
+                          Ajustar foto
+                        </button>
+                      </div>
+                    </div>
+                    <PhotoEditor
+                      open={photoEditorOpen}
+                      imageUrl={form.logoUrl}
+                      initialScale={form.logoScale}
+                      initialOffsetX={form.logoOffsetX}
+                      initialOffsetY={form.logoOffsetY}
+                      fallbackBgColor={form.primaryColor}
+                      shape="round"
+                      onApply={(s, ox, oy) => {
+                        updateForm('logoScale', s);
+                        updateForm('logoOffsetX', ox);
+                        updateForm('logoOffsetY', oy);
+                        setPhotoEditorOpen(false);
+                      }}
+                      onCancel={() => setPhotoEditorOpen(false)}
+                    />
+                  </div>
+                )}
                 <div>
                   <Label className="mb-2 block">Banner principal</Label>
                   <ImageUpload
@@ -949,92 +1001,29 @@ export default function MiTiendaPage() {
                 })}
               </div>
 
-              {/* Logo Scale / Zoom */}
-              {form.profilePhotoStyle !== 'none' && (
+              {/* Encuadre del logo — preview only, editor modal lives in Identidad */}
+              {form.profilePhotoStyle !== 'none' && form.logoUrl && (
                 <div className="mt-5 pt-5 border-t border-slate-100 dark:border-slate-800">
-                  <div className="flex items-center justify-between mb-3">
-                    <label className="text-sm font-medium">Zoom de la imagen</label>
-                    <span className="text-xs font-mono text-muted-foreground bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
-                      {Math.round(form.logoScale * 100)}%
-                    </span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mb-2">
-                    Ajustá el encuadre de tu logo dentro del marco
-                  </p>
-                  <div className="flex items-center gap-3">
-                    <span className="text-[10px] text-muted-foreground w-6 text-right">50%</span>
-                    <input
-                      type="range"
-                      min="0.5"
-                      max="2"
-                      step="0.05"
-                      value={form.logoScale}
-                      onChange={(e) => updateForm('logoScale', parseFloat(e.target.value))}
-                      className="flex-1 h-2 rounded-full appearance-none cursor-pointer accent-amber-500 bg-slate-200 dark:bg-slate-700"
-                    />
-                    <span className="text-[10px] text-muted-foreground w-8">200%</span>
-                  </div>
-                  {/* Position controls — only when zoomed in */}
-                  {form.logoScale > 1 && (
-                    <div className="mt-3 space-y-2">
-                      <div className="flex items-center gap-3">
-                        <span className="text-[10px] text-muted-foreground w-10 text-right">← Izq</span>
-                        <input
-                          type="range"
-                          min="-50"
-                          max="50"
-                          step="1"
-                          value={form.logoOffsetX}
-                          onChange={(e) => updateForm('logoOffsetX', parseFloat(e.target.value))}
-                          className="flex-1 h-1.5 rounded-full appearance-none cursor-pointer accent-blue-500 bg-slate-200 dark:bg-slate-700"
-                        />
-                        <span className="text-[10px] text-muted-foreground w-10">Der →</span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-[10px] text-muted-foreground w-10 text-right">↑ Arr</span>
-                        <input
-                          type="range"
-                          min="-50"
-                          max="50"
-                          step="1"
-                          value={form.logoOffsetY}
-                          onChange={(e) => updateForm('logoOffsetY', parseFloat(e.target.value))}
-                          className="flex-1 h-1.5 rounded-full appearance-none cursor-pointer accent-blue-500 bg-slate-200 dark:bg-slate-700"
-                        />
-                        <span className="text-[10px] text-muted-foreground w-10">Abj ↓</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => { updateForm('logoOffsetX', 0); updateForm('logoOffsetY', 0); }}
-                        className="text-[10px] text-blue-500 hover:underline"
-                      >
-                        Centrar
-                      </button>
-                    </div>
-                  )}
-                  {/* Live preview — zoom + position inside fixed frame */}
-                  <div className="mt-4 flex items-center justify-center">
-                    <div className={`w-16 h-16 overflow-hidden border-2 border-slate-200 dark:border-slate-600 shadow-sm ${
+                  <div className="flex items-center gap-4">
+                    <div className={`w-16 h-16 overflow-hidden border-2 border-slate-200 dark:border-slate-600 shadow-sm flex-shrink-0 ${
                       form.profilePhotoStyle === 'round' ? 'rounded-full' : 'rounded-xl'
-                    }`}>
-                      {form.logoUrl ? (
-                        <img
-                          src={form.logoUrl}
-                          alt="Preview"
-                          className="w-full h-full object-cover"
-                          style={(form.logoScale !== 1 || form.logoOffsetX !== 0 || form.logoOffsetY !== 0)
-                            ? { transform: `scale(${form.logoScale}) translate(${form.logoOffsetX}%, ${form.logoOffsetY}%)`, transformOrigin: 'center' }
-                            : undefined}
-                        />
-                      ) : (
-                        <div
-                          className="w-full h-full flex items-center justify-center text-white font-bold"
-                          style={{ backgroundColor: form.primaryColor, fontSize: 16 }}
-                        >
-                          {(tenant?.name || 'T')[0]}
-                        </div>
-                      )}
+                    }`} style={{ backgroundColor: form.primaryColor }}>
+                      <img
+                        src={form.logoUrl}
+                        alt="Preview"
+                        className="w-full h-full object-cover"
+                        style={(form.logoScale !== 1 || form.logoOffsetX !== 0 || form.logoOffsetY !== 0)
+                          ? { transform: `scale(${form.logoScale}) translate(${form.logoOffsetX}%, ${form.logoOffsetY}%)`, transformOrigin: 'center' }
+                          : undefined}
+                      />
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => setPhotoEditorOpen(true)}
+                      className="text-sm font-medium text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300"
+                    >
+                      Ajustar foto
+                    </button>
                   </div>
                 </div>
               )}

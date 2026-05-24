@@ -1,4 +1,12 @@
-// TurnoLink Service Worker v2 — push notifications only (no caching)
+// TLink Service Worker v3 — push notifications only (no caching)
+
+self.addEventListener('install', (event) => {
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(clients.claim());
+});
 
 self.addEventListener('push', (event) => {
   if (!event.data) return;
@@ -7,22 +15,21 @@ self.addEventListener('push', (event) => {
     const data = event.data.json();
     const options = {
       body: data.body || '',
-      icon: '/icons/icon-192x192.png',
-      badge: '/icons/badge-96x96.png',
+      icon: '/icons/icon-192x192.png?v=tlink-1',
+      badge: '/icons/badge-96x96.png?v=tlink-1',
       data: { url: data.url || '/turnos' },
       vibrate: [200, 100, 200],
-      tag: data.tag || 'turnolink',
+      tag: data.tag || 'tlink',
       renotify: true,
       actions: getActionsForTag(data.tag),
     };
-    event.waitUntil(self.registration.showNotification(data.title || 'TurnoLink', options));
+    event.waitUntil(self.registration.showNotification(data.title || 'TLink', options));
   } catch (e) {
-    // Fallback for non-JSON payloads
     event.waitUntil(
-      self.registration.showNotification('TurnoLink', {
+      self.registration.showNotification('TLink', {
         body: event.data.text(),
-        icon: '/icons/icon-192x192.png',
-        badge: '/icons/badge-96x96.png',
+        icon: '/icons/icon-192x192.png?v=tlink-1',
+        badge: '/icons/badge-96x96.png?v=tlink-1',
       }),
     );
   }
@@ -52,7 +59,6 @@ function getActionsForTag(tag) {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
 
-  // Handle action buttons
   if (event.action === 'dismiss') return;
 
   const url = event.notification.data?.url || '/turnos';

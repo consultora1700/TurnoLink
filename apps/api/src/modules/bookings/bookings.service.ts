@@ -101,12 +101,48 @@ export class BookingsService {
 
       if (service) {
         // Re-read service inside tx for atomic promo check (prevents race condition on promoBookingCount)
-        const freshSvc = await tx.service.findUniqueOrThrow({ where: { id: createBookingDto.serviceId! } });
+        const freshSvc = await tx.service.findFirstOrThrow({ where: { id: createBookingDto.serviceId!, deletedAt: null } });
         const now = new Date();
         hourlyPromoActive = freshSvc.promoPrice != null
           && (!freshSvc.promoStartDate || freshSvc.promoStartDate <= now)
           && (!freshSvc.promoEndDate || freshSvc.promoEndDate >= now)
           && (freshSvc.promoMaxBookings == null || freshSvc.promoBookingCount < freshSvc.promoMaxBookings);
+
+        // Auto-assign employee if not specified but tenant has employees
+        if (!createBookingDto.employeeId) {
+          // Check explicit service assignments first
+          const assignments = await tx.employeeService.findMany({
+            where: { serviceId: createBookingDto.serviceId!, isActive: true },
+            select: { employeeId: true },
+          });
+          let candidateIds = assignments.map((a) => a.employeeId);
+
+          // If no explicit assignments, use all active employees of the tenant
+          if (candidateIds.length === 0) {
+            const allEmployees = await tx.employee.findMany({
+              where: { tenantId, isActive: true },
+              select: { id: true },
+            });
+            candidateIds = allEmployees.map((e) => e.id);
+          }
+
+          if (candidateIds.length > 0) {
+            // Find first available employee for this slot
+            for (const candidateId of candidateIds) {
+              const empAvailable = await this.isSlotAvailableTx(
+                tx, tenantId, createBookingDto.date, createBookingDto.startTime,
+                service.duration, skipAdvanceCheck, 1, createBookingDto.branchId, candidateId,
+              );
+              if (empAvailable) {
+                createBookingDto.employeeId = candidateId;
+                break;
+              }
+            }
+            if (!createBookingDto.employeeId) {
+              throw new ConflictException('This time slot is not available');
+            }
+          }
+        }
 
         // Check slot availability inside transaction
         const isAvailable = await this.isSlotAvailableTx(
@@ -118,6 +154,7 @@ export class BookingsService {
           skipAdvanceCheck,
           service.capacity || 1,
           createBookingDto.branchId,
+          createBookingDto.employeeId,
         );
 
         if (!isAvailable) {
@@ -1500,7 +1537,7 @@ export class BookingsService {
     // Serializable transaction: availability re-check + pricing + customer + booking
     const booking = await this.prisma.$transaction(async (tx) => {
       // Re-read service inside tx for atomic promo check (prevents race condition on promoBookingCount)
-      const freshService = await tx.service.findUniqueOrThrow({ where: { id: dto.serviceId } });
+      const freshService = await tx.service.findFirstOrThrow({ where: { id: dto.serviceId, deletedAt: null } });
 
       // Determine pricing: pack fixed price > promo price > normal price
       let totalPrice: number;

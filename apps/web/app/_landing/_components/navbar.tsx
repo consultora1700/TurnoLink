@@ -29,22 +29,13 @@ export function Navbar() {
         </Link>
 
         <div className="hidden lg:flex items-center gap-8">
-          <Link href="/#plataforma" className="text-sm text-white/60 hover:text-white transition-colors duration-300">
-            Plataforma
+          <Link href="/#funcionalidades" className="text-sm text-white/60 hover:text-white transition-colors duration-300">
+            Funcionalidades
           </Link>
-          <Link href="/mercado" className="text-sm text-white/60 hover:text-white transition-colors duration-300">
-            Mercado
+          <Link href="/#como-funciona" className="text-sm text-white/60 hover:text-white transition-colors duration-300">
+            Cómo funciona
           </Link>
-          <Link href="/#pilares" className="text-sm text-white/60 hover:text-white transition-colors duration-300">
-            Finanzas
-          </Link>
-          <Link href="/#industrias" className="text-sm text-white/60 hover:text-white transition-colors duration-300">
-            Industrias
-          </Link>
-          <Link href="/para/talento" className="text-sm text-white/60 hover:text-white transition-colors duration-300">
-            Talento
-          </Link>
-          <Link href="/#industrias" className="text-sm text-white/60 hover:text-white transition-colors duration-300">
+          <Link href="/#precios" className="text-sm text-white/60 hover:text-white transition-colors duration-300">
             Precios
           </Link>
           <button
@@ -80,22 +71,13 @@ export function Navbar() {
           open ? 'max-h-[500px] opacity-100 py-6' : 'max-h-0 opacity-0 py-0'
         } px-5 space-y-4`}
       >
-        <Link href="/#plataforma" className="block text-white/70 hover:text-white transition-colors" onClick={() => setOpen(false)}>
-          Plataforma
+        <Link href="/#funcionalidades" className="block text-white/70 hover:text-white transition-colors" onClick={() => setOpen(false)}>
+          Funcionalidades
         </Link>
-        <Link href="/mercado" className="block text-white/70 hover:text-white transition-colors" onClick={() => setOpen(false)}>
-          Mercado
+        <Link href="/#como-funciona" className="block text-white/70 hover:text-white transition-colors" onClick={() => setOpen(false)}>
+          Cómo funciona
         </Link>
-        <Link href="/#pilares" className="block text-white/70 hover:text-white transition-colors" onClick={() => setOpen(false)}>
-          Finanzas
-        </Link>
-        <Link href="/#industrias" className="block text-white/70 hover:text-white transition-colors" onClick={() => setOpen(false)}>
-          Industrias
-        </Link>
-        <Link href="/para/talento" className="block text-white/70 hover:text-white transition-colors" onClick={() => setOpen(false)}>
-          Talento
-        </Link>
-        <Link href="/#industrias" className="block text-white/70 hover:text-white transition-colors" onClick={() => setOpen(false)}>
+        <Link href="/#precios" className="block text-white/70 hover:text-white transition-colors" onClick={() => setOpen(false)}>
           Precios
         </Link>
         <button
